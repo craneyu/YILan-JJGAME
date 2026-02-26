@@ -1,13 +1,16 @@
 services:
   frontend:
     build: ./frontend
+    platform: linux/arm64
     ports:
       - "4200:80"
     depends_on:
       - backend
+    restart: unless-stopped
 
   backend:
     build: ./backend
+    platform: linux/arm64
     ports:
       - "3000:3000"
     environment:
@@ -18,9 +21,11 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
+    restart: unless-stopped
 
   mongo:
     image: mongo:7
+    platform: linux/arm64
     ports:
       - "27017:27017"
     volumes:
@@ -30,6 +35,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
 volumes:
   mongo_data:

@@ -5,6 +5,7 @@ import cors from 'cors';
 import mongoose from 'mongoose';
 import { initSocketIO } from './sockets/index';
 import { errorHandler } from './middleware/errorHandler';
+import { seedIfNeeded } from './seeds/initialUsers';
 import authRoutes from './routes/auth';
 import eventRoutes from './routes/events';
 import teamRoutes from './routes/teams';
@@ -47,6 +48,7 @@ async function bootstrap() {
   try {
     await mongoose.connect(MONGO_URI);
     console.log('[MongoDB] 已連線');
+    await seedIfNeeded();
 
     httpServer.listen(PORT, '0.0.0.0', () => {
       console.log(`[Server] 已啟動，監聽 http://0.0.0.0:${PORT}`);
