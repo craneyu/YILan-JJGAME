@@ -1,0 +1,241 @@
+<div class="min-h-screen p-4">
+  <!-- 頁首列 -->
+  <div class="glass-card px-6 py-3 mb-4 flex items-center justify-between">
+    <span class="text-white font-bold">賽序裁判</span>
+    <span class="text-white/80 font-medium text-center flex-1 truncate px-4">{{ eventName() }}</span>
+    <div class="flex items-center gap-3">
+      <span class="text-blue-300 font-bold whitespace-nowrap">{{ roundLabel() }}</span>
+      <button class="glass-btn text-sm flex items-center gap-1" (click)="logout()">
+        <fa-icon [icon]="faRightFromBracket"></fa-icon> 登出
+      </button>
+    </div>
+  </div>
+
+  <!-- 賽事完成 -->
+  @if (isEventComplete()) {
+    <div class="glass-card p-12 flex flex-col items-center justify-center gap-4 text-center">
+      <fa-icon [icon]="faTrophy" class="text-yellow-400 text-6xl"></fa-icon>
+      <h2 class="text-white text-2xl font-bold">賽事已結束</h2>
+      <p class="text-white/60">所有輪次均已完成，感謝各位裁判辛苦評分</p>
+    </div>
+  } @else {
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4" style="height: calc(100vh - 120px)">
+    <!-- 左側：賽事資訊 + 系列進度 -->
+    <div class="glass-card p-5 flex flex-col gap-4 overflow-y-auto">
+      <div>
+        <h3 class="text-white/50 text-xs uppercase tracking-wider mb-2">當前隊伍</h3>
+        @if (currentTeam()) {
+          <p class="text-white font-semibold text-lg">{{ currentTeam()!.name }}</p>
+          <p class="text-white/70 text-sm">{{ currentTeam()!.members.join(' / ') }}</p>
+          <div class="flex items-center gap-3 mt-1">
+            <span class="text-blue-300 text-sm">{{ seriesLabel() }} 系列</span>
+            <span class="text-white/40 text-xs">
+              {{ currentTeam()!.category === 'male' ? '男子組' : currentTeam()!.category === 'female' ? '女子組' : '混合組' }}
+            </span>
+          </div>
+        } @else {
+          <p class="text-white/40">尚未選擇隊伍</p>
+        }
+      </div>
+
+      <div class="border-t border-white/10"></div>
+
+      <!-- 系列進度 -->
+      <div class="flex-1">
+        <h3 class="text-white/50 text-xs uppercase tracking-wider mb-3">{{ seriesLabel() }} 系列進度</h3>
+        <div class="space-y-2">
+          @for (action of actionProgress(); track action.actionNo) {
+            <div class="flex items-center justify-between px-3 py-2 rounded-xl transition-all"
+              [class]="action.status === 'scoring' ? 'bg-yellow-500/15 border border-yellow-400/30'
+                      : action.status === 'done'    ? 'bg-green-500/10 border border-green-500/20'
+                      : 'bg-white/5 border border-white/10'">
+              <span class="font-semibold"
+                [class]="action.status === 'scoring' ? 'text-yellow-300'
+                        : action.status === 'done'   ? 'text-green-400'
+                        : 'text-white/60'">
+                {{ action.actionNo }}
+              </span>
+              @switch (action.status) {
+                @case ('done') {
+                  <span class="status-badge-done">
+                    <fa-icon [icon]="faCheckCircle"></fa-icon> 已完成
+                  </span>
+                }
+                @case ('scoring') {
+                  <span class="text-yellow-400 text-sm font-medium animate-pulse">⏳ 評分中</span>
+                }
+                @default {
+                  <span class="text-white/30 text-sm">待評</span>
+                }
+              }
+            </div>
+          }
+          @empty {
+            <p class="text-white/30 text-sm text-center py-4">請先選擇隊伍</p>
+          }
+        </div>
+
+        @if (teamAbstained()) {
+          <div class="mt-4 p-3 rounded-xl bg-red-500/15 border border-red-500/30 text-center">
+            <p class="text-red-400 text-sm font-medium">⚠️ 此組已棄權，可直接換組</p>
+          </div>
+        } @else {
+          @if (allActionsDone() && !vrSubmitted()) {
+            <div class="mt-4 p-3 rounded-xl bg-orange-500/15 border border-orange-400/30 text-center">
+              <p class="text-orange-300 text-sm font-medium">✅ {{ seriesLabel() }} 系列全部完成</p>
+              <p class="text-orange-300/70 text-xs mt-1">等待 VR 裁判送出多樣性評分</p>
+            </div>
+          }
+          @if (vrSubmitted()) {
+            <div class="mt-4 p-3 rounded-xl bg-green-500/15 border border-green-500/30 text-center">
+              <p class="text-green-400 text-sm font-medium">✅ VR 裁判已送出，可以換組</p>
+            </div>
+          }
+        }
+      </div>
+    </div>
+
+    <!-- 右側：裁判狀態 + 操作 -->
+    <div class="glass-card p-5 flex flex-col gap-4">
+      <!-- 計分裁判送出狀態 -->
+      <div>
+        <h3 class="text-white font-semibold mb-3">
+          計分裁判狀態
+          @if (currentActionNo()) {
+            <span class="text-blue-300 ml-2">— {{ currentActionNo() }}</span>
+          }
+        </h3>
+        <div class="grid grid-cols-5 gap-2 mb-3">
+          @for (judge of judgeStatuses(); track judge.judgeNo) {
+            <div class="flex flex-col items-center p-2 rounded-xl transition-all"
+              [class]="judge.submitted
+                ? 'bg-green-500/20 border border-green-500/40'
+                : 'bg-white/5 border border-white/10'">
+              <span class="text-white/60 text-xs mb-1">P{{ judge.judgeNo }}</span>
+              @if (judge.submitted) {
+                <fa-icon [icon]="faCheckCircle" class="text-green-400 text-lg"></fa-icon>
+              } @else {
+                <fa-icon [icon]="faHourglassHalf" class="text-white/30 text-lg"></fa-icon>
+              }
+              <span class="text-xs mt-1"
+                [class]="judge.submitted ? 'text-green-400' : 'text-white/30'">
+                {{ judge.submitted ? '已送出' : '-' }}
+              </span>
+            </div>
+          }
+        </div>
+
+        <!-- 送出進度條 -->
+        @if (actionOpen()) {
+          <div class="flex items-center gap-2">
+            <div class="flex-1 bg-white/10 rounded-full h-1.5 overflow-hidden">
+              <div class="bg-green-400 h-1.5 rounded-full transition-all duration-500"
+                [style.width]="(submittedCount() / 5 * 100) + '%'"></div>
+            </div>
+            <span class="text-white/60 text-xs">{{ submittedCount() }}/5</span>
+          </div>
+        }
+      </div>
+
+      <!-- VR 裁判狀態 -->
+      <div class="flex items-center justify-between py-2 px-3 rounded-xl"
+        [class]="vrSubmitted()
+          ? 'bg-green-500/20 border border-green-500/40'
+          : 'bg-white/5 border border-white/10'">
+        <span class="text-white/70 text-sm">VR 裁判（多樣性）</span>
+        @if (vrSubmitted()) {
+          <span class="status-badge-done">
+            <fa-icon [icon]="faCheckCircle"></fa-icon> 已送出
+          </span>
+        } @else {
+          <span class="text-white/40 text-xs">
+            {{ allActionsDone() ? '等待送出' : '待全系列完成' }}
+          </span>
+        }
+      </div>
+
+      <div class="border-t border-white/10"></div>
+
+      <!-- ── 流程控制按鈕 ── -->
+      <div class="flex flex-col gap-3 flex-1 justify-end">
+
+        @if (!currentTeam()) {
+          <div class="text-center text-white/40 py-6">
+            <p class="text-base">尚無隊伍可出賽</p>
+            <p class="text-xs mt-1">請管理員先新增參賽隊伍</p>
+          </div>
+        }
+
+        @if (currentTeam() && !teamAbstained()) {
+          <!-- 開放評分 -->
+          @if (canOpenAction()) {
+            <button
+              class="w-full primary-btn py-4 flex items-center justify-center gap-2 font-bold text-base"
+              (click)="openAction()">
+              <fa-icon [icon]="faLockOpen"></fa-icon>
+              開放 {{ nextPendingAction() }} 評分
+            </button>
+          }
+
+          <!-- 等待裁判送出中 -->
+          @if (actionOpen() && !all5Submitted()) {
+            <div class="w-full disabled-btn py-4 flex items-center justify-center gap-2 font-bold text-base">
+              <fa-icon [icon]="faHourglassHalf" class="animate-spin"></fa-icon>
+              等待裁判送出（{{ submittedCount() }}/5）
+            </div>
+          }
+
+          <!-- 等待 VR 裁判 -->
+          @if (allActionsDone() && !vrSubmitted() && !actionOpen()) {
+            <div class="w-full disabled-btn py-4 flex items-center justify-center gap-2 font-bold text-base">
+              <fa-icon [icon]="faHourglassHalf" class="animate-pulse"></fa-icon>
+              等待 VR 裁判完成評分
+            </div>
+          }
+
+          <!-- 棄權按鈕（尚未開始評分時可棄權） -->
+          @if (!actionOpen()) {
+            <button
+              class="w-full py-3 flex items-center justify-center gap-2 font-medium text-sm rounded-lg border transition-all bg-red-500/20 hover:bg-red-500/40 text-red-300 border-red-500/40 hover:border-red-400/60"
+              (click)="setAbstain()">
+              <fa-icon [icon]="faBan"></fa-icon>
+              設定此組棄權
+            </button>
+          }
+        }
+
+        @if (currentTeam() && teamAbstained()) {
+          <!-- 棄權狀態提示 -->
+          <div class="w-full py-4 flex items-center justify-center gap-2 font-bold text-base rounded-lg bg-red-500/20 border border-red-500/40 text-red-300">
+            <fa-icon [icon]="faBan"></fa-icon>
+            此組已棄權
+          </div>
+
+          <!-- 取消棄權 -->
+          <button
+            class="w-full py-3 flex items-center justify-center gap-2 font-medium text-sm rounded-lg border transition-all bg-white/5 hover:bg-white/10 text-white/60 border-white/20 hover:border-white/40"
+            (click)="cancelAbstain()">
+            <fa-icon [icon]="faRotateLeft"></fa-icon>
+            取消棄權
+          </button>
+        }
+
+        <!-- 換組 -->
+        @if (currentTeam()) {
+          <button
+            [class]="canNextGroup()
+              ? 'w-full py-4 flex items-center justify-center gap-2 font-bold text-base rounded-lg border transition-all bg-orange-500/70 hover:bg-orange-400 text-white border-orange-400/50 cursor-pointer'
+              : 'w-full disabled-btn py-4 flex items-center justify-center gap-2 font-bold text-base cursor-not-allowed'"
+            [disabled]="!canNextGroup()"
+            (click)="nextGroup()">
+            <fa-icon [icon]="faForwardStep"></fa-icon>
+            換組
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+
+  } <!-- end @if isEventComplete -->
+</div>

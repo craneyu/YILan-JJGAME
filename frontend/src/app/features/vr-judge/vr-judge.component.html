@@ -1,0 +1,123 @@
+<div class="min-h-screen p-4">
+  <!-- 頁首列 -->
+  <div class="glass-card px-6 py-3 mb-4 flex items-center justify-between">
+    <span class="text-white font-bold">VR 裁判</span>
+    <span class="text-white/80 font-medium text-center flex-1">{{ eventName() }}</span>
+    <div class="flex items-center gap-3">
+      <span class="text-blue-300 font-bold">{{ roundLabel() }}</span>
+      <button class="glass-btn text-sm flex items-center gap-1" (click)="logout()">
+        <fa-icon [icon]="faRightFromBracket"></fa-icon> 登出
+      </button>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 h-[calc(100vh-120px)]">
+    <!-- 左側 -->
+    <div class="glass-card p-5 flex flex-col gap-4">
+      <div>
+        <h3 class="text-white/60 text-xs uppercase tracking-wider mb-2">賽事資訊</h3>
+        @if (currentTeam()) {
+          <p class="text-white font-semibold">{{ currentTeam()!.name }}</p>
+          <p class="text-white/80 text-sm">{{ currentTeam()!.members.join(' / ') }}</p>
+          <p class="text-blue-300 text-sm">
+            {{ currentTeam()!.category === 'male' ? '男子組' : currentTeam()!.category === 'female' ? '女子組' : '混合組' }}
+          </p>
+        } @else {
+          <p class="text-white/40">等待賽程開始...</p>
+        }
+      </div>
+
+      <div class="border-t border-white/10"></div>
+
+      <div>
+        <h3 class="text-white/60 text-xs uppercase tracking-wider mb-2">本系列動作狀態</h3>
+        <div class="space-y-2">
+          @for (action of actionStatuses(); track action.actionNo) {
+            <div class="flex items-center justify-between">
+              <span class="text-white/80 font-medium">{{ action.actionNo }}</span>
+              @if (action.done) {
+                <span class="status-badge-done">
+                  <fa-icon [icon]="faCheckCircle"></fa-icon> 已完成
+                </span>
+              } @else {
+                <span class="status-badge-waiting">
+                  <fa-icon [icon]="faHourglassHalf"></fa-icon> 等待中
+                </span>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- 右側 -->
+    <div class="glass-card p-5 flex flex-col gap-4">
+      <div>
+        <h3 class="text-white font-semibold">【多樣性評分】系列：{{ seriesLabel() }}</h3>
+      </div>
+      <div class="border-t border-white/10"></div>
+
+      @if (!allActionsDone()) {
+        <div class="flex-1 flex items-center justify-center">
+          <div class="text-center">
+            <fa-icon [icon]="faHourglassHalf" class="text-yellow-400 text-3xl mb-3 animate-pulse"></fa-icon>
+            <p class="text-white/60">等待本系列所有動作完成</p>
+            <p class="text-white/40 text-sm">全系列完成後才可送出多樣性評分</p>
+          </div>
+        </div>
+      } @else if (submitted()) {
+        <div class="flex-1 flex items-center justify-center">
+          <div class="text-center">
+            <fa-icon [icon]="faCheckCircle" class="text-green-400 text-4xl mb-3"></fa-icon>
+            <p class="text-green-400 font-semibold text-lg">多樣性評分已送出</p>
+            <div class="mt-3 space-y-1 text-white/70 text-sm">
+              <p>摔技多樣性：{{ throwVariety() }} 分</p>
+              <p>地板技多樣性：{{ groundVariety() }} 分</p>
+            </div>
+            <p class="text-white/40 text-sm mt-4">等待賽序裁判換組</p>
+          </div>
+        </div>
+      } @else {
+        <div class="flex flex-col gap-5 flex-1">
+          <!-- 摔技多樣性 -->
+          <div>
+            <p class="text-white/80 text-sm mb-2">① 摔技多樣性</p>
+            <div class="flex gap-3">
+              @for (v of vrOptions; track v) {
+                <button
+                  class="score-btn"
+                  [class]="throwVariety() === v ? 'score-btn-selected' : 'score-btn-unselected'"
+                  (click)="throwVariety.set(v)"
+                >{{ v }}</button>
+              }
+            </div>
+          </div>
+
+          <!-- 地板技多樣性 -->
+          <div>
+            <p class="text-white/80 text-sm mb-2">② 地板技多樣性</p>
+            <div class="flex gap-3">
+              @for (v of vrOptions; track v) {
+                <button
+                  class="score-btn"
+                  [class]="groundVariety() === v ? 'score-btn-selected' : 'score-btn-unselected'"
+                  (click)="groundVariety.set(v)"
+                >{{ v }}</button>
+              }
+            </div>
+          </div>
+
+          <div class="border-t border-white/10 pt-4 mt-auto">
+            <button
+              [class]="allSelected() ? 'w-full primary-btn py-3 font-bold' : 'w-full disabled-btn py-3 font-bold'"
+              [disabled]="!allSelected()"
+              (click)="submit()"
+            >
+              確認送出
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</div>

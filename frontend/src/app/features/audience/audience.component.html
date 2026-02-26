@@ -1,0 +1,107 @@
+<div class="min-h-screen p-4 flex flex-col gap-4">
+  <!-- 區塊一：賽事標題列 -->
+  <div class="glass-card px-6 py-4 flex items-center justify-between">
+    <h1 class="text-white font-bold text-xl">{{ eventName() }}</h1>
+    <span class="text-blue-300 font-bold text-2xl">{{ roundLabel() }}</span>
+  </div>
+
+  <!-- 區塊二：累計總分 + 隊伍資訊 -->
+  <div class="grid grid-cols-5 gap-4">
+    <!-- 累計總分（紅色醒目背景） -->
+    <div class="col-span-2 rounded-2xl py-5 px-4 flex flex-col items-center justify-center min-h-44
+                bg-gradient-to-br from-red-600 to-red-800
+                border border-red-500/40 shadow-xl shadow-red-900/40">
+      <p class="text-red-200/50 text-[0.6rem] font-bold tracking-[0.3em] uppercase mb-1">累計總分</p>
+      <p class="text-white font-black leading-none tabular-nums"
+         style="font-size: clamp(5rem, 10vw, 10rem)">{{ totalScore() }}</p>
+      <p class="text-red-200/50 text-sm mt-2">
+        {{ completedActions() }}&thinsp;/&thinsp;{{ seriesActions().length }} 式完成
+      </p>
+    </div>
+
+    <!-- 隊伍資訊 -->
+    <div class="col-span-3 glass-card px-8 py-6 flex flex-col justify-center gap-3">
+      @if (currentTeam()) {
+        <!-- 組別 badge + 排名（在隊名上方） -->
+        <div class="flex items-center gap-3 flex-wrap">
+          <span class="text-base px-4 py-1 rounded-full font-bold"
+            [class]="currentTeam()!.category === 'male'   ? 'bg-blue-500/30 text-blue-200 border border-blue-400/30'
+                    : currentTeam()!.category === 'female' ? 'bg-pink-500/30 text-pink-200 border border-pink-400/30'
+                    : 'bg-purple-500/30 text-purple-200 border border-purple-400/30'">
+            {{ currentTeam()!.category === 'male' ? '男子組' : currentTeam()!.category === 'female' ? '女子組' : '混合組' }}
+          </span>
+          @if (categoryRank(); as rank) {
+            <span class="text-white/40 text-sm">目前排名</span>
+            <span class="text-white font-bold text-xl leading-none">第&nbsp;{{ rank.rank }}&nbsp;名</span>
+            <span class="text-white/30 text-sm">/ {{ rank.total }} 隊</span>
+          }
+        </div>
+        <!-- 隊名 -->
+        <p class="text-white font-bold text-4xl leading-tight">{{ currentTeam()!.name }}</p>
+        <!-- 隊員姓名 -->
+        <p class="text-white/80 text-2xl font-medium tracking-wide">{{ currentTeam()!.members.join(' ／ ') }}</p>
+      } @else {
+        <p class="text-white/40 text-2xl">等待賽程開始</p>
+      }
+    </div>
+  </div>
+
+  <!-- 區塊三：各動作分數總覽表 -->
+  <div class="glass-card p-4 overflow-x-auto">
+    <table class="w-full text-center">
+      <thead>
+        <tr class="border-b border-white/20">
+          @for (action of seriesActions(); track action) {
+            <th class="px-3 py-2 text-white/60 font-medium text-sm">{{ action }}</th>
+          }
+          <th class="px-3 py-2 text-white/60 font-medium text-sm">VRT</th>
+          <th class="px-3 py-2 text-blue-300 font-bold text-sm">TOT</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          @for (action of seriesActions(); track action) {
+            @let score = getActionScore(action);
+            <td class="px-3 py-3 rounded-lg"
+              [class]="isCurrentAction(action) ? 'bg-blue-500/30' : ''">
+              <span class="text-white font-bold text-xl">
+                {{ score?.actionTotal ?? '-' }}
+              </span>
+            </td>
+          }
+          <td class="px-3 py-3">
+            <span class="text-white font-bold text-xl">{{ vrt() ?? '-' }}</span>
+          </td>
+          <td class="px-3 py-3 bg-blue-500/20 rounded-lg">
+            <span class="text-blue-300 font-bold text-2xl">{{ tot() }}</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 區塊四：當前動作各項目加總列 -->
+  @if (currentActionNo()) {
+    @let currentScore = getActionScore(currentActionNo()!);
+    @if (currentScore?.actionTotal !== undefined) {
+      <div class="glass-card p-4">
+        <div class="flex items-center gap-4 overflow-x-auto">
+          <div class="flex-shrink-0">
+            <span class="text-blue-300 font-bold text-lg">{{ currentActionNo() }}</span>
+          </div>
+
+          <div class="flex gap-4 flex-1">
+            @for (i of [1, 2, 3, 4, 5].slice(0, isCseries() ? 5 : 4); track i) {
+              <div class="flex flex-col items-center glass-card px-4 py-2 flex-1 min-w-0">
+                <span class="text-white/60 text-xs">P{{ i }}</span>
+                <span class="text-white font-bold text-2xl">
+                  {{ getItemScore(currentScore, i) }}
+                </span>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
+  }
+</div>
