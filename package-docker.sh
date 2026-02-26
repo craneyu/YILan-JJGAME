@@ -18,9 +18,49 @@ echo "[1/3] 匯出 Docker 映像（約需 1-2 分鐘）..."
 docker save yilan-jju-frontend yilan-jju-backend mongo:7 | gzip > "$PACKAGE_DIR/images.tar.gz"
 echo "      映像匯出完成"
 
-# 複製 docker-compose.yml
-echo "[2/3] 複製設定檔..."
-cp docker-compose.yml "$PACKAGE_DIR/docker-compose.yml"
+# 產生部署用 docker-compose.yml（使用 image: 而非 build:）
+echo "[2/3] 產生設定檔..."
+cat > "$PACKAGE_DIR/docker-compose.yml" << 'EOF'
+services:
+  frontend:
+    image: yilan-jju-frontend
+    platform: linux/arm64
+    ports:
+      - "4200:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  backend:
+    image: yilan-jju-backend
+    platform: linux/arm64
+    ports:
+      - "3000:3000"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/jju
+      - JWT_SECRET=jju_secret_change_in_production
+      - PORT=3000
+      - NODE_ENV=production
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:7
+    platform: linux/arm64
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  mongo_data:
+EOF
 
 # 建立匯入腳本
 cat > "$PACKAGE_DIR/start.sh" << 'EOF'
@@ -69,7 +109,7 @@ echo "查看日誌：docker compose logs -f"
 EOF
 
 chmod +x "$PACKAGE_DIR/start.sh"
-echo "      設定檔複製完成"
+echo "      設定檔產生完成"
 
 # 壓縮整個目錄
 echo "[3/3] 壓縮打包..."
