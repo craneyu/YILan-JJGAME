@@ -215,6 +215,31 @@ export class AdminComponent implements OnInit {
     });
   }
 
+  async deleteEvent(event: EventItem): Promise<void> {
+    const result = await Swal.fire({
+      icon: 'warning',
+      title: `確認刪除「${event.name}」？`,
+      html: '此操作將<b>永久刪除</b>該賽事及其所有隊伍、評分資料，<br>無法復原。',
+      showCancelButton: true,
+      confirmButtonText: '確認刪除',
+      cancelButtonText: '取消',
+      confirmButtonColor: '#ef4444',
+    });
+    if (!result.isConfirmed) return;
+
+    this.api.delete<{ success: boolean }>(`/events/${event._id}`).subscribe({
+      next: () => {
+        this.events.update((evts) => evts.filter((e) => e._id !== event._id));
+        if (this.selectedEvent()?._id === event._id) {
+          this.selectedEvent.set(null);
+          this.teams.set([]);
+        }
+        Swal.fire({ icon: 'success', title: '賽事已刪除', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+      },
+      error: (err) => Swal.fire({ icon: 'error', title: err.error?.error ?? '刪除失敗', toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 }),
+    });
+  }
+
   selectEvent(event: EventItem): void {
     this.selectedEvent.set(event);
     this.selectedTeamIds.set(new Set());

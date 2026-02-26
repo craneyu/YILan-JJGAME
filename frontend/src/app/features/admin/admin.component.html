@@ -135,6 +135,10 @@
                     <fa-icon [icon]="faLock" class="text-xs"></fa-icon>
                   </button>
                 }
+                <button class="text-red-500/70 hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-500/10"
+                  (click)="$event.stopPropagation(); deleteEvent(event)" title="刪除賽事">
+                  <fa-icon [icon]="faTrash" class="text-xs"></fa-icon>
+                </button>
               </div>
             </div>
           } @else {
