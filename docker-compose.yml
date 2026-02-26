@@ -26,8 +26,7 @@ services:
   mongo:
     image: mongo:7
     platform: linux/arm64
-    ports:
-      - "27017:27017"
+    # MongoDB 僅供 Docker 內部網路使用，不對外暴露 port
     volumes:
       - mongo_data:/data/db
     healthcheck:
