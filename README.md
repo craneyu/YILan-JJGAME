@@ -14,17 +14,17 @@
 
 ### 核心功能
 
-| 功能 | 說明 |
-|------|------|
+| 功能       | 說明                                          |
+| ---------- | --------------------------------------------- |
 | 多角色登入 | 計分裁判 × 5、VR 裁判、賽序裁判、管理員、觀眾 |
-| 即時計分 | Socket.IO 廣播，所有畫面毫秒級同步更新 |
-| 自動計算 | 去掉最高/最低分，取中間三位裁判加總 |
-| 賽程控制 | 賽序裁判控制開放評分、換組、輪次推進 |
-| 棄權處理 | 支援設定/取消棄權，跳過 VR 評分直接換組 |
-| 分組管理 | 男子組 / 女子組 / 混合組，支援批次場次排序 |
-| 資料匯入 | 支援 Excel (.xlsx) / CSV 格式批次匯入隊伍 |
-| 觀眾介面 | 大螢幕顯示即時成績與組別排名 |
-| 管理後台 | 賽事管理、隊伍管理、裁判帳號管理與密碼變更 |
+| 即時計分   | Socket.IO 廣播，所有畫面毫秒級同步更新        |
+| 自動計算   | 去掉最高/最低分，取中間三位裁判加總           |
+| 賽程控制   | 賽序裁判控制開放評分、換組、輪次推進          |
+| 棄權處理   | 支援設定/取消棄權，跳過 VR 評分直接換組       |
+| 分組管理   | 男子組 / 女子組 / 混合組，支援批次場次排序    |
+| 資料匯入   | 支援 Excel (.xlsx) / CSV 格式批次匯入隊伍     |
+| 觀眾介面   | 大螢幕顯示即時成績與組別排名                  |
+| 管理後台   | 賽事管理、隊伍管理、裁判帳號管理與密碼變更    |
 
 ---
 
@@ -49,15 +49,15 @@
                       Socket.IO 4（即時廣播）
 ```
 
-| 層級 | 技術 |
-|------|------|
-| 前端框架 | Angular 20 Standalone + Signals |
-| UI 樣式 | Tailwind CSS 4.x（玻璃態 Glassmorphism） |
-| 即時通訊 | Socket.IO 4 |
-| 後端框架 | Node.js 22 + Express 5 + TypeScript |
-| 資料庫 | MongoDB 7 + Mongoose 8 ODM |
-| 認證 | JWT（無過期，LAN 環境） |
-| 部署 | Docker Compose |
+| 層級     | 技術                                     |
+| -------- | ---------------------------------------- |
+| 前端框架 | Angular 20 Standalone + Signals          |
+| UI 樣式  | Tailwind CSS 4.x（玻璃態 Glassmorphism） |
+| 即時通訊 | Socket.IO 4                              |
+| 後端框架 | Node.js 22 + Express 5 + TypeScript      |
+| 資料庫   | MongoDB 7 + Mongoose 8 ODM               |
+| 認證     | JWT（無過期，LAN 環境）                  |
+| 部署     | Docker Compose                           |
 
 ---
 
@@ -116,13 +116,12 @@ PORT=3000
 
 > 僅供開發測試使用，正式環境請透過管理員後台修改密碼。
 
-| 帳號 | 密碼 | 角色 |
-|------|------|------|
-| `admin` | `admin123` | 管理員 |
+| 帳號                | 密碼       | 角色           |
+| ------------------- | ---------- | -------------- |
+| `admin`             | `admin123` | 管理員         |
 | `judge1` ~ `judge5` | `judge123` | 計分裁判 #1–#5 |
-| `vr` | `vr123` | VR 裁判 |
-| `seq` | `seq123` | 賽序裁判 |
-| `audience` | `audience123` | 觀眾 |
+| `vr`                | `vr123`    | VR 裁判        |
+| `seq`               | `seq123`   | 賽序裁判       |
 
 ---
 
@@ -157,35 +156,35 @@ YILan-JJGAME/
 
 ## API 端點概覽
 
-| 方法 | 路徑 | 說明 |
-|------|------|------|
-| `GET/POST` | `/api/v1/events` | 賽事管理 |
-| `GET` | `/api/v1/events/:id/summary` | 賽事摘要（含即時狀態） |
-| `GET` | `/api/v1/events/:id/rankings` | 各組別成績排名 |
-| `GET/POST` | `/api/v1/events/:id/teams` | 隊伍管理 |
-| `POST` | `/api/v1/events/:id/teams/import` | 批次匯入隊伍 |
-| `POST` | `/api/v1/scores` | 送出評分 |
-| `GET` | `/api/v1/scores/my-round` | 取得本裁判本輪評分 |
-| `POST` | `/api/v1/vr-scores` | VR 多樣性評分 |
-| `POST` | `/api/v1/flow/open-action` | 開放評分 |
-| `POST` | `/api/v1/flow/next-group` | 換組 |
-| `POST` | `/api/v1/flow/abstain` | 設定棄權 |
-| `POST` | `/api/v1/auth/login` | 登入 |
+| 方法       | 路徑                              | 說明                   |
+| ---------- | --------------------------------- | ---------------------- |
+| `GET/POST` | `/api/v1/events`                  | 賽事管理               |
+| `GET`      | `/api/v1/events/:id/summary`      | 賽事摘要（含即時狀態） |
+| `GET`      | `/api/v1/events/:id/rankings`     | 各組別成績排名         |
+| `GET/POST` | `/api/v1/events/:id/teams`        | 隊伍管理               |
+| `POST`     | `/api/v1/events/:id/teams/import` | 批次匯入隊伍           |
+| `POST`     | `/api/v1/scores`                  | 送出評分               |
+| `GET`      | `/api/v1/scores/my-round`         | 取得本裁判本輪評分     |
+| `POST`     | `/api/v1/vr-scores`               | VR 多樣性評分          |
+| `POST`     | `/api/v1/flow/open-action`        | 開放評分               |
+| `POST`     | `/api/v1/flow/next-group`         | 換組                   |
+| `POST`     | `/api/v1/flow/abstain`            | 設定棄權               |
+| `POST`     | `/api/v1/auth/login`              | 登入                   |
 
 ---
 
 ## Socket.IO 即時事件
 
-| 事件 | 方向 | 說明 |
-|------|------|------|
-| `action:opened` | Server → Client | 賽序裁判開放某動作評分 |
-| `score:submitted` | Server → Client | 某裁判送出評分 |
-| `score:calculated` | Server → Client | 5 位裁判全數送出，計算完成 |
-| `vr:submitted` | Server → Client | VR 裁判送出多樣性評分 |
-| `group:changed` | Server → Client | 換組 |
-| `round:changed` | Server → Client | 換輪次 |
-| `team:abstained` | Server → Client | 設定棄權 |
-| `team:abstain-cancelled` | Server → Client | 取消棄權 |
+| 事件                     | 方向            | 說明                       |
+| ------------------------ | --------------- | -------------------------- |
+| `action:opened`          | Server → Client | 賽序裁判開放某動作評分     |
+| `score:submitted`        | Server → Client | 某裁判送出評分             |
+| `score:calculated`       | Server → Client | 5 位裁判全數送出，計算完成 |
+| `vr:submitted`           | Server → Client | VR 裁判送出多樣性評分      |
+| `group:changed`          | Server → Client | 換組                       |
+| `round:changed`          | Server → Client | 換輪次                     |
+| `team:abstained`         | Server → Client | 設定棄權                   |
+| `team:abstain-cancelled` | Server → Client | 取消棄權                   |
 
 ---
 
