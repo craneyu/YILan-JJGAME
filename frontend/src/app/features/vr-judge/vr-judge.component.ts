@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, signal, computed, inject } from '@angular
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
-import { faCheckCircle, faHourglassHalf, faRightFromBracket } from '@fortawesome/free-solid-svg-icons';
+import { faCheckCircle, faHourglassHalf, faRightFromBracket, faBan } from '@fortawesome/free-solid-svg-icons';
 import Swal from 'sweetalert2';
 import { AuthService } from '../../core/services/auth.service';
 import { ApiService } from '../../core/services/api.service';
@@ -29,6 +29,7 @@ interface VRSummaryResponse {
     gameState: {
       currentTeamId?: string;
       currentRound: number;
+      currentTeamAbstained: boolean;
       status: string;
     } | null;
     completedActionNos: string[];
@@ -60,6 +61,7 @@ export class VrJudgeComponent implements OnInit, OnDestroy {
   throwVariety = signal<number | null>(null);
   groundVariety = signal<number | null>(null);
   submitted = signal(false);
+  teamAbstained = signal(false);
 
   allActionsDone = computed(() => this.actionStatuses().every((a) => a.done));
   allSelected = computed(() => this.throwVariety() !== null && this.groundVariety() !== null);
@@ -70,6 +72,7 @@ export class VrJudgeComponent implements OnInit, OnDestroy {
   faCheckCircle = faCheckCircle;
   faHourglassHalf = faHourglassHalf;
   faRightFromBracket = faRightFromBracket;
+  faBan = faBan;
 
   logout(): void {
     this.auth.logout();
@@ -101,6 +104,16 @@ export class VrJudgeComponent implements OnInit, OnDestroy {
         this.throwVariety.set(null);
         this.groundVariety.set(null);
         this.submitted.set(false);
+        this.teamAbstained.set(false);
+      }),
+
+      this.socket.teamAbstained$.subscribe((e) => {
+        if (e.eventId !== this.eventId()) return;
+        this.teamAbstained.set(true);
+      }),
+      this.socket.teamAbstainCancelled$.subscribe((e) => {
+        if (e.eventId !== this.eventId()) return;
+        this.teamAbstained.set(false);
       })
     );
   }
@@ -116,6 +129,10 @@ export class VrJudgeComponent implements OnInit, OnDestroy {
 
       this.eventName.set(event.name);
       this.teams.set(teams);
+
+      if (gameState?.currentTeamAbstained) {
+        this.teamAbstained.set(true);
+      }
 
       if (!gameState?.currentTeamId) return;
 
