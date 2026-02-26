@@ -10,3 +10,5 @@ coverage/
 
 # Angular build cache
 .angular/
+jju-docker.tar.gz
+GEMINI.md
