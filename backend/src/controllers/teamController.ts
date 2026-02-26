@@ -17,12 +17,12 @@ export async function createTeam(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  // 檢查隊員姓名唯一性
-  const conflict = await checkMemberConflict(req.params.id as string, members);
-  if (conflict.length > 0) {
+  // 同組別內檢查隊員唯一性（同單位可在同組派多支隊伍，故不限隊名）
+  const duplicateMembers = await checkConflictInCategory(req.params.id as string, category, members);
+  if (duplicateMembers.length > 0) {
     res.status(409).json({
       success: false,
-      error: `以下隊員姓名已存在：${conflict.join('、')}`,
+      error: `以下隊員在此組別已存在：${duplicateMembers.join('、')}`,
     });
     return;
   }
@@ -94,10 +94,15 @@ export async function batchDeleteTeams(req: Request, res: Response): Promise<voi
   res.json({ success: true, data: { deleted: result.deletedCount } });
 }
 
-// 取得現有所有隊員姓名
-async function checkMemberConflict(eventId: string, newMembers: string[]): Promise<string[]> {
-  const existingTeams = await Team.find({ eventId });
-  const existingMembers = new Set(existingTeams.flatMap((t) => t.members));
+// 同組別內檢查隊員姓名是否重複（不同組別的同名隊員允許存在）
+// 注意：同組別允許同單位多支隊伍，故不檢查隊名唯一性
+async function checkConflictInCategory(
+  eventId: string,
+  category: string,
+  newMembers: string[]
+): Promise<string[]> {
+  const teamsInCategory = await Team.find({ eventId, category });
+  const existingMembers = new Set(teamsInCategory.flatMap((t) => t.members));
   return newMembers.filter((m: string) => existingMembers.has(m));
 }
 
@@ -166,9 +171,9 @@ export async function importTeams(req: Request, res: Response): Promise<void> {
     };
     const category = categoryMap[categoryRaw] || 'male';
 
-    const conflict = await checkMemberConflict(eventId, members);
-    if (conflict.length > 0) {
-      conflictList.push(`${teamName}（衝突：${conflict.join('、')}）`);
+    const duplicateMembers = await checkConflictInCategory(eventId, category, members);
+    if (duplicateMembers.length > 0) {
+      conflictList.push(`${teamName}（隊員重複：${duplicateMembers.join('、')}）`);
       continue;
     }
 
