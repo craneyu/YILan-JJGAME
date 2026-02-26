@@ -66,6 +66,7 @@ EOF
 cat > "$PACKAGE_DIR/start.sh" << 'EOF'
 #!/bin/bash
 # 在 MacBook Air M4 上執行此腳本即可啟動系統
+# 每次執行都會更新前後端映像；資料庫映像也會更新，但現有資料不受影響。
 
 set -e
 
@@ -78,17 +79,17 @@ if ! docker info > /dev/null 2>&1; then
   exit 1
 fi
 
-# 載入映像（如果尚未載入）
-if ! docker image inspect yilan-jju-frontend > /dev/null 2>&1; then
-  echo "[1/2] 載入 Docker 映像（首次執行需要約 2-3 分鐘）..."
-  docker load < images.tar.gz
-  echo "      映像載入完成"
-else
-  echo "[1/2] 映像已存在，跳過載入"
-fi
+# 停止現有容器（保留資料 volume）
+echo "[1/3] 停止現有容器..."
+docker compose down 2>/dev/null || true
 
-# 啟動服務
-echo "[2/2] 啟動所有服務..."
+# 載入最新映像（覆蓋前後端；MongoDB 映像更新但 volume 資料保留）
+echo "[2/3] 載入最新映像（約需 1-2 分鐘）..."
+docker load < images.tar.gz
+echo "      映像載入完成"
+
+# 啟動所有服務
+echo "[3/3] 啟動所有服務..."
 docker compose up -d
 
 echo ""
