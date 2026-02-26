@@ -1,125 +1,169 @@
-<div class="min-h-screen flex items-center justify-center p-4">
-  <div class="w-full max-w-md">
+<div class="lp-wrapper">
+  <!-- Background elements -->
+  <div class="lp-bg-grid" aria-hidden="true"></div>
+  <div class="lp-bg-glow" aria-hidden="true"></div>
 
-    <!-- 標題 -->
-    <div class="text-center mb-8">
-      <h1 class="text-3xl font-bold text-white mb-2">柔術競賽演武計分平台</h1>
-      <p class="text-white/60">
-        {{ loginStep() === 'select-event' ? '請選擇要加入的賽事' : '請選擇身份登入' }}
-      </p>
+  <main class="lp-main">
+
+    <!-- ── 標題 ── -->
+    <div class="lp-header-block">
+      <div class="lp-header-accent" aria-hidden="true"></div>
+      <p class="lp-sys-name">宜蘭柔術演武大賽</p>
+      <h1 class="lp-title">競賽計分平台</h1>
+      <p class="lp-subtitle">COMPETITION SCORING PLATFORM</p>
     </div>
 
-    <!-- ── 步驟一：登入 ── -->
+    <!-- ══════════════════════════════════
+         步驟一：登入
+         ══════════════════════════════════ -->
     @if (loginStep() === 'login') {
+      <div class="lp-cards">
 
-      <!-- 觀眾 / 選手入口 -->
-      <div class="glass-card p-6 mb-4">
-        <div class="flex items-center gap-3 mb-4">
-          <fa-icon [icon]="faEye" class="text-blue-400 text-xl"></fa-icon>
-          <h2 class="text-white font-semibold text-lg">觀眾 / 選手</h2>
-        </div>
-        <p class="text-white/60 text-sm mb-4">無需登入，選擇賽事後即可觀看即時計分</p>
-        <div class="flex gap-2">
-          <select
-            [(ngModel)]="selectedEventId"
-            class="flex-1 bg-white/10 text-white border border-white/30 rounded-lg px-3 py-2 outline-none focus:border-blue-400">
-            <option value="" class="bg-slate-800">請選擇賽事</option>
-            @for (event of openEvents(); track event._id) {
-              <option [value]="event._id" class="bg-slate-800">{{ event.name }}</option>
-            }
-          </select>
-          <button class="primary-btn" (click)="loginAsAudience(selectedEventId)">進入</button>
-        </div>
-      </div>
+        <!-- 觀眾 / 選手入口 -->
+        <section class="lp-card">
+          <div class="lp-card-label">
+            <fa-icon [icon]="faEye" class="lp-card-icon"></fa-icon>
+            <span>觀眾 / 選手觀賽</span>
+          </div>
+          <p class="lp-card-desc">選擇賽事後免登入，即可觀看即時計分</p>
 
-      <!-- 裁判 / 管理員登入 -->
-      <div class="glass-card p-6">
-        <div class="flex items-center gap-3 mb-4">
-          <fa-icon [icon]="faGavel" class="text-blue-400 text-xl"></fa-icon>
-          <h2 class="text-white font-semibold text-lg">裁判 / 管理員</h2>
+          <div class="lp-input-row">
+            <select [(ngModel)]="selectedEventId" class="lp-select">
+              <option value="">── 選擇賽事 ──</option>
+              @for (event of openEvents(); track event._id) {
+                <option [value]="event._id">{{ event.name }}</option>
+              }
+            </select>
+            <button class="lp-btn-enter" (click)="loginAsAudience(selectedEventId)">
+              進入
+            </button>
+          </div>
+        </section>
+
+        <!-- 分隔線 -->
+        <div class="lp-sep" aria-hidden="true">
+          <div class="lp-sep-line"></div>
+          <span class="lp-sep-text">裁判 / 管理員</span>
+          <div class="lp-sep-line"></div>
         </div>
 
-        <div class="space-y-3">
-          <div>
-            <label class="text-white/70 text-sm block mb-1">帳號</label>
-            <input type="text" [(ngModel)]="username" placeholder="請輸入帳號"
-              (keyup.enter)="onLogin()"
-              class="w-full bg-white/10 text-white border border-white/30 rounded-lg px-3 py-2 outline-none focus:border-blue-400 placeholder:text-white/30" />
+        <!-- 裁判 / 管理員登入 -->
+        <section class="lp-card lp-card-judge">
+          <div class="lp-card-label">
+            <fa-icon [icon]="faGavel" class="lp-card-icon lp-card-icon--red"></fa-icon>
+            <span>授權登入</span>
           </div>
 
-          <div>
-            <label class="text-white/70 text-sm block mb-1">密碼</label>
-            <input type="password" [(ngModel)]="password" placeholder="請輸入密碼"
-              (keyup.enter)="onLogin()"
-              class="w-full bg-white/10 text-white border border-white/30 rounded-lg px-3 py-2 outline-none focus:border-blue-400 placeholder:text-white/30" />
+          <div class="lp-fields">
+            <div class="lp-field">
+              <label class="lp-field-label">帳號</label>
+              <input
+                type="text"
+                [(ngModel)]="username"
+                (keyup.enter)="onLogin()"
+                placeholder="請輸入帳號"
+                class="lp-input"
+                autocomplete="username" />
+            </div>
+
+            <div class="lp-field">
+              <label class="lp-field-label">密碼</label>
+              <input
+                type="password"
+                [(ngModel)]="password"
+                (keyup.enter)="onLogin()"
+                placeholder="請輸入密碼"
+                class="lp-input"
+                autocomplete="current-password" />
+            </div>
           </div>
 
           <button
-            class="w-full primary-btn flex items-center justify-center gap-2 py-3"
-            [class.opacity-60]="loading()"
-            (click)="onLogin()"
-            [disabled]="loading()">
-            <fa-icon [icon]="faLock" class="text-sm"></fa-icon>
-            {{ loading() ? '登入中...' : '登入' }}
+            class="lp-btn-login"
+            [disabled]="loading()"
+            (click)="onLogin()">
+            @if (loading()) {
+              <span class="lp-spinner"></span>
+            } @else {
+              <fa-icon [icon]="faLock" class="text-sm"></fa-icon>
+            }
+            <span>{{ loading() ? '驗證中...' : '登入系統' }}</span>
           </button>
-        </div>
 
-        <div class="mt-4 pt-4 border-t border-white/10 space-y-1">
-          <p class="text-white/40 text-xs text-center">預設帳號：admin / judge1~5 / vr / seq</p>
-          <p class="text-white/40 text-xs text-center">密碼：admin123 / judge123 / vr123 / seq123</p>
-        </div>
+          <div class="lp-hint">
+            admin / judge1–5 / vr / seq &nbsp;·&nbsp; 密碼：admin123 / judge123 等
+          </div>
+        </section>
+
       </div>
     }
 
-    <!-- ── 步驟二：選擇賽事 ── -->
+    <!-- ══════════════════════════════════
+         步驟二：選擇賽事
+         ══════════════════════════════════ -->
     @if (loginStep() === 'select-event') {
-      <div class="glass-card p-6">
-        <div class="flex items-center gap-3 mb-2">
-          <fa-icon [icon]="faCalendarCheck" class="text-blue-400 text-xl"></fa-icon>
-          <h2 class="text-white font-semibold text-lg">選擇賽事</h2>
-        </div>
-        <p class="text-white/60 text-sm mb-6">您的帳號尚未指定賽事，請選擇本次要加入的競賽</p>
-
-        @if (openEvents().length === 0) {
-          <div class="text-center py-6">
-            <p class="text-white/40">目前沒有可用的賽事</p>
-            <p class="text-white/30 text-xs mt-1">請聯絡管理員建立賽事後再嘗試</p>
+      <div class="lp-cards">
+        <section class="lp-card lp-card-judge">
+          <div class="lp-card-label">
+            <fa-icon [icon]="faCalendarCheck" class="lp-card-icon lp-card-icon--red"></fa-icon>
+            <span>選擇加入的賽事</span>
           </div>
-        } @else {
-          <div class="space-y-3">
-            @for (event of openEvents(); track event._id) {
-              <label class="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all"
-                [class]="joinEventId === event._id
-                  ? 'bg-blue-500/30 border border-blue-400/50'
-                  : 'bg-white/5 border border-white/10 hover:bg-white/10'">
-                <input type="radio" name="eventSelect" [value]="event._id"
-                  [(ngModel)]="joinEventId" class="accent-blue-500" />
-                <div class="flex-1">
-                  <p class="text-white font-medium">{{ event.name }}</p>
-                  <p class="text-white/40 text-xs">
-                    {{ event.date ? (event.date | date:'yyyy/MM/dd') : '' }}
-                    {{ event.status === 'active' ? '・進行中' : event.status === 'pending' ? '・準備中' : '' }}
-                  </p>
-                </div>
-              </label>
-            }
-          </div>
+          <p class="lp-card-desc">您的帳號尚未指定賽事，請選擇本次要加入的競賽</p>
 
-          <button
-            class="w-full primary-btn py-3 mt-4 flex items-center justify-center gap-2 font-medium"
-            [class.opacity-60]="loading()"
-            [disabled]="loading() || !joinEventId"
-            (click)="confirmSelectEvent()">
-            <fa-icon [icon]="faCalendarCheck"></fa-icon>
-            {{ loading() ? '處理中...' : '確認加入賽事' }}
+          @if (openEvents().length === 0) {
+            <div class="lp-empty">
+              目前無可用賽事<br>
+              <span>請聯絡管理員建立賽事後再嘗試</span>
+            </div>
+          } @else {
+            <div class="lp-event-list">
+              @for (event of openEvents(); track event._id) {
+                <label
+                  class="lp-event-item"
+                  [class.lp-event-item--selected]="joinEventId === event._id">
+                  <input
+                    type="radio"
+                    name="eventSelect"
+                    [value]="event._id"
+                    [(ngModel)]="joinEventId"
+                    class="sr-only" />
+                  <div class="lp-event-dot"
+                       [class.lp-event-dot--active]="joinEventId === event._id">
+                  </div>
+                  <div class="lp-event-info">
+                    <span class="lp-event-name">{{ event.name }}</span>
+                    <span class="lp-event-meta">
+                      {{ event.date ? (event.date | date:'yyyy/MM/dd') : '' }}
+                      @if (event.status === 'active') {
+                        <span class="lp-event-badge lp-event-badge--active">進行中</span>
+                      } @else if (event.status === 'pending') {
+                        <span class="lp-event-badge lp-event-badge--pending">準備中</span>
+                      }
+                    </span>
+                  </div>
+                </label>
+              }
+            </div>
+
+            <button
+              class="lp-btn-login"
+              [disabled]="loading() || !joinEventId"
+              (click)="confirmSelectEvent()">
+              @if (loading()) {
+                <span class="lp-spinner"></span>
+              } @else {
+                <fa-icon [icon]="faCalendarCheck" class="text-sm"></fa-icon>
+              }
+              <span>{{ loading() ? '處理中...' : '確認加入賽事' }}</span>
+            </button>
+          }
+
+          <button class="lp-btn-back" (click)="loginStep.set('login')">
+            ← 返回登入
           </button>
-        }
-
-        <button class="w-full glass-btn mt-2 text-sm" (click)="loginStep.set('login')">
-          ← 返回登入
-        </button>
+        </section>
       </div>
     }
 
-  </div>
+  </main>
 </div>

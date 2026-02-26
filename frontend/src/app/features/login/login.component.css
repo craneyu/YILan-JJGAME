@@ -1,0 +1,479 @@
+/* ================================================================
+   Login Page — Yilan JJU  |  武道競賽認證風格
+   ================================================================ */
+
+/* ---------- Wrapper / Background ---------- */
+.lp-wrapper {
+  min-height: 100vh;
+  background: #06060e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1rem 3rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Ultra-subtle grid lines */
+.lp-bg-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      transparent, transparent 79px,
+      rgba(255,255,255,0.018) 79px,
+      rgba(255,255,255,0.018) 80px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent, transparent 79px,
+      rgba(255,255,255,0.012) 79px,
+      rgba(255,255,255,0.012) 80px
+    );
+  pointer-events: none;
+}
+
+/* Radial glow */
+.lp-bg-glow {
+  position: absolute;
+  top: -10%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 700px;
+  height: 700px;
+  background: radial-gradient(circle, rgba(185,28,28,0.08) 0%, transparent 65%);
+  pointer-events: none;
+}
+
+/* ---------- Main Container ---------- */
+.lp-main {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  z-index: 1;
+}
+
+/* ---------- Title Block ---------- */
+.lp-header-block {
+  text-align: center;
+  margin-bottom: 2.5rem;
+  animation: lp-arrive 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* 紅色短橫線裝飾 */
+.lp-header-accent {
+  width: 36px;
+  height: 3px;
+  background: #B91C1C;
+  margin: 0 auto 1.25rem;
+  border-radius: 2px;
+}
+
+.lp-sys-name {
+  font-family: 'Shippori Mincho B1', 'Noto Serif TC', serif;
+  font-size: 1rem;
+  font-weight: 400;
+  color: #9098c8;
+  letter-spacing: 0.2em;
+  margin: 0 0 0.5rem;
+}
+
+.lp-title {
+  font-family: 'Shippori Mincho B1', 'Noto Serif TC', serif;
+  font-weight: 700;
+  font-size: 2.25rem;
+  color: #f0ece4;
+  letter-spacing: 0.1em;
+  margin: 0 0 0.5rem;
+  line-height: 1.2;
+}
+
+.lp-subtitle {
+  font-size: 0.6875rem;
+  font-weight: 400;
+  color: #454878;
+  letter-spacing: 0.3em;
+  margin: 0;
+}
+
+/* ---------- Cards ---------- */
+.lp-cards {
+  animation: lp-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+}
+
+.lp-card {
+  background: #0d0e1e;
+  border: 1px solid #1e2040;
+  border-radius: 3px;
+  padding: 1.625rem 1.75rem;
+}
+
+/* 裁判卡片頂邊紅線 */
+.lp-card-judge {
+  border-top: 2px solid #B91C1C;
+}
+
+.lp-card-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #9098c8;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.lp-card-icon {
+  font-size: 0.875rem;
+  color: #555890;
+}
+
+.lp-card-icon--red {
+  color: #e03030;
+}
+
+.lp-card-desc {
+  font-size: 0.9rem;
+  color: #6870a8;
+  margin: 0 0 1.125rem;
+  line-height: 1.55;
+}
+
+/* ---------- Separator ---------- */
+.lp-sep {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  margin: 1.375rem 0;
+}
+
+.lp-sep-line {
+  flex: 1;
+  height: 1px;
+  background: #181a34;
+}
+
+.lp-sep-text {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #606490;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* ---------- Audience Select Row ---------- */
+.lp-input-row {
+  display: flex;
+  gap: 0.625rem;
+}
+
+.lp-select {
+  flex: 1;
+  min-width: 0;
+  background: #090a1c;
+  color: #c8cce8;
+  border: 1px solid #222448;
+  border-radius: 2px;
+  padding: 0.6875rem 0.875rem;
+  font-size: 0.9375rem;
+  font-family: 'Noto Sans TC', sans-serif;
+  outline: none;
+  transition: border-color 0.18s;
+  cursor: pointer;
+}
+
+.lp-select:focus {
+  border-color: #B91C1C;
+}
+
+.lp-select option {
+  background: #0d0e22;
+  color: #c8cce8;
+}
+
+.lp-btn-enter {
+  background: #181c3c;
+  color: #c0c8e8;
+  border: 1px solid #2a2e58;
+  border-radius: 2px;
+  padding: 0.6875rem 1.25rem;
+  font-size: 0.9375rem;
+  font-family: 'Noto Sans TC', sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.18s, border-color 0.18s, color 0.18s;
+}
+
+.lp-btn-enter:hover {
+  background: #222650;
+  border-color: #383e70;
+  color: #e0e4f8;
+}
+
+/* ---------- Judge Form Fields ---------- */
+.lp-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 1.125rem;
+  margin-bottom: 1.375rem;
+}
+
+.lp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.lp-field-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #7880b8;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.lp-input {
+  background: #090a1c;
+  color: #e8eaf8;
+  border: 1px solid #222448;
+  border-radius: 2px;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  font-family: 'Noto Sans TC', sans-serif;
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+  -webkit-appearance: none;
+}
+
+.lp-input::placeholder {
+  color: #333660;
+}
+
+.lp-input:focus {
+  border-color: #B91C1C;
+  box-shadow:
+    0 0 0 1px rgba(185,28,28,0.22),
+    inset 0 1px 0 rgba(255,255,255,0.02);
+}
+
+/* ---------- Login Button ---------- */
+.lp-btn-login {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: #B91C1C;
+  color: #fff;
+  border: none;
+  border-radius: 2px;
+  padding: 0.875rem 1.5rem;
+  font-size: 1rem;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.18s, transform 0.1s, box-shadow 0.18s;
+}
+
+/* Gold shimmer on hover */
+.lp-btn-login::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 55%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(212, 168, 83, 0.2),
+    transparent
+  );
+  transition: left 0.42s ease;
+}
+
+.lp-btn-login:hover:not(:disabled)::before {
+  left: 160%;
+}
+
+.lp-btn-login:hover:not(:disabled) {
+  background: #cc2020;
+  box-shadow: 0 4px 22px rgba(185,28,28,0.38);
+}
+
+.lp-btn-login:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+.lp-btn-login:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+/* ---------- Spinner ---------- */
+.lp-spinner {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: lp-spin 0.65s linear infinite;
+  flex-shrink: 0;
+}
+
+/* ---------- Hint ---------- */
+.lp-hint {
+  margin-top: 1.125rem;
+  padding-top: 0.875rem;
+  border-top: 1px solid #141630;
+  font-size: 0.75rem;
+  color: #484c78;
+  text-align: center;
+  letter-spacing: 0.04em;
+  line-height: 1.6;
+}
+
+/* ---------- Back Button ---------- */
+.lp-btn-back {
+  display: block;
+  width: 100%;
+  margin-top: 0.625rem;
+  background: transparent;
+  color: #6068a0;
+  border: 1px solid #1c1e38;
+  border-radius: 2px;
+  padding: 0.5625rem;
+  font-size: 0.875rem;
+  font-family: 'Noto Sans TC', sans-serif;
+  cursor: pointer;
+  text-align: center;
+  transition: color 0.18s, border-color 0.18s;
+}
+
+.lp-btn-back:hover {
+  color: #9098c8;
+  border-color: #2d3060;
+}
+
+/* ---------- Event List ---------- */
+.lp-event-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.lp-event-item {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid #1c1e38;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s;
+  user-select: none;
+}
+
+.lp-event-item:hover {
+  background: #0a0b1e;
+  border-color: #282c50;
+}
+
+.lp-event-item--selected {
+  background: rgba(185,28,28,0.06);
+  border-color: #B91C1C;
+}
+
+.lp-event-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid #353868;
+  flex-shrink: 0;
+  transition: background 0.18s, border-color 0.18s, box-shadow 0.18s;
+}
+
+.lp-event-dot--active {
+  background: #B91C1C;
+  border-color: #B91C1C;
+  box-shadow: 0 0 7px rgba(185,28,28,0.55);
+}
+
+.lp-event-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.lp-event-name {
+  font-size: 0.9375rem;
+  color: #c8ccec;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lp-event-meta {
+  font-size: 0.75rem;
+  color: #484c78;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.lp-event-badge {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 2px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.lp-event-badge--active {
+  background: rgba(34,197,94,0.12);
+  color: #4ade80;
+  border: 1px solid rgba(74,222,128,0.2);
+}
+
+.lp-event-badge--pending {
+  background: rgba(234,179,8,0.1);
+  color: #facc15;
+  border: 1px solid rgba(250,204,21,0.2);
+}
+
+/* ---------- Empty State ---------- */
+.lp-empty {
+  padding: 1.5rem 0 1rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: #484c78;
+  line-height: 1.7;
+  margin-bottom: 1rem;
+}
+
+/* ---------- Animations ---------- */
+@keyframes lp-arrive {
+  from { opacity: 0; transform: translateY(-20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes lp-rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes lp-spin {
+  to { transform: rotate(360deg); }
+}

@@ -37,6 +37,7 @@ type LoginStep = 'login' | 'select-event';
   standalone: true,
   imports: [CommonModule, FormsModule, FaIconComponent],
   templateUrl: './login.component.html',
+  styleUrl: './login.component.css',
 })
 export class LoginComponent implements OnInit {
   private auth = inject(AuthService);
