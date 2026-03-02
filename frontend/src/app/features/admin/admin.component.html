@@ -6,7 +6,19 @@
       <span class="text-white font-bold">管理員</span>
     </div>
     <h1 class="text-white font-medium">柔術競賽演武計分平台</h1>
-    <button class="glass-btn text-sm" (click)="logout()">登出</button>
+    <div class="flex items-center gap-2">
+      <button class="glass-btn text-sm flex items-center gap-1.5" (click)="backupDatabase()" title="備份資料庫">
+        <fa-icon [icon]="faDatabase" class="text-blue-400 text-xs"></fa-icon>
+        <span>備份</span>
+      </button>
+      @if (selectedEvent()) {
+        <button class="glass-btn text-sm flex items-center gap-1.5 text-red-400" (click)="clearEventScores()" title="清除當前賽事成績">
+          <fa-icon [icon]="faEraser" class="text-xs"></fa-icon>
+          <span>清除成績</span>
+        </button>
+      }
+      <button class="glass-btn text-sm" (click)="logout()">登出</button>
+    </div>
   </div>
 
   <!-- 裁判管理摺疊區 -->

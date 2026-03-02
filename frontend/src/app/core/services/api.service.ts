@@ -42,4 +42,11 @@ export class ApiService {
     const headers = token ? new HttpHeaders({ Authorization: `Bearer ${token}` }) : new HttpHeaders();
     return this.http.post<T>(`${environment.apiUrl}${path}`, formData, { headers });
   }
+
+  downloadBlob(path: string): Observable<Blob> {
+    return this.http.get(`${environment.apiUrl}${path}`, {
+      headers: this.getHeaders(),
+      responseType: 'blob',
+    });
+  }
 }

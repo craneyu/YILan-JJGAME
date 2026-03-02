@@ -1,5 +1,5 @@
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:3000/api/v1',
-  socketUrl: 'http://localhost:3000',
+  apiUrl: '/api/v1',
+  socketUrl: '',  // 空字串 → SocketService 使用 window.location.origin
 };

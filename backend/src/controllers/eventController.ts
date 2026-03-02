@@ -66,6 +66,28 @@ export async function deleteEvent(req: Request, res: Response): Promise<void> {
   res.json({ success: true, data: { message: '賽事已刪除' } });
 }
 
+export async function clearEventScores(req: Request, res: Response): Promise<void> {
+  const eventId = req.params.id;
+  const event = await Event.findById(eventId);
+  if (!event) {
+    res.status(404).json({ success: false, error: '賽事不存在' });
+    return;
+  }
+  const [scoreResult, vrResult] = await Promise.all([
+    Score.deleteMany({ eventId }),
+    VRScore.deleteMany({ eventId }),
+    GameState.findOneAndUpdate(
+      { eventId },
+      { currentTeamId: null, currentRound: 1, currentActionNo: null, currentActionOpen: false },
+      { new: true }
+    ),
+  ]);
+  res.json({
+    success: true,
+    data: { message: '成績已清除', deletedScores: scoreResult.deletedCount, deletedVrScores: vrResult.deletedCount },
+  });
+}
+
 export async function getEventSummary(req: Request, res: Response): Promise<void> {
   const eventId = req.params.id;
   const event = await Event.findById(eventId);

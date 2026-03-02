@@ -5,6 +5,7 @@ import {
   getEvent,
   updateEvent,
   deleteEvent,
+  clearEventScores,
   getEventSummary,
   getEventRankings,
 } from '../controllers/eventController';
@@ -19,5 +20,6 @@ router.get('/:id/summary', getEventSummary);
 router.get('/:id/rankings', getEventRankings);
 router.patch('/:id', verifyToken, requireRole('admin'), updateEvent);
 router.delete('/:id', verifyToken, requireRole('admin'), deleteEvent);
+router.delete('/:id/scores', verifyToken, requireRole('admin'), clearEventScores);
 
 export default router;

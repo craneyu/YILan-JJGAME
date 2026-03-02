@@ -12,6 +12,7 @@ import teamRoutes from './routes/teams';
 import scoreRoutes from './routes/scores';
 import vrScoreRoutes from './routes/vrScores';
 import flowRoutes from './routes/flow';
+import backupRoutes from './routes/backup';
 
 const app = express();
 const httpServer = createServer(app);
@@ -31,6 +32,7 @@ app.use('/api/v1/events/:id/teams', teamRoutes);
 app.use('/api/v1/scores', scoreRoutes);
 app.use('/api/v1/vr-scores', vrScoreRoutes);
 app.use('/api/v1/flow', flowRoutes);
+app.use('/api/v1/backup', backupRoutes);
 
 // 健康檢查
 app.get('/health', (_req, res) => {

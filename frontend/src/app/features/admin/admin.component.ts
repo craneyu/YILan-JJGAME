@@ -2,7 +2,7 @@ import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
-import { faUserShield, faPlus, faFileArrowUp, faTrash, faPen, faCheck, faXmark, faUsers, faKey, faLock, faSort } from '@fortawesome/free-solid-svg-icons';
+import { faUserShield, faPlus, faFileArrowUp, faTrash, faPen, faCheck, faXmark, faUsers, faKey, faLock, faSort, faDatabase, faEraser } from '@fortawesome/free-solid-svg-icons';
 import Swal from 'sweetalert2';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -103,6 +103,8 @@ export class AdminComponent implements OnInit {
   faKey = faKey;
   faLock = faLock;
   faSort = faSort;
+  faDatabase = faDatabase;
+  faEraser = faEraser;
 
   ngOnInit(): void {
     this.loadEvents();
@@ -502,6 +504,49 @@ export class AdminComponent implements OnInit {
         (event.target as HTMLInputElement).value = '';
       },
       error: (err) => Swal.fire({ icon: 'error', title: err.error?.error ?? '匯入失敗', toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 }),
+    });
+  }
+
+  backupDatabase(): void {
+    this.api.downloadBlob('/backup').subscribe({
+      next: (blob) => {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `jju-backup-${timestamp}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      error: () => Swal.fire({ icon: 'error', title: '備份失敗', toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 }),
+    });
+  }
+
+  clearEventScores(): void {
+    const event = this.selectedEvent();
+    if (!event) return;
+    Swal.fire({
+      icon: 'warning',
+      title: '確定清除成績？',
+      html: `將清除 <b>${event.name}</b> 的所有計分與 VR 裁判資料<br><small>隊伍資料不受影響</small>`,
+      showCancelButton: true,
+      confirmButtonText: '確認清除',
+      cancelButtonText: '取消',
+      confirmButtonColor: '#dc2626',
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+      this.api.delete<{ success: boolean; data: { message: string; deletedScores: number; deletedVrScores: number } }>(
+        `/events/${event._id}/scores`
+      ).subscribe({
+        next: (res) => Swal.fire({
+          icon: 'success',
+          title: '成績已清除',
+          html: `已刪除 ${res.data.deletedScores} 筆計分、${res.data.deletedVrScores} 筆 VR 裁判資料`,
+          timer: 3000,
+          showConfirmButton: false,
+        }),
+        error: () => Swal.fire({ icon: 'error', title: '清除失敗', toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 }),
+      });
     });
   }
 
