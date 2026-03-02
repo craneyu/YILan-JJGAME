@@ -1,64 +1,66 @@
-<div class="min-h-screen p-4">
+<div class="min-h-screen p-2">
   <!-- 頁首列 -->
-  <div class="glass-card px-6 py-3 mb-4 flex items-center justify-between">
-    <span class="text-white font-bold">計分裁判 #{{ judgeNo }}</span>
-    <span class="text-white/80 font-medium text-center flex-1 truncate px-4">{{ eventName() }}</span>
-    <div class="flex items-center gap-3">
-      <span class="text-blue-300 font-bold whitespace-nowrap">{{ roundLabel() }}</span>
-      <button class="glass-btn text-sm flex items-center gap-1" (click)="logout()">
+  <div class="glass-card px-4 py-2 mb-2 flex items-center justify-between">
+    <span class="text-white font-bold text-sm">計分裁判 #{{ judgeNo }}</span>
+    <span class="text-white/80 font-medium text-center flex-1 truncate px-4 text-sm">{{ eventName() }}</span>
+    <div class="flex items-center gap-2">
+      <span class="text-blue-300 font-bold text-sm whitespace-nowrap">{{ roundLabel() }}</span>
+      <button class="glass-btn text-xs flex items-center gap-1 py-1 px-2" (click)="logout()">
         <fa-icon [icon]="faRightFromBracket"></fa-icon> 登出
       </button>
     </div>
   </div>
 
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-4" style="height: calc(100vh - 120px)">
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-2" style="height: calc(100vh - 68px)">
     <!-- 左側：賽事資訊 + 評分紀錄 -->
-    <div class="glass-card p-5 flex flex-col gap-4 overflow-y-auto">
-      <!-- 隊伍資訊 -->
-      <div>
-        <h3 class="text-white/50 text-xs uppercase tracking-wider mb-2">賽事資訊</h3>
-        @if (currentTeam()) {
-          <p class="text-white font-semibold text-lg">{{ currentTeam()!.name }}</p>
-          <p class="text-white/70 text-sm">{{ currentTeam()!.members.join(' / ') }}</p>
-          <p class="text-blue-300 text-sm mt-0.5">
-            {{ currentTeam()!.category === 'male' ? '男子組' : currentTeam()!.category === 'female' ? '女子組' : '混合組' }}
-          </p>
-        } @else {
-          <p class="text-white/40">等待賽程開始...</p>
-        }
-      </div>
+    <div class="glass-card p-3 flex flex-col gap-2 overflow-y-auto">
 
-      <div class="border-t border-white/10"></div>
-
-      <!-- 當前動作 -->
-      <div>
-        <h3 class="text-white/50 text-xs uppercase tracking-wider mb-2">當前動作</h3>
-        <div class="flex items-center gap-3">
-          <span class="text-white/60 text-sm">{{ series() }} 系列</span>
-          @if (currentActionNo()) {
-            <span class="text-blue-300 font-bold text-2xl">{{ currentActionNo() }}</span>
-            <span class="text-xs px-2 py-0.5 rounded-full"
-              [class]="judgeState() === 'scoring'    ? 'bg-yellow-500/20 text-yellow-300'
-                     : judgeState() === 'submitted'  ? 'bg-green-500/20 text-green-300'
-                     : judgeState() === 'abstained'  ? 'bg-red-500/20 text-red-300'
-                     : 'bg-white/10 text-white/40'">
-              {{ judgeState() === 'scoring' ? '評分中' : judgeState() === 'submitted' ? '已送出' : judgeState() === 'abstained' ? '棄權' : '' }}
-            </span>
+      <!-- 賽事資訊 ＋ 當前動作（同一行） -->
+      <div class="flex items-start justify-between gap-3">
+        <!-- 左：隊伍資訊 -->
+        <div class="min-w-0">
+          <p class="text-white/40 text-xs mb-0.5">賽事資訊</p>
+          @if (currentTeam()) {
+            <p class="text-white font-semibold leading-tight">{{ currentTeam()!.name }}</p>
+            <p class="text-white/60 text-xs">{{ currentTeam()!.members.join(' / ') }}</p>
+            <p class="text-blue-300 text-xs">
+              {{ currentTeam()!.category === 'male' ? '男子組' : currentTeam()!.category === 'female' ? '女子組' : '混合組' }}
+            </p>
           } @else {
-            <span class="text-white/40 text-sm">動作尚未開放</span>
+            <p class="text-white/40 text-sm">等待賽程開始...</p>
           }
+        </div>
+
+        <!-- 右：當前動作 -->
+        <div class="text-right shrink-0">
+          <p class="text-white/40 text-xs mb-0.5">當前動作</p>
+          <div class="flex items-center gap-2 justify-end">
+            <span class="text-white/50 text-xs">{{ series() }} 系列</span>
+            @if (currentActionNo()) {
+              <span class="text-blue-300 font-bold text-xl leading-none">{{ currentActionNo() }}</span>
+              <span class="text-xs px-1.5 py-0.5 rounded-full"
+                [class]="judgeState() === 'scoring'   ? 'bg-yellow-500/20 text-yellow-300'
+                       : judgeState() === 'submitted' ? 'bg-green-500/20 text-green-300'
+                       : judgeState() === 'abstained' ? 'bg-red-500/20 text-red-300'
+                       : 'bg-white/10 text-white/40'">
+                {{ judgeState() === 'scoring' ? '評分中' : judgeState() === 'submitted' ? '已送出' : judgeState() === 'abstained' ? '棄權' : '' }}
+              </span>
+            } @else {
+              <span class="text-white/40 text-xs">尚未開放</span>
+            }
+          </div>
         </div>
       </div>
 
       <div class="border-t border-white/10"></div>
 
-      <!-- 本場評分紀錄 -->
-      <div class="flex-1">
-        <h3 class="text-white/50 text-xs uppercase tracking-wider mb-3">本系列評分紀錄</h3>
-        <div class="space-y-1.5">
+      <!-- 本系列評分紀錄 -->
+      <div>
+        <h3 class="text-white/50 text-xs uppercase tracking-wider mb-1.5">本系列評分紀錄</h3>
+        <div class="space-y-1">
           @for (actionNo of getSeriesActions(); track actionNo) {
             @let record = getActionRecord(actionNo);
-            <div class="flex items-center justify-between px-3 py-1.5 rounded-lg"
+            <div class="flex items-center justify-between px-2.5 py-1 rounded-lg"
               [class]="record ? 'bg-green-500/10 border border-green-500/20'
                       : actionNo === currentActionNo() && judgeState() === 'scoring'
                         ? 'bg-yellow-500/10 border border-yellow-400/20'
@@ -87,16 +89,25 @@
           }
         </div>
       </div>
+
+      <!-- 動作說明圖 -->
+      @if (actionCardImage()) {
+        <div class="border-t border-white/10 pt-2">
+          <h3 class="text-white/50 text-xs uppercase tracking-wider mb-1.5">動作說明 — {{ currentActionNo() }}</h3>
+          <img [src]="actionCardImage()!" [alt]="'動作說明 ' + currentActionNo()"
+            class="w-full rounded-xl border border-white/10 object-contain" />
+        </div>
+      }
     </div>
 
     <!-- 右側：評分操作區 -->
-    <div class="glass-card p-5 overflow-y-auto">
+    <div class="glass-card p-3 overflow-y-auto">
 
       <!-- 狀態一：等待 -->
       @if (judgeState() === 'waiting') {
-        <div class="h-full flex flex-col items-center justify-center gap-4 text-center min-h-64">
-          <fa-icon [icon]="faHourglassHalf" class="text-yellow-400/80 text-5xl animate-pulse"></fa-icon>
-          <p class="text-white text-xl font-medium">等待賽序裁判開放評分</p>
+        <div class="h-full flex flex-col items-center justify-center gap-3 text-center min-h-48">
+          <fa-icon [icon]="faHourglassHalf" class="text-yellow-400/80 text-4xl animate-pulse"></fa-icon>
+          <p class="text-white text-lg font-medium">等待賽序裁判開放評分</p>
           <p class="text-white/40 text-sm">選手正在進行演示中</p>
           <p class="text-white/25 text-xs">賽序裁判確認後將自動開放評分</p>
         </div>
@@ -104,9 +115,9 @@
 
       <!-- 狀態：棄權 -->
       @if (judgeState() === 'abstained') {
-        <div class="h-full flex flex-col items-center justify-center gap-4 text-center min-h-64">
-          <fa-icon [icon]="faBan" class="text-red-400/80 text-5xl"></fa-icon>
-          <p class="text-red-300 text-xl font-bold">此組已棄權</p>
+        <div class="h-full flex flex-col items-center justify-center gap-3 text-center min-h-48">
+          <fa-icon [icon]="faBan" class="text-red-400/80 text-4xl"></fa-icon>
+          <p class="text-red-300 text-lg font-bold">此組已棄權</p>
           <p class="text-white/40 text-sm">本組不需要評分</p>
           <p class="text-white/25 text-xs">請等待賽序裁判換至下一組</p>
         </div>
@@ -114,70 +125,64 @@
 
       <!-- 狀態二：評分中 -->
       @if (judgeState() === 'scoring') {
-        <div class="flex flex-col h-full gap-4">
-          <div class="flex items-center justify-between">
-            <h3 class="text-white font-semibold">
-              評分區 — <span class="text-blue-300">{{ currentActionNo() }}</span>
-            </h3>
-            <span class="text-white/40 text-xs">{{ series() }} 系列 / {{ itemCount() }} 項</span>
-          </div>
-          <div class="border-t border-white/10"></div>
-
-          <div class="flex-1 space-y-4">
-            @for (i of [1, 2, 3, 4, 5].slice(0, itemCount()); track i) {
-              <div class="p-3 rounded-xl bg-white/5 border border-white/10">
-                <p class="text-white/80 text-sm mb-3">{{ itemLabels[i - 1] }}</p>
-                <div class="flex gap-2">
-                  @for (v of scoreOptions; track v) {
-                    <button
-                      class="score-btn flex-1"
-                      [class]="isSelected('p' + i, v) ? 'score-btn-selected' : 'score-btn-unselected'"
-                      (click)="selectScore('p' + i, v)">
-                      {{ v }}
-                    </button>
-                  }
-                </div>
+        <div class="space-y-1.5">
+          @for (i of [1, 2, 3, 4, 5].slice(0, itemCount()); track i) {
+            <!-- 橫向單行：PART標籤左、分數按鈕右 -->
+            <div [class]="'flex items-center gap-2 px-2 py-1.5 rounded-xl border ' + (selections()['p' + i] !== undefined ? 'bg-blue-500/5 border-blue-400/30' : 'bg-white/5 border-white/10')">
+              <div class="flex flex-col shrink-0 w-16">
+                <span class="text-blue-300/90 font-bold text-xs">PART{{ i }}</span>
+                <span class="text-white/60 text-xs leading-tight">{{ itemLabels[i - 1] }}</span>
               </div>
-            }
-          </div>
-
-          <div class="border-t border-white/10 pt-4">
-            <div class="flex items-center justify-between mb-3">
-              <span class="text-white/50 text-sm">已選項目</span>
-              <span class="text-white font-medium">
-                {{ selectedCount() }}/{{ itemCount() }}
-              </span>
+              <div class="flex gap-1.5 flex-1">
+                @for (v of scoreOptions; track v) {
+                  <button
+                    [class]="'score-btn flex-1 py-2.5 text-sm font-bold ' + (isSelected('p' + i, v) ? 'score-btn-selected' : 'score-btn-unselected')"
+                    (click)="selectScore('p' + i, v)">
+                    {{ v }}
+                  </button>
+                }
+              </div>
             </div>
-            <button
-              [class]="allSelected()
-                ? 'w-full primary-btn py-3 text-base font-bold'
-                : 'w-full disabled-btn py-3 text-base font-bold cursor-not-allowed'"
-              [disabled]="!allSelected()"
-              (click)="submitScore()">
-              <fa-icon [icon]="faCheck" class="mr-1"></fa-icon>
-              確認送出
-            </button>
+          }
+        </div>
+
+        <div class="border-t border-white/10 pt-1.5 mt-1.5">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-white/50 text-xs">已選項目</span>
+            <span class="text-white text-sm font-medium">{{ selectedCount() }}/{{ itemCount() }}</span>
           </div>
+          <button
+            [class]="allSelected()
+              ? 'w-full primary-btn py-2.5 text-sm font-bold'
+              : 'w-full disabled-btn py-2.5 text-sm font-bold cursor-not-allowed'"
+            [disabled]="!allSelected()"
+            (click)="submitScore()">
+            <fa-icon [icon]="faCheck" class="mr-1"></fa-icon>
+            確認送出
+          </button>
         </div>
       }
 
       <!-- 狀態三：已送出 -->
       @if (judgeState() === 'submitted') {
-        <div class="flex flex-col h-full gap-4">
+        <div class="flex flex-col h-full gap-2">
           <div class="flex items-center gap-2">
-            <fa-icon [icon]="faCheckCircle" class="text-green-400 text-2xl"></fa-icon>
-            <h3 class="text-green-400 font-semibold text-lg">{{ currentActionNo() }} 評分已送出</h3>
+            <fa-icon [icon]="faCheckCircle" class="text-green-400 text-xl"></fa-icon>
+            <h3 class="text-green-400 font-semibold">{{ currentActionNo() }} 評分已送出</h3>
           </div>
           <div class="border-t border-white/10"></div>
 
-          <div class="space-y-2">
+          <div class="space-y-1.5">
             @for (i of [1, 2, 3, 4, 5].slice(0, itemCount()); track i) {
-              <div class="flex items-center justify-between py-2 px-3 rounded-xl bg-white/5 border border-white/10">
-                <span class="text-white/60 text-sm">{{ itemLabels[i - 1] }}</span>
-                <div class="flex items-center gap-2">
+              <div class="flex items-center justify-between py-1.5 px-3 rounded-xl bg-white/5 border border-white/10">
+                <span class="text-white/60 text-xs">
+                  <span class="text-blue-300/70 font-bold mr-1">PART{{ i }}</span>
+                  {{ itemLabels[i - 1] }}
+                </span>
+                <div class="flex items-center gap-1.5">
                   <div class="flex gap-1">
                     @for (v of scoreOptions; track v) {
-                      <span class="w-7 h-7 rounded-lg text-xs font-bold flex items-center justify-center"
+                      <span class="w-6 h-6 rounded text-xs font-bold flex items-center justify-center"
                         [class]="selections()['p' + i] === v
                           ? 'bg-blue-500 text-white'
                           : 'bg-white/5 text-white/20'">
@@ -185,20 +190,20 @@
                       </span>
                     }
                   </div>
-                  <span class="text-white font-bold text-lg w-6 text-right">{{ selections()['p' + i] }}</span>
+                  <span class="text-white font-bold w-5 text-right">{{ selections()['p' + i] }}</span>
                 </div>
               </div>
             }
 
-            <div class="border-t border-white/10 pt-3 flex justify-between items-center px-1">
-              <span class="text-white/60">本動作合計</span>
-              <span class="text-blue-300 font-bold text-2xl">{{ submittedTotal() }} 分</span>
+            <div class="border-t border-white/10 pt-2 flex justify-between items-center px-1">
+              <span class="text-white/60 text-sm">本動作合計</span>
+              <span class="text-blue-300 font-bold text-xl">{{ submittedTotal() }} 分</span>
             </div>
           </div>
 
           <div class="flex-1 flex items-end">
-            <div class="w-full p-4 rounded-xl bg-white/5 border border-white/10 text-center">
-              <fa-icon [icon]="faHourglassHalf" class="text-yellow-400/80 text-2xl mb-2"></fa-icon>
+            <div class="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-center">
+              <fa-icon [icon]="faHourglassHalf" class="text-yellow-400/80 text-xl mb-1"></fa-icon>
               <p class="text-white/60 text-sm">等待賽序裁判開放下一動作</p>
             </div>
           </div>

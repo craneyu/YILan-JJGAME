@@ -97,14 +97,20 @@ export class ScoringJudgeComponent implements OnInit, OnDestroy {
   submittedTotal = computed(() =>
     Object.values(this.selections()).reduce((a, b) => a + b, 0)
   );
+  actionCardImage = computed(() => {
+    const action = this.currentActionNo();
+    if (!action) return null;
+    const ext = action.startsWith('C') ? 'png' : 'jpg';
+    return `assets/action-cards/${action}.${ext}`;
+  });
   roundLabel = computed(() => `R${this.currentRound()}-G${this.groupIndex()}`);
 
   readonly itemLabels = [
-    '① 預擊與指定動作',
-    '② 拳腳反擊',
-    '③ 摔技分數',
-    '④ 地板技分數',
-    '⑤ 武器控制分數',
+    '預擊與指定動作',
+    '拳腳反擊',
+    '摔技分數',
+    '地板技分數',
+    '武器控制分數',
   ];
   readonly scoreOptions = [3, 2, 1, 0];
 
