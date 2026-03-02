@@ -2,8 +2,10 @@ import { Component, OnInit, OnDestroy, signal, computed, inject } from '@angular
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
+import { FaIconComponent } from '@fortawesome/angular-fontawesome';
+import { faTriangleExclamation } from '@fortawesome/free-solid-svg-icons';
 import { ApiService } from '../../core/services/api.service';
-import { SocketService, ScoreCalculatedEvent } from '../../core/services/socket.service';
+import { SocketService, ScoreCalculatedEvent, WrongAttackUpdatedEvent } from '../../core/services/socket.service';
 
 interface ActionScore {
   actionNo: string;
@@ -13,6 +15,7 @@ interface ActionScore {
   p4?: number;
   p5?: number;
   actionTotal?: number;
+  wrongAttack?: boolean;
 }
 
 interface TeamInfo {
@@ -34,6 +37,7 @@ interface SummaryData {
   } | null;
   calculatedScores: ActionScore[];
   vrScore: { throwVariety: number; groundVariety: number } | null;
+  wrongAttackActionNos?: string[];
 }
 
 interface VRScoreData {
@@ -51,13 +55,15 @@ interface RankingItem {
 @Component({
   selector: 'app-audience',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FaIconComponent],
   templateUrl: './audience.component.html',
 })
 export class AudienceComponent implements OnInit, OnDestroy {
   private api = inject(ApiService);
   private socket = inject(SocketService);
   private route = inject(ActivatedRoute);
+
+  faTriangleExclamation = faTriangleExclamation;
 
   private subs: Subscription[] = [];
 
@@ -127,7 +133,11 @@ export class AudienceComponent implements OnInit, OnDestroy {
         this.actionScores.update((scores) => {
           const exists = scores.find((s) => s.actionNo === e.actionNo);
           if (exists) {
-            return scores.map((s) => s.actionNo === e.actionNo ? { ...s, ...e } : s);
+            return scores.map((s) =>
+              s.actionNo === e.actionNo
+                ? { ...s, ...e, wrongAttack: e.wrongAttack ?? s.wrongAttack }
+                : s
+            );
           }
           return [...scores, { ...e }];
         });
@@ -163,6 +173,19 @@ export class AudienceComponent implements OnInit, OnDestroy {
         if (e.eventId !== this.eventId()) return;
         this.currentActionNo.set(e.actionNo);
         this.currentRound.set(e.round);
+      }),
+
+      this.socket.wrongAttackUpdated$.subscribe((e: WrongAttackUpdatedEvent) => {
+        this.actionScores.update((scores) => {
+          const exists = scores.find((s) => s.actionNo === e.actionNo);
+          if (exists) {
+            return scores.map((s) =>
+              s.actionNo === e.actionNo ? { ...s, ...e } : s
+            );
+          }
+          return [...scores, { ...e }];
+        });
+        this.loadRankings(this.eventId());
       })
     );
   }
@@ -191,9 +214,12 @@ export class AudienceComponent implements OnInit, OnDestroy {
       this.currentRound.set(gameState.currentRound);
       if (gameState.currentActionNo) this.currentActionNo.set(gameState.currentActionNo);
 
-      // 還原已計算的動作成績
+      // 還原已計算的動作成績（含 wrongAttack 標記）
       if (calculatedScores?.length) {
-        this.actionScores.set(calculatedScores);
+        const wrongSet = new Set(res.data.wrongAttackActionNos ?? []);
+        this.actionScores.set(
+          calculatedScores.map((s) => ({ ...s, wrongAttack: wrongSet.has(s.actionNo) }))
+        );
       }
 
       // 還原 VR 成績
@@ -222,7 +248,7 @@ export class AudienceComponent implements OnInit, OnDestroy {
 
   getItemScore(score: ActionScore | undefined, i: number): number | string {
     if (!score) return '-';
-    const key = `p${i}` as keyof ActionScore;
+    const key = `p${i}` as 'p1' | 'p2' | 'p3' | 'p4' | 'p5';
     return score[key] ?? '-';
   }
 }

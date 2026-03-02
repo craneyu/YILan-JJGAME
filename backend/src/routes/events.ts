@@ -8,6 +8,7 @@ import {
   clearEventScores,
   getEventSummary,
   getEventRankings,
+  updateCategoryOrder,
 } from '../controllers/eventController';
 import { verifyToken, requireRole } from '../middleware/auth';
 
@@ -21,5 +22,6 @@ router.get('/:id/rankings', getEventRankings);
 router.patch('/:id', verifyToken, requireRole('admin'), updateEvent);
 router.delete('/:id', verifyToken, requireRole('admin'), deleteEvent);
 router.delete('/:id/scores', verifyToken, requireRole('admin'), clearEventScores);
+router.patch('/:id/category-order', verifyToken, requireRole('admin'), updateCategoryOrder);
 
 export default router;

@@ -29,6 +29,7 @@ export interface ScoreCalculatedEvent {
   p4: number;
   p5?: number;
   actionTotal: number;
+  wrongAttack?: boolean;
 }
 
 export interface VrSubmittedEvent {
@@ -52,6 +53,19 @@ export interface RoundChangedEvent {
 export interface TeamAbstainedEvent {
   eventId: string;
   teamId: string;
+}
+
+export interface WrongAttackUpdatedEvent {
+  teamId: string;
+  round: number;
+  actionNo: string;
+  wrongAttack: boolean;
+  p1: number;
+  p2: number;
+  p3: number;
+  p4: number;
+  p5?: number;
+  actionTotal: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -102,5 +116,9 @@ export class SocketService {
 
   get teamAbstainCancelled$(): Observable<TeamAbstainedEvent> {
     return fromEvent<TeamAbstainedEvent>(this.socket, 'team:abstain-cancelled');
+  }
+
+  get wrongAttackUpdated$(): Observable<WrongAttackUpdatedEvent> {
+    return fromEvent<WrongAttackUpdatedEvent>(this.socket, 'wrongAttack:updated');
   }
 }

@@ -24,6 +24,7 @@
     "socket.io-client": "^4.7.5",
     "sweetalert2": "^11.14.0",
     "tslib": "^2.6.0",
+    "xlsx": "^0.18.5",
     "zone.js": "~0.15.0"
   },
   "devDependencies": {

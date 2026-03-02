@@ -12,8 +12,8 @@
   </div>
 
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4 h-[calc(100vh-120px)]">
-    <!-- 左側 -->
-    <div class="glass-card p-5 flex flex-col gap-4">
+    <!-- 左側：動作狀態 + 錯誤攻擊切換 -->
+    <div class="glass-card p-5 flex flex-col gap-4 overflow-y-auto">
       <div>
         <h3 class="text-white/60 text-xs uppercase tracking-wider mb-2">賽事資訊</h3>
         @if (currentTeam()) {
@@ -30,19 +30,39 @@
       <div class="border-t border-white/10"></div>
 
       <div>
-        <h3 class="text-white/60 text-xs uppercase tracking-wider mb-2">本系列動作狀態</h3>
+        <h3 class="text-white/60 text-xs uppercase tracking-wider mb-2">本系列動作狀態 ／ 錯誤攻擊</h3>
         <div class="space-y-2">
           @for (action of actionStatuses(); track action.actionNo) {
-            <div class="flex items-center justify-between">
-              <span class="text-white/80 font-medium">{{ action.actionNo }}</span>
+            <div class="flex items-center justify-between gap-2 px-3 py-2 rounded-xl"
+              [class]="action.wrongAttack
+                ? 'bg-red-500/15 border border-red-500/30'
+                : 'bg-white/5 border border-white/10'">
+              <!-- 動作編號 + 完成狀態 -->
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="text-white/90 font-bold w-8">{{ action.actionNo }}</span>
+                @if (action.done) {
+                  <span class="status-badge-done text-xs">
+                    <fa-icon [icon]="faCheckCircle"></fa-icon> 已完成
+                  </span>
+                } @else {
+                  <span class="status-badge-waiting text-xs">
+                    <fa-icon [icon]="faHourglassHalf"></fa-icon> 等待中
+                  </span>
+                }
+              </div>
+
+              <!-- 錯誤攻擊切換按鈕（僅已完成動作可操作） -->
               @if (action.done) {
-                <span class="status-badge-done">
-                  <fa-icon [icon]="faCheckCircle"></fa-icon> 已完成
-                </span>
+                <button
+                  [class]="action.wrongAttack
+                    ? 'flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg bg-red-500/80 text-white border border-red-400/60'
+                    : 'flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg bg-white/10 text-white/60 border border-white/20 hover:bg-red-500/20 hover:text-red-300'"
+                  (click)="toggleWrongAttack(action.actionNo)">
+                  <fa-icon [icon]="faTriangleExclamation" class="text-xs"></fa-icon>
+                  {{ action.wrongAttack ? '錯誤攻擊 ✓' : '錯誤攻擊' }}
+                </button>
               } @else {
-                <span class="status-badge-waiting">
-                  <fa-icon [icon]="faHourglassHalf"></fa-icon> 等待中
-                </span>
+                <span class="text-white/20 text-xs px-2.5 py-1">—</span>
               }
             </div>
           }
@@ -50,14 +70,21 @@
       </div>
     </div>
 
-    <!-- 右側 -->
+    <!-- 右側：多樣性評分 -->
     <div class="glass-card p-5 flex flex-col gap-4">
       <div>
         <h3 class="text-white font-semibold">【多樣性評分】系列：{{ seriesLabel() }}</h3>
       </div>
       <div class="border-t border-white/10"></div>
 
-      @if (teamAbstained()) {
+      @if (!currentTeam()) {
+        <div class="flex-1 flex items-center justify-center">
+          <div class="text-center">
+            <fa-icon [icon]="faHourglassHalf" class="text-white/20 text-3xl mb-3"></fa-icon>
+            <p class="text-white/40">等待賽程開始...</p>
+          </div>
+        </div>
+      } @else if (teamAbstained()) {
         <div class="flex-1 flex items-center justify-center">
           <div class="text-center">
             <fa-icon [icon]="faBan" class="text-red-400/80 text-5xl mb-3"></fa-icon>

@@ -2,8 +2,9 @@ import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
-import { faUserShield, faPlus, faFileArrowUp, faTrash, faPen, faCheck, faXmark, faUsers, faKey, faLock, faSort, faDatabase, faEraser } from '@fortawesome/free-solid-svg-icons';
+import { faUserShield, faPlus, faFileArrowUp, faTrash, faPen, faCheck, faXmark, faUsers, faKey, faLock, faSort, faDatabase, faEraser, faTrophy, faArrowsRotate, faDownload, faMedal } from '@fortawesome/free-solid-svg-icons';
 import Swal from 'sweetalert2';
+import * as XLSX from 'xlsx';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { Router } from '@angular/router';
@@ -14,6 +15,7 @@ interface EventItem {
   date?: string;
   venue?: string;
   status: string;
+  categoryOrder?: string[];
 }
 
 interface TeamItem {
@@ -22,6 +24,32 @@ interface TeamItem {
   members: string[];
   category: string;
   order: number;
+}
+
+type ActionDetail = { p1?: number; p2?: number; p3?: number; p4?: number; p5?: number; total: number };
+type VrDetail = { throwVariety: number; groundVariety: number };
+
+interface RankingItem {
+  teamId: string;
+  name: string;
+  members: string[];
+  category: string;
+  seriesA: number;
+  vrScoreA: number;
+  seriesB: number;
+  vrScoreB: number;
+  seriesC: number;
+  vrScoreC: number;
+  total: number;
+  rank?: number;
+  actionDetails: Record<string, ActionDetail>;
+  vrDetails: Record<string, VrDetail>;
+}
+
+interface CategoryRanking {
+  category: string;
+  label: string;
+  items: (RankingItem & { rank: number })[];
 }
 
 interface JudgeUser {
@@ -62,6 +90,33 @@ export class AdminComponent implements OnInit {
   // 編輯隊伍
   editingTeamId = signal<string | null>(null);
   editForm = { name: '', member1: '', member2: '', category: 'male' as 'male' | 'female' | 'mixed', order: 1 };
+
+  // 組別順序
+  editingCategoryOrderId = signal<string | null>(null);
+  categoryOrderDraft = signal<string[]>([]);
+
+  // 成績排名
+  rankings = signal<RankingItem[]>([]);
+  showRankings = signal(false);
+  rankingsLoading = signal(false);
+  rankingsByCat = computed<CategoryRanking[]>(() => {
+    const categoryOrder = this.selectedEvent()?.categoryOrder ?? ['female', 'male', 'mixed'];
+    const byCategory: Record<string, RankingItem[]> = {};
+    for (const item of this.rankings()) {
+      if (!byCategory[item.category]) byCategory[item.category] = [];
+      byCategory[item.category].push(item);
+    }
+    return categoryOrder
+      .filter(cat => (byCategory[cat]?.length ?? 0) > 0)
+      .map(cat => {
+        const sorted = [...(byCategory[cat] || [])].sort((a, b) => b.total - a.total);
+        return {
+          category: cat,
+          label: this.categoryLabel(cat),
+          items: sorted.map((item, idx) => ({ ...item, rank: idx + 1 })),
+        };
+      });
+  });
 
   // 批次選取
   selectedTeamIds = signal<Set<string>>(new Set());
@@ -105,6 +160,10 @@ export class AdminComponent implements OnInit {
   faSort = faSort;
   faDatabase = faDatabase;
   faEraser = faEraser;
+  faTrophy = faTrophy;
+  faArrowsRotate = faArrowsRotate;
+  faDownload = faDownload;
+  faMedal = faMedal;
 
   ngOnInit(): void {
     this.loadEvents();
@@ -249,7 +308,12 @@ export class AdminComponent implements OnInit {
     this.teamFilter.set('all');
     this.reorderMode.set(false);
     this.reorderMap.set({});
+    this.editingCategoryOrderId.set(null);
+    this.categoryOrderDraft.set([]);
+    this.rankings.set([]);
+    this.showRankings.set(false);
     this.loadTeams(event._id);
+    this.loadRankings();
   }
 
   async changePassword(judge: JudgeUser): Promise<void> {
@@ -547,6 +611,251 @@ export class AdminComponent implements OnInit {
         }),
         error: () => Swal.fire({ icon: 'error', title: '清除失敗', toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 }),
       });
+    });
+  }
+
+  // ── 成績排名 ──────────────────────────────────────────
+  loadRankings(): void {
+    const event = this.selectedEvent();
+    if (!event) return;
+    this.rankingsLoading.set(true);
+    this.api.get<{ success: boolean; data: RankingItem[] }>(`/events/${event._id}/rankings`).subscribe({
+      next: (res) => {
+        if (res.success) {
+          this.rankings.set(res.data);
+          if (res.data.length > 0) this.showRankings.set(true);
+        }
+        this.rankingsLoading.set(false);
+      },
+      error: () => this.rankingsLoading.set(false),
+    });
+  }
+
+  exportExcel(category: string): void {
+    const event = this.selectedEvent();
+    if (!event || this.rankings().length === 0) return;
+
+    const groups = this.rankingsByCat().filter(g => g.category === category);
+    if (groups.length === 0) return;
+
+    const group = groups[0];
+    const actionCount = group.category === 'male' ? 4 : 3;
+    const seriesCfg: { s: string; parts: number }[] = [
+      { s: 'A', parts: 4 }, { s: 'B', parts: 4 }, { s: 'C', parts: 5 },
+    ];
+
+    // 固定 10 欄：動作 | P1 | P2 | P3 | P4 | P5 | 動作小計 | VR投技 | VR寢技 | 系列合計
+    const COL = 10;
+    const rows: (string | number)[][] = [];
+    const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
+    const merge = (c1: number, c2: number) =>
+      merges.push({ s: { r: rows.length - 1, c: c1 }, e: { r: rows.length - 1, c: c2 } });
+
+    // 工作表標題
+    rows.push([`${event.name} — ${group.label} 成績明細`]); merge(0, COL - 1);
+    rows.push([`列印日期：${new Date().toLocaleDateString('zh-TW')}`]); merge(0, COL - 1);
+    rows.push([]);
+
+    for (const item of group.items) {
+      const rankLabel = item.rank === 1 ? '金牌' : item.rank === 2 ? '銀牌' : item.rank === 3 ? '銅牌' : `第 ${item.rank} 名`;
+
+      // ── 隊伍標題（橫跨所有欄）──
+      rows.push([`${rankLabel}　${item.name}（${item.members.join(' / ')}）　總分：${item.total}`]);
+      merge(0, COL - 1);
+
+      // ── 欄位標題 ──
+      rows.push(['動作', 'P1', 'P2', 'P3', 'P4', 'P5', '動作小計', 'VR投技', 'VR寢技', '系列合計']);
+
+      for (const { s, parts } of seriesCfg) {
+        // 各動作細項
+        for (let i = 1; i <= actionCount; i++) {
+          const d: ActionDetail | undefined = (item.actionDetails ?? {})[`${s}${i}`];
+          const r: (string | number)[] = [`${s}${i}`];
+          for (let p = 1; p <= 5; p++) {
+            r.push(p <= parts
+              ? (d ? ((d as Record<string, number>)[`p${p}`] ?? 0) : 0)
+              : '');
+          }
+          r.push(d?.total ?? 0, '', '', '');
+          rows.push(r);
+        }
+
+        // 系列合計列
+        const vr: VrDetail = (item.vrDetails ?? {})[s] ?? { throwVariety: 0, groundVariety: 0 };
+        const motionTotal = s === 'A' ? item.seriesA : s === 'B' ? item.seriesB : item.seriesC;
+        const seriesVr = s === 'A' ? item.vrScoreA : s === 'B' ? item.vrScoreB : item.vrScoreC;
+        rows.push([`${s} 系列合計`, '', '', '', '', '', motionTotal, vr.throwVariety, vr.groundVariety, motionTotal + seriesVr]);
+        merge(0, 5);
+
+        rows.push([]); // 系列間空白
+      }
+
+      // 總分列
+      rows.push(['總分', '', '', '', '', '', '', '', '', item.total]);
+      merge(0, 8);
+
+      rows.push([]);
+      rows.push([]); // 隊伍間雙空行
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!merges'] = merges;
+    ws['!cols'] = [
+      { wch: 16 },
+      { wch: 5 }, { wch: 5 }, { wch: 5 }, { wch: 5 }, { wch: 5 },
+      { wch: 8 }, { wch: 7 }, { wch: 7 }, { wch: 9 },
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, group.label);
+    XLSX.writeFile(wb, `${event.name}_${group.label}_成績明細.xlsx`);
+  }
+
+  printPdf(category: string): void {
+    const event = this.selectedEvent();
+    if (!event || this.rankings().length === 0) return;
+
+    const groups = this.rankingsByCat().filter(g => g.category === category);
+    const medalText = (rank: number) => rank === 1 ? '金' : rank === 2 ? '銀' : rank === 3 ? '銅' : String(rank);
+    const medalStyle = (rank: number) =>
+      rank === 1 ? 'color:#b8860b;font-weight:bold'
+      : rank === 2 ? 'color:#6b7280;font-weight:bold'
+      : rank === 3 ? 'color:#b45309;font-weight:bold'
+      : 'color:#555';
+    const rowStyle = (rank: number) =>
+      rank === 1 ? 'background:#fffbeb' : rank === 2 ? 'background:#f9fafb' : rank === 3 ? 'background:#fff7ed' : '';
+
+    let sectionsHtml = '';
+    let isFirst = true;
+    for (const group of groups) {
+      const breakCls = isFirst ? '' : ' class="pb"';
+      isFirst = false;
+      sectionsHtml += `
+        <section${breakCls}>
+          <h2>${group.label}</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>名次</th><th>隊伍名稱</th><th>隊員</th>
+                <th>A動作</th><th>A_VR</th><th>A合計</th>
+                <th>B動作</th><th>B_VR</th><th>B合計</th>
+                <th>C動作</th><th>C_VR</th><th>C合計</th>
+                <th>總分</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${group.items.map(item => `
+                <tr style="${rowStyle(item.rank)}">
+                  <td style="text-align:center;${medalStyle(item.rank)}">${medalText(item.rank)}</td>
+                  <td>${item.name}</td><td style="color:#555">${item.members.join(' / ')}</td>
+                  <td>${item.seriesA}</td>
+                  <td style="color:#1a6b3a">${item.vrScoreA}</td>
+                  <td><b>${item.seriesA + item.vrScoreA}</b></td>
+                  <td>${item.seriesB}</td>
+                  <td style="color:#1a6b3a">${item.vrScoreB}</td>
+                  <td><b>${item.seriesB + item.vrScoreB}</b></td>
+                  <td>${item.seriesC}</td>
+                  <td style="color:#1a6b3a">${item.vrScoreC}</td>
+                  <td><b>${item.seriesC + item.vrScoreC}</b></td>
+                  <td style="font-weight:${item.rank <= 3 ? 'bold' : 'normal'}">${item.total}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </section>`;
+    }
+
+    const win = window.open('', '_blank');
+    if (!win) {
+      Swal.fire({ icon: 'warning', title: '請允許彈出視窗', text: '請允許瀏覽器彈出視窗以開啟 PDF 列印', timer: 3000, showConfirmButton: false });
+      return;
+    }
+    win.document.write(`<!DOCTYPE html>
+<html lang="zh-TW"><head>
+<meta charset="utf-8">
+<title>${event.name} — 成績排名</title>
+<style>
+  *{box-sizing:border-box}
+  body{font-family:"Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif;padding:16px;color:#1a1a2e}
+  h1{text-align:center;font-size:18px;margin-bottom:4px}
+  .sub{text-align:center;color:#888;font-size:12px;margin-bottom:20px}
+  h2{font-size:14px;color:#1a3a6b;margin:0 0 6px;border-bottom:2px solid #1a3a6b;padding-bottom:3px}
+  table{width:100%;border-collapse:collapse;margin-bottom:12px;font-size:11px}
+  th,td{border:1px solid #ddd;padding:4px 6px;text-align:right;white-space:nowrap}
+  th:nth-child(1),th:nth-child(2),th:nth-child(3),
+  td:nth-child(1),td:nth-child(2),td:nth-child(3){text-align:left}
+  th{background:#e8f0fe;font-weight:600}
+  .pb{page-break-before:always}
+  .sign-area{display:flex;gap:60px;justify-content:flex-end;margin-top:32px;padding-top:16px;border-top:1px solid #ddd}
+  .sign-block{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:140px}
+  .sign-label{font-size:13px;font-weight:600;color:#333}
+  .sign-line{width:140px;border-bottom:1.5px solid #333;height:36px}
+  .sign-hint{font-size:11px;color:#999}
+  @page{size:A4 landscape;margin:10mm}
+  @media print{body{padding:0}}
+</style>
+</head>
+<body>
+<h1>${event.name}</h1>
+<p class="sub">成績排名 &nbsp;·&nbsp; 列印日期：${new Date().toLocaleDateString('zh-TW')}</p>
+${sectionsHtml}
+<div class="sign-area">
+  <div class="sign-block">
+    <div class="sign-label">裁判長</div>
+    <div class="sign-line"></div>
+    <div class="sign-hint">簽名</div>
+  </div>
+  <div class="sign-block">
+    <div class="sign-label">日期</div>
+    <div class="sign-line"></div>
+    <div class="sign-hint">&nbsp;</div>
+  </div>
+</div>
+</body></html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 600);
+  }
+
+  // ── 組別順序 ──────────────────────────────────────────
+  categoryLabel(cat: string): string {
+    const map: Record<string, string> = { male: '男子組', female: '女子組', mixed: '混合組' };
+    return map[cat] ?? cat;
+  }
+
+  startEditCategoryOrder(event: EventItem): void {
+    this.editingCategoryOrderId.set(event._id);
+    this.categoryOrderDraft.set([...(event.categoryOrder ?? ['female', 'male', 'mixed'])]);
+  }
+
+  cancelEditCategoryOrder(): void {
+    this.editingCategoryOrderId.set(null);
+    this.categoryOrderDraft.set([]);
+  }
+
+  moveCategoryOrder(index: number, direction: -1 | 1): void {
+    const arr = [...this.categoryOrderDraft()];
+    const newIdx = index + direction;
+    if (newIdx < 0 || newIdx >= arr.length) return;
+    [arr[index], arr[newIdx]] = [arr[newIdx], arr[index]];
+    this.categoryOrderDraft.set(arr);
+  }
+
+  saveCategoryOrder(): void {
+    const eventId = this.editingCategoryOrderId();
+    if (!eventId) return;
+    this.api.patch<{ success: boolean; data: EventItem }>(`/events/${eventId}/category-order`, {
+      categoryOrder: this.categoryOrderDraft(),
+    }).subscribe({
+      next: (res) => {
+        if (res.success) {
+          this.events.update((evts) => evts.map((e) => e._id === eventId ? res.data : e));
+          if (this.selectedEvent()?._id === eventId) this.selectedEvent.set(res.data);
+          this.editingCategoryOrderId.set(null);
+          this.categoryOrderDraft.set([]);
+          Swal.fire({ icon: 'success', title: '組別順序已更新', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+        }
+      },
+      error: () => Swal.fire({ icon: 'error', title: '更新失敗', toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 }),
     });
   }
 

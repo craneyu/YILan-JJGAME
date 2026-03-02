@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, signal, computed, inject } from '@angular
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
-import { faCheckCircle, faHourglassHalf, faRightFromBracket, faBan } from '@fortawesome/free-solid-svg-icons';
+import { faCheckCircle, faHourglassHalf, faRightFromBracket, faBan, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons';
 import Swal from 'sweetalert2';
 import { AuthService } from '../../core/services/auth.service';
 import { ApiService } from '../../core/services/api.service';
@@ -12,6 +12,7 @@ import { Router } from '@angular/router';
 interface ActionStatus {
   actionNo: string;
   done: boolean;
+  wrongAttack: boolean;
 }
 
 interface TeamInfo {
@@ -33,6 +34,7 @@ interface VRSummaryResponse {
       status: string;
     } | null;
     completedActionNos: string[];
+    wrongAttackActionNos: string[];
     vrScore: { throwVariety: number; groundVariety: number } | null;
   };
 }
@@ -73,6 +75,7 @@ export class VrJudgeComponent implements OnInit, OnDestroy {
   faHourglassHalf = faHourglassHalf;
   faRightFromBracket = faRightFromBracket;
   faBan = faBan;
+  faTriangleExclamation = faTriangleExclamation;
 
   logout(): void {
     this.auth.logout();
@@ -89,9 +92,13 @@ export class VrJudgeComponent implements OnInit, OnDestroy {
 
     this.subs.push(
       this.socket.scoreCalculated$.subscribe((e) => {
-        // 標記動作完成
+        // 標記動作完成，並同步更新 wrongAttack 狀態
         this.actionStatuses.update((statuses) =>
-          statuses.map((s) => (s.actionNo === e.actionNo ? { ...s, done: true } : s))
+          statuses.map((s) =>
+            s.actionNo === e.actionNo
+              ? { ...s, done: true, wrongAttack: e.wrongAttack ?? s.wrongAttack }
+              : s
+          )
         );
       }),
 
@@ -125,7 +132,7 @@ export class VrJudgeComponent implements OnInit, OnDestroy {
   loadSummary(eventId: string): void {
     this.api.get<VRSummaryResponse>(`/events/${eventId}/summary`).subscribe((res) => {
       if (!res.success) return;
-      const { event, teams, gameState, completedActionNos, vrScore } = res.data;
+      const { event, teams, gameState, completedActionNos, wrongAttackActionNos, vrScore } = res.data;
 
       this.eventName.set(event.name);
       this.teams.set(teams);
@@ -143,13 +150,17 @@ export class VrJudgeComponent implements OnInit, OnDestroy {
       this.currentRound.set(gameState.currentRound);
       this.groupIndex.set(teams.findIndex((t) => t._id === gameState.currentTeamId) + 1);
 
-      // 初始化動作狀態，並從 completedActionNos 還原已完成動作
+      // 初始化動作狀態，還原已完成與錯誤攻擊標記
       const series = ['A', 'B', 'C'][gameState.currentRound - 1] ?? 'A';
       const count = team.category === 'male' ? 4 : 3;
       this.actionStatuses.set(
         Array.from({ length: count }, (_, i) => {
           const actionNo = `${series}${i + 1}`;
-          return { actionNo, done: completedActionNos?.includes(actionNo) ?? false };
+          return {
+            actionNo,
+            done: completedActionNos?.includes(actionNo) ?? false,
+            wrongAttack: wrongAttackActionNos?.includes(actionNo) ?? false,
+          };
         })
       );
 
@@ -171,8 +182,46 @@ export class VrJudgeComponent implements OnInit, OnDestroy {
     const series = ['A', 'B', 'C'][round - 1] ?? 'A';
     const count = team.category === 'male' ? 4 : 3;
     this.actionStatuses.set(
-      Array.from({ length: count }, (_, i) => ({ actionNo: `${series}${i + 1}`, done: false }))
+      Array.from({ length: count }, (_, i) => ({
+        actionNo: `${series}${i + 1}`,
+        done: false,
+        wrongAttack: false,
+      }))
     );
+  }
+
+  // Toggle 錯誤攻擊（只有已完成的動作才可操作）
+  toggleWrongAttack(actionNo: string): void {
+    const action = this.actionStatuses().find((a) => a.actionNo === actionNo);
+    if (!action?.done) return;
+
+    this.api.post<{ success: boolean; data: { isWrongAttack: boolean } }>('/wrong-attacks', {
+      eventId: this.eventId(),
+      teamId: this.currentTeam()?._id,
+      round: this.currentRound(),
+      actionNo,
+    }).subscribe({
+      next: (res) => {
+        if (res.success) {
+          const isWrong = res.data.isWrongAttack;
+          this.actionStatuses.update((statuses) =>
+            statuses.map((s) => s.actionNo === actionNo ? { ...s, wrongAttack: isWrong } : s)
+          );
+          Swal.fire({
+            icon: isWrong ? 'warning' : 'info',
+            title: `${actionNo} ${isWrong ? '已標記錯誤攻擊' : '已取消錯誤攻擊'}`,
+            toast: true, position: 'top-end', showConfirmButton: false, timer: 2000,
+          });
+        }
+      },
+      error: (err) => {
+        Swal.fire({
+          icon: 'error',
+          title: err.error?.error ?? '操作失敗',
+          toast: true, position: 'top-end', showConfirmButton: false, timer: 3000,
+        });
+      },
+    });
   }
 
   submit(): void {

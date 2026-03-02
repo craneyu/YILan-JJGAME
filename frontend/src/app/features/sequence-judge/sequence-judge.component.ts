@@ -4,12 +4,12 @@ import { Subscription } from 'rxjs';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
 import {
   faCheckCircle, faHourglassHalf, faLockOpen,
-  faForwardStep, faPlay, faTrophy, faRightFromBracket, faBan, faRotateLeft,
+  faForwardStep, faPlay, faTrophy, faRightFromBracket, faBan, faRotateLeft, faTriangleExclamation,
 } from '@fortawesome/free-solid-svg-icons';
 import Swal from 'sweetalert2';
 import { AuthService } from '../../core/services/auth.service';
 import { ApiService } from '../../core/services/api.service';
-import { SocketService } from '../../core/services/socket.service';
+import { SocketService, WrongAttackUpdatedEvent } from '../../core/services/socket.service';
 import { Router } from '@angular/router';
 
 interface TeamInfo {
@@ -28,6 +28,28 @@ interface JudgeStatus {
 interface ActionProgress {
   actionNo: string;
   status: 'pending' | 'scoring' | 'done';
+  p1?: number;
+  p2?: number;
+  p3?: number;
+  p4?: number;
+  p5?: number;
+  actionTotal?: number;
+  wrongAttack?: boolean;
+}
+
+interface ActionScore {
+  actionNo: string;
+  p1: number;
+  p2: number;
+  p3: number;
+  p4: number;
+  p5?: number;
+  actionTotal: number;
+}
+
+interface JudgeScoreEntry {
+  judgeNo: number;
+  items: { p1: number; p2: number; p3: number; p4: number; p5?: number };
 }
 
 interface SummaryResponse {
@@ -43,9 +65,13 @@ interface SummaryResponse {
       currentTeamAbstained: boolean;
       status: string;
     } | null;
-    vrScore: object | null;
+    vrScore: { throwVariety: number; groundVariety: number } | null;
     submittedJudgeNos: number[];
+    currentActionJudgeScores: JudgeScoreEntry[];
     completedActionNos: string[];
+    completedActionJudgeScores: Record<string, JudgeScoreEntry[]>;
+    calculatedScores: ActionScore[];
+    wrongAttackActionNos: string[];
   };
 }
 
@@ -77,8 +103,13 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
   // 裁判狀態
   judgeStatuses = signal<JudgeStatus[]>([1, 2, 3, 4, 5].map((n) => ({ judgeNo: n, submitted: false })));
   vrSubmitted = signal(false);
+  vrScoreValues = signal<{ throwVariety: number; groundVariety: number } | null>(null);
   actionProgress = signal<ActionProgress[]>([]);
   teamAbstained = signal(false);
+
+  // 各裁判個別 PART 分數（當前評分動作或最近完成動作）
+  judgeScores = signal<JudgeScoreEntry[]>([]);
+  scoreDisplayActionNo = signal<string | null>(null);
 
   // Computed
   all5Submitted = computed(() => this.judgeStatuses().every((j) => j.submitted));
@@ -88,6 +119,11 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
   allActionsDone = computed(() =>
     this.actionProgress().length > 0 && this.actionProgress().every((a) => a.status === 'done')
   );
+  seriesTotalScore = computed(() => {
+    const actionsTotal = this.actionProgress().reduce((sum, a) => sum + (a.actionTotal ?? 0), 0);
+    const vr = this.vrScoreValues();
+    return actionsTotal + (vr ? vr.throwVariety + vr.groundVariety : 0);
+  });
   nextPendingAction = computed(() =>
     this.actionProgress().find((a) => a.status === 'pending')?.actionNo ?? null
   );
@@ -108,6 +144,7 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
   faRightFromBracket = faRightFromBracket;
   faBan = faBan;
   faRotateLeft = faRotateLeft;
+  faTriangleExclamation = faTriangleExclamation;
 
   logout(): void {
     this.auth.logout();
@@ -123,26 +160,44 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
     }
 
     this.subs.push(
-      // 某位裁判送出評分
+      // 某位裁判送出評分（更新送出狀態 + 記錄個別分數）
       this.socket.scoreSubmitted$.subscribe((e) => {
         this.judgeStatuses.update((s) =>
           s.map((j) => j.judgeNo === e.judgeNo ? { ...j, submitted: true } : j)
         );
+        this.scoreDisplayActionNo.set(e.actionNo);
+        this.judgeScores.update((scores) => {
+          const filtered = scores.filter((s) => s.judgeNo !== e.judgeNo);
+          return [...filtered, { judgeNo: e.judgeNo, items: e.items as JudgeScoreEntry['items'] }]
+            .sort((a, b) => a.judgeNo - b.judgeNo);
+        });
       }),
 
-      // 5 位裁判全數送出，計算完成
+      // 5 位裁判全數送出，計算完成（存入 PART 分數）
       this.socket.scoreCalculated$.subscribe((e) => {
         this.actionProgress.update((p) =>
-          p.map((a) => a.actionNo === e.actionNo ? { ...a, status: 'done' as const } : a)
+          p.map((a) => a.actionNo === e.actionNo
+            ? { ...a, status: 'done' as const, p1: e.p1, p2: e.p2, p3: e.p3, p4: e.p4, p5: e.p5, actionTotal: e.actionTotal }
+            : a)
         );
         this.currentActionNo.set(null);
         this.actionOpen.set(false);
         this.judgeStatuses.set([1, 2, 3, 4, 5].map((n) => ({ judgeNo: n, submitted: false })));
       }),
 
-      // VR 裁判送出
-      this.socket.vrSubmitted$.subscribe(() => {
+      // 錯誤攻擊更新（更新分數與 wrongAttack 旗標，不重置賽序狀態）
+      this.socket.wrongAttackUpdated$.subscribe((e: WrongAttackUpdatedEvent) => {
+        this.actionProgress.update((p) =>
+          p.map((a) => a.actionNo === e.actionNo
+            ? { ...a, p1: e.p1, p2: e.p2, p3: e.p3, p4: e.p4, p5: e.p5, actionTotal: e.actionTotal, wrongAttack: e.wrongAttack }
+            : a)
+        );
+      }),
+
+      // VR 裁判送出（記錄實際分數）
+      this.socket.vrSubmitted$.subscribe((e) => {
         this.vrSubmitted.set(true);
+        this.vrScoreValues.set({ throwVariety: e.throwVariety, groundVariety: e.groundVariety });
       }),
 
       // 換組（同輪或跨輪均觸發）
@@ -157,10 +212,13 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
         }
         this.currentRound.set(e.round);
         this.vrSubmitted.set(false);
+        this.vrScoreValues.set(null);
         this.teamAbstained.set(false);
         this.currentActionNo.set(null);
         this.actionOpen.set(false);
         this.judgeStatuses.set([1, 2, 3, 4, 5].map((n) => ({ judgeNo: n, submitted: false })));
+        this.judgeScores.set([]);
+        this.scoreDisplayActionNo.set(null);
       }),
 
       // 棄權事件同步（多視窗）
@@ -191,7 +249,7 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
   loadSummary(eventId: string): void {
     this.api.get<SummaryResponse>(`/events/${eventId}/summary`).subscribe((res) => {
       if (!res.success) return;
-      const { event, teams, gameState, vrScore, submittedJudgeNos, completedActionNos } = res.data;
+      const { event, teams, gameState, vrScore, submittedJudgeNos, currentActionJudgeScores, completedActionNos, completedActionJudgeScores, calculatedScores, wrongAttackActionNos } = res.data;
 
       this.eventName.set(event.name);
       this.teams.set(teams);
@@ -206,9 +264,12 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
         this.teamAbstained.set(true);
       }
 
-      // 還原 VR 送出狀態
+      // 還原 VR 送出狀態與分數
       if (vrScore || gameState.status === 'series_complete') {
         this.vrSubmitted.set(true);
+        if (vrScore) {
+          this.vrScoreValues.set({ throwVariety: vrScore.throwVariety, groundVariety: vrScore.groundVariety });
+        }
       }
 
       if (gameState.currentTeamId) {
@@ -218,13 +279,21 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
           this.groupIndex.set(teams.findIndex((t) => t._id === gameState.currentTeamId) + 1);
           this.initActionProgress(team, gameState.currentRound);
 
-          // 還原已完成動作
+          // 還原已完成動作（含 PART 分數與錯誤攻擊）
           if (completedActionNos.length > 0) {
+            const scoreMap = new Map(calculatedScores?.map((s) => [s.actionNo, s]) ?? []);
+            const wrongSet = new Set(wrongAttackActionNos ?? []);
             this.actionProgress.update((p) =>
-              p.map((a) => completedActionNos.includes(a.actionNo)
-                ? { ...a, status: 'done' as const }
-                : a
-              )
+              p.map((a) => {
+                if (!completedActionNos.includes(a.actionNo)) return a;
+                const sc = scoreMap.get(a.actionNo);
+                return {
+                  ...a,
+                  status: 'done' as const,
+                  ...(sc ? { p1: sc.p1, p2: sc.p2, p3: sc.p3, p4: sc.p4, p5: sc.p5, actionTotal: sc.actionTotal } : {}),
+                  wrongAttack: wrongSet.has(a.actionNo),
+                };
+              })
             );
           }
 
@@ -243,6 +312,18 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
             this.judgeStatuses.update((s) =>
               s.map((j) => ({ ...j, submitted: submittedJudgeNos.includes(j.judgeNo) }))
             );
+              // 還原個別裁判分數（當前開放動作）
+            if (currentActionJudgeScores?.length) {
+              this.judgeScores.set([...currentActionJudgeScores].sort((a, b) => a.judgeNo - b.judgeNo));
+              this.scoreDisplayActionNo.set(gameState.currentActionNo);
+            }
+          } else {
+            // 無開放中動作：顯示最後一個已完成動作的個別裁判分數
+            const lastCompleted = completedActionNos[completedActionNos.length - 1];
+            if (lastCompleted && completedActionJudgeScores?.[lastCompleted]?.length) {
+              this.judgeScores.set([...completedActionJudgeScores[lastCompleted]]);
+              this.scoreDisplayActionNo.set(lastCompleted);
+            }
           }
         }
       } else if (teams.length > 0 && gameState.status !== 'event_complete') {
@@ -253,6 +334,10 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
         this.initActionProgress(firstTeam, 1);
       }
     });
+  }
+
+  hasJudgeScore(judgeNo: number): boolean {
+    return this.judgeScores().some((s) => s.judgeNo === judgeNo);
   }
 
   private initActionProgress(team: TeamInfo, round: number): void {
@@ -282,6 +367,8 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
           this.currentActionNo.set(pending);
           this.actionOpen.set(true);
           this.judgeStatuses.set([1, 2, 3, 4, 5].map((n) => ({ judgeNo: n, submitted: false })));
+          this.judgeScores.set([]);
+          this.scoreDisplayActionNo.set(pending);
           this.actionProgress.update((p) =>
             p.map((a) => a.actionNo === pending ? { ...a, status: 'scoring' as const } : a)
           );

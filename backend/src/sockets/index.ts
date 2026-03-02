@@ -60,4 +60,7 @@ export const broadcast = {
   teamAbstainCancelled(eventId: string, data: object) {
     getIO().to(eventId).emit('team:abstain-cancelled', data);
   },
+  wrongAttackUpdated(eventId: string, data: object) {
+    getIO().to(eventId).emit('wrongAttack:updated', data);
+  },
 };

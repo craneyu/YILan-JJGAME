@@ -6,6 +6,7 @@ export interface IEvent extends Document {
   venue?: string;
   rounds: number;
   status: 'pending' | 'active' | 'closed';
+  categoryOrder: string[];
   createdAt: Date;
 }
 
@@ -20,6 +21,7 @@ const EventSchema = new Schema<IEvent>(
       enum: ['pending', 'active', 'closed'],
       default: 'pending',
     },
+    categoryOrder: { type: [String], default: ['female', 'male', 'mixed'] },
   },
   { timestamps: true }
 );

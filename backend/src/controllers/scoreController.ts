@@ -13,10 +13,15 @@ export async function submitScore(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  // 確認動作已開放
+  // 確認動作已開放，且 teamId / round / actionNo 均與當前賽程狀態一致
   const gameState = await GameState.findOne({ eventId });
-  if (!gameState?.currentActionOpen || gameState.currentActionNo !== actionNo) {
-    res.status(403).json({ success: false, error: '此動作尚未開放評分' });
+  if (
+    !gameState?.currentActionOpen ||
+    gameState.currentActionNo !== actionNo ||
+    String(gameState.currentTeamId) !== String(teamId) ||
+    gameState.currentRound !== Number(round)
+  ) {
+    res.status(403).json({ success: false, error: '此動作尚未開放評分或隊伍/輪次不符' });
     return;
   }
 

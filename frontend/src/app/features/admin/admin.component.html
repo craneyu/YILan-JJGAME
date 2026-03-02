@@ -210,6 +210,47 @@
           }
         </div>
 
+        <!-- 組別順序設定 -->
+        @if (editingCategoryOrderId() === selectedEvent()!._id) {
+          <div class="bg-indigo-500/10 border border-indigo-400/30 rounded-xl p-3 mb-3 space-y-2">
+            <span class="text-indigo-300 text-xs font-medium block">調整組別執行順序</span>
+            @for (cat of categoryOrderDraft(); track cat; let i = $index) {
+              <div class="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-1.5">
+                <span class="flex-1 text-sm text-white">{{ categoryLabel(cat) }}</span>
+                <button class="text-white/50 hover:text-white px-1.5 py-0.5 rounded transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                  [disabled]="i === 0"
+                  (click)="moveCategoryOrder(i, -1)">↑</button>
+                <button class="text-white/50 hover:text-white px-1.5 py-0.5 rounded transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                  [disabled]="i === categoryOrderDraft().length - 1"
+                  (click)="moveCategoryOrder(i, 1)">↓</button>
+              </div>
+            }
+            <div class="flex gap-2 pt-1">
+              <button class="primary-btn flex-1 flex items-center justify-center gap-1 text-sm py-1.5" (click)="saveCategoryOrder()">
+                <fa-icon [icon]="faCheck"></fa-icon> 儲存順序
+              </button>
+              <button class="glass-btn text-sm py-1.5" (click)="cancelEditCategoryOrder()">取消</button>
+            </div>
+          </div>
+        } @else {
+          <div class="flex items-center gap-2 mb-3 bg-white/5 rounded-xl px-3 py-2">
+            <span class="text-white/40 text-xs flex-shrink-0">組別順序：</span>
+            <div class="flex items-center gap-1 flex-1 flex-wrap">
+              @for (cat of (selectedEvent()!.categoryOrder ?? ['female', 'male', 'mixed']); track cat; let last = $last) {
+                <span class="text-xs px-2 py-0.5 rounded-full"
+                  [class]="cat === 'male' ? 'bg-blue-500/20 text-blue-300'
+                          : cat === 'female' ? 'bg-pink-500/20 text-pink-300'
+                          : 'bg-purple-500/20 text-purple-300'">{{ categoryLabel(cat) }}</span>
+                @if (!last) { <span class="text-white/20 text-xs">→</span> }
+              }
+            </div>
+            <button class="text-white/30 hover:text-white/70 transition-colors p-1 flex-shrink-0"
+              (click)="startEditCategoryOrder(selectedEvent()!)" title="調整組別順序">
+              <fa-icon [icon]="faPen" class="text-xs"></fa-icon>
+            </button>
+          </div>
+        }
+
         <!-- 新增隊伍表單 -->
         @if (showAddTeam()) {
           <div class="bg-white/5 border border-white/20 rounded-xl p-4 mb-3 space-y-3">
@@ -417,4 +458,119 @@
       }
     </div>
   </div>
+
+  <!-- 成績排名 -->
+  @if (selectedEvent()) {
+    <div class="glass-card p-4 mt-4">
+      <!-- 標題列 -->
+      <div class="flex items-center justify-between cursor-pointer" (click)="showRankings.set(!showRankings())">
+        <div class="flex items-center gap-2">
+          <fa-icon [icon]="faTrophy" class="text-yellow-400"></fa-icon>
+          <span class="text-white font-semibold">成績排名</span>
+          <span class="text-white/40 text-xs ml-1">{{ selectedEvent()!.name }}</span>
+          @if (rankings().length > 0) {
+            <span class="text-white/30 text-xs">（{{ rankings().length }} 隊）</span>
+          }
+        </div>
+        <div class="flex items-center gap-2">
+          <button class="text-white/40 hover:text-white/80 p-1.5 rounded-lg transition-colors"
+            (click)="$event.stopPropagation(); loadRankings()" title="重新整理">
+            <fa-icon [icon]="faArrowsRotate" class="text-sm" [class.animate-spin]="rankingsLoading()"></fa-icon>
+          </button>
+          <span class="text-white/40 text-sm">{{ showRankings() ? '▲' : '▼' }}</span>
+        </div>
+      </div>
+
+      <!-- 排名內容 -->
+      @if (showRankings()) {
+        <div class="mt-4">
+          @if (rankingsLoading()) {
+            <p class="text-white/40 text-center py-6">載入中...</p>
+          } @else if (rankings().length === 0) {
+            <p class="text-white/40 text-center py-6">尚無成績資料</p>
+          } @else {
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              @for (group of rankingsByCat(); track group.category) {
+                <div class="bg-white/5 border border-white/10 rounded-xl p-4">
+                  <!-- 組別標題 -->
+                  <div class="flex items-center gap-2 mb-3">
+                    <fa-icon [icon]="faMedal"
+                      [class]="group.category === 'female' ? 'text-pink-400' : group.category === 'male' ? 'text-blue-400' : 'text-purple-400'">
+                    </fa-icon>
+                    <span class="text-white font-semibold">{{ group.label }}</span>
+                    <span class="text-white/30 text-xs">{{ group.items.length }} 隊</span>
+                    <div class="flex items-center gap-1.5 ml-auto">
+                      <button class="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 border border-emerald-400/30 hover:border-emerald-300/50 rounded-lg px-2 py-0.5 transition-colors"
+                        (click)="exportExcel(group.category)" title="匯出 Excel">
+                        <fa-icon [icon]="faDownload" class="text-xs"></fa-icon> Excel
+                      </button>
+                      <button class="flex items-center gap-1 text-xs text-rose-400 hover:text-rose-300 border border-rose-400/30 hover:border-rose-300/50 rounded-lg px-2 py-0.5 transition-colors"
+                        (click)="printPdf(group.category)" title="列印 PDF">
+                        <fa-icon [icon]="faDownload" class="text-xs"></fa-icon> PDF
+                      </button>
+                    </div>
+                  </div>
+                  <!-- 排名表 -->
+                  <table class="w-full text-sm">
+                    <thead>
+                      <tr class="text-white/40 text-xs border-b border-white/10">
+                        <th class="text-center pb-2 w-8">名次</th>
+                        <th class="text-left pb-2">隊伍</th>
+                        <th class="text-right pb-2 w-8">A</th>
+                        <th class="text-right pb-2 w-7 text-blue-300/50">VR</th>
+                        <th class="text-right pb-2 w-8">B</th>
+                        <th class="text-right pb-2 w-7 text-blue-300/50">VR</th>
+                        <th class="text-right pb-2 w-8">C</th>
+                        <th class="text-right pb-2 w-7 text-blue-300/50">VR</th>
+                        <th class="text-right pb-2 w-12">總分</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/5">
+                      @for (item of group.items; track item.teamId) {
+                        <tr [class]="item.rank === 1 ? 'bg-yellow-500/10' : item.rank === 2 ? 'bg-white/5' : item.rank === 3 ? 'bg-orange-500/5' : ''">
+                          <!-- 名次 -->
+                          <td class="py-1.5 text-center">
+                            @if (item.rank === 1) {
+                              <span class="text-yellow-400 font-bold text-base">1</span>
+                            } @else if (item.rank === 2) {
+                              <span class="text-gray-300 font-bold">2</span>
+                            } @else if (item.rank === 3) {
+                              <span class="text-orange-400 font-bold">3</span>
+                            } @else {
+                              <span class="text-white/30">{{ item.rank }}</span>
+                            }
+                          </td>
+                          <!-- 隊伍名稱 + 隊員 -->
+                          <td class="py-1.5 pr-1">
+                            <p [class]="item.rank <= 3 ? 'text-white font-medium' : 'text-white/80'" class="truncate text-xs">{{ item.name }}</p>
+                            <p class="text-white/30 text-xs truncate">{{ item.members.join(' / ') }}</p>
+                          </td>
+                          <!-- 分系列分數 + 各系列 VR -->
+                          <td class="py-1.5 text-right text-white/40 text-xs">{{ item.seriesA }}</td>
+                          <td class="py-1.5 text-right text-blue-300/50 text-xs">{{ item.vrScoreA }}</td>
+                          <td class="py-1.5 text-right text-white/40 text-xs">{{ item.seriesB }}</td>
+                          <td class="py-1.5 text-right text-blue-300/50 text-xs">{{ item.vrScoreB }}</td>
+                          <td class="py-1.5 text-right text-white/40 text-xs">{{ item.seriesC }}</td>
+                          <td class="py-1.5 text-right text-blue-300/50 text-xs">{{ item.vrScoreC }}</td>
+                          <!-- 總分 -->
+                          <td class="py-1.5 text-right">
+                            <span [class]="item.rank === 1 ? 'text-yellow-400 font-bold'
+                                         : item.rank <= 3 ? 'text-white font-semibold'
+                                         : 'text-white/70'"
+                                  class="text-sm">
+                              {{ item.total }}
+                            </span>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
 </div>
