@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
-import { faTriangleExclamation } from '@fortawesome/free-solid-svg-icons';
+import { faTriangleExclamation, faExpand, faCompress } from '@fortawesome/free-solid-svg-icons';
 import { ApiService } from '../../core/services/api.service';
 import { SocketService, ScoreCalculatedEvent, WrongAttackUpdatedEvent } from '../../core/services/socket.service';
 
@@ -64,6 +64,11 @@ export class AudienceComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
 
   faTriangleExclamation = faTriangleExclamation;
+  faExpand = faExpand;
+  faCompress = faCompress;
+
+  isFullscreen = signal(false);
+  private onFullscreenChange = () => this.isFullscreen.set(!!document.fullscreenElement);
 
   private subs: Subscription[] = [];
 
@@ -82,7 +87,11 @@ export class AudienceComponent implements OnInit, OnDestroy {
   // Computed
   series = computed(() => ['A', 'B', 'C'][this.currentRound() - 1] ?? 'A');
   isCseries = computed(() => this.series() === 'C');
-  roundLabel = computed(() => `R${this.currentRound()}-G${this.groupIndex()}`);
+  roundLabel = computed(() => {
+    const team = this.currentTeam();
+    const cat = team ? team.category.toUpperCase() : '';
+    return `${cat} R${this.currentRound()}-G${this.groupIndex()}`;
+  });
 
   totalScore = computed(() =>
     this.actionScores().reduce((sum, a) => sum + (a.actionTotal ?? 0), 0) +
@@ -119,6 +128,7 @@ export class AudienceComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
+    document.addEventListener('fullscreenchange', this.onFullscreenChange);
     this.route.queryParams.subscribe((params) => {
       const eventId = params['eventId'];
       if (eventId) {
@@ -155,7 +165,9 @@ export class AudienceComponent implements OnInit, OnDestroy {
         const team = this.teams().find((t) => t._id === e.nextTeamId);
         if (team) {
           this.currentTeam.set(team);
-          this.groupIndex.set(this.teams().findIndex((t) => t._id === e.nextTeamId) + 1);
+          const sameCategory = this.teams().filter((t) => t.category === team.category);
+          const catIdx = sameCategory.findIndex((t) => t._id === e.nextTeamId);
+          this.groupIndex.set(catIdx >= 0 ? catIdx + 1 : this.groupIndex() + 1);
         }
         this.currentRound.set(e.round);
         this.actionScores.set([]);
@@ -191,7 +203,16 @@ export class AudienceComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    document.removeEventListener('fullscreenchange', this.onFullscreenChange);
     this.subs.forEach((s) => s.unsubscribe());
+  }
+
+  toggleFullscreen(): void {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
   }
 
   loadSummary(eventId: string): void {
@@ -209,7 +230,9 @@ export class AudienceComponent implements OnInit, OnDestroy {
       const team = teams.find((t) => t._id === gameState.currentTeamId);
       if (team) {
         this.currentTeam.set(team);
-        this.groupIndex.set(teams.findIndex((t) => t._id === gameState.currentTeamId) + 1);
+        const sameCategory = teams.filter((t) => t.category === team.category);
+        const catIdx = sameCategory.findIndex((t) => t._id === gameState.currentTeamId);
+        this.groupIndex.set(catIdx >= 0 ? catIdx + 1 : 1);
       }
       this.currentRound.set(gameState.currentRound);
       if (gameState.currentActionNo) this.currentActionNo.set(gameState.currentActionNo);

@@ -5,6 +5,10 @@
     <span class="text-white/80 font-medium text-center flex-1">{{ eventName() }}</span>
     <div class="flex items-center gap-3">
       <span class="text-blue-300 font-bold">{{ roundLabel() }}</span>
+      <button class="text-white/40 hover:text-white/80 transition-colors p-1 rounded-lg hover:bg-white/10"
+        (click)="toggleFullscreen()" [title]="isFullscreen() ? '退出全螢幕' : '進入全螢幕'">
+        <fa-icon [icon]="isFullscreen() ? faCompress : faExpand" class="text-sm"></fa-icon>
+      </button>
       <button class="glass-btn text-sm flex items-center gap-1" (click)="logout()">
         <fa-icon [icon]="faRightFromBracket"></fa-icon> 登出
       </button>

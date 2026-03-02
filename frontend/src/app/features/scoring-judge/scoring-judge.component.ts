@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, signal, computed, inject } from '@angular
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
-import { faHourglassHalf, faCheckCircle, faCheck, faRightFromBracket, faBan } from '@fortawesome/free-solid-svg-icons';
+import { faHourglassHalf, faCheckCircle, faCheck, faRightFromBracket, faBan, faExpand, faCompress } from '@fortawesome/free-solid-svg-icons';
 import Swal from 'sweetalert2';
 import { AuthService } from '../../core/services/auth.service';
 import { ApiService } from '../../core/services/api.service';
@@ -103,7 +103,11 @@ export class ScoringJudgeComponent implements OnInit, OnDestroy {
     const ext = action.startsWith('C') ? 'png' : 'jpg';
     return `assets/action-cards/${action}.${ext}`;
   });
-  roundLabel = computed(() => `R${this.currentRound()}-G${this.groupIndex()}`);
+  roundLabel = computed(() => {
+    const team = this.currentTeam();
+    const cat = team ? team.category.toUpperCase() : '';
+    return `${cat} R${this.currentRound()}-G${this.groupIndex()}`;
+  });
 
   readonly itemLabels = [
     '預擊與指定動作',
@@ -119,6 +123,11 @@ export class ScoringJudgeComponent implements OnInit, OnDestroy {
   faCheck = faCheck;
   faRightFromBracket = faRightFromBracket;
   faBan = faBan;
+  faExpand = faExpand;
+  faCompress = faCompress;
+
+  isFullscreen = signal(false);
+  private onFullscreenChange = () => this.isFullscreen.set(!!document.fullscreenElement);
 
   logout(): void {
     this.auth.logout();
@@ -126,6 +135,7 @@ export class ScoringJudgeComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    document.addEventListener('fullscreenchange', this.onFullscreenChange);
     const user = this.auth.user();
     if (user?.eventId) {
       this.eventId.set(user.eventId);
@@ -151,9 +161,13 @@ export class ScoringJudgeComponent implements OnInit, OnDestroy {
       this.socket.groupChanged$.subscribe((e) => {
         if (e.eventId !== this.eventId()) return;
         this.currentRound.set(e.round);
-        // groupIndex 從 teams 陣列位置計算
-        const idx = this.teams().findIndex((t) => t._id === e.nextTeamId);
-        this.groupIndex.set(idx >= 0 ? idx + 1 : this.groupIndex() + 1);
+        // groupIndex 從同組別的隊伍位置計算
+        const nextTeam = this.teams().find((t) => t._id === e.nextTeamId);
+        if (nextTeam) {
+          const sameCategory = this.teams().filter((t) => t.category === nextTeam.category);
+          const catIdx = sameCategory.findIndex((t) => t._id === e.nextTeamId);
+          this.groupIndex.set(catIdx >= 0 ? catIdx + 1 : this.groupIndex() + 1);
+        }
         this.loadTeam(e.nextTeamId);
         this.judgeState.set('waiting');
         this.submittedHistory.set([]);
@@ -181,7 +195,16 @@ export class ScoringJudgeComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    document.removeEventListener('fullscreenchange', this.onFullscreenChange);
     this.subs.forEach((s) => s.unsubscribe());
+  }
+
+  toggleFullscreen(): void {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
   }
 
   // ── 初始化 ────────────────────────────────────────────────────
@@ -197,9 +220,13 @@ export class ScoringJudgeComponent implements OnInit, OnDestroy {
         this.loadTeam(gameState.currentTeamId);
         this.currentRound.set(gameState.currentRound);
 
-        // 計算 groupIndex
-        const idx = teams.findIndex((t) => t._id === gameState.currentTeamId);
-        if (idx >= 0) this.groupIndex.set(idx + 1);
+        // 計算 groupIndex（同組別內的順序）
+        const curTeam = teams.find((t) => t._id === gameState.currentTeamId);
+        if (curTeam) {
+          const sameCategory = teams.filter((t) => t.category === curTeam.category);
+          const catIdx = sameCategory.findIndex((t) => t._id === gameState.currentTeamId);
+          if (catIdx >= 0) this.groupIndex.set(catIdx + 1);
+        }
 
         // 還原已完成動作的本裁判歷史評分紀錄
         if (completedActionNos?.length > 0) {

@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, signal, computed, inject } from '@angular
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
-import { faCheckCircle, faHourglassHalf, faRightFromBracket, faBan, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons';
+import { faCheckCircle, faHourglassHalf, faRightFromBracket, faBan, faTriangleExclamation, faExpand, faCompress } from '@fortawesome/free-solid-svg-icons';
 import Swal from 'sweetalert2';
 import { AuthService } from '../../core/services/auth.service';
 import { ApiService } from '../../core/services/api.service';
@@ -67,7 +67,11 @@ export class VrJudgeComponent implements OnInit, OnDestroy {
 
   allActionsDone = computed(() => this.actionStatuses().every((a) => a.done));
   allSelected = computed(() => this.throwVariety() !== null && this.groundVariety() !== null);
-  roundLabel = computed(() => `R${this.currentRound()}-G${this.groupIndex()}`);
+  roundLabel = computed(() => {
+    const team = this.currentTeam();
+    const cat = team ? team.category.toUpperCase() : '';
+    return `${cat} R${this.currentRound()}-G${this.groupIndex()}`;
+  });
   seriesLabel = computed(() => ['A', 'B', 'C'][this.currentRound() - 1] ?? 'A');
 
   vrOptions = [2, 1, 0];
@@ -75,6 +79,11 @@ export class VrJudgeComponent implements OnInit, OnDestroy {
   faHourglassHalf = faHourglassHalf;
   faRightFromBracket = faRightFromBracket;
   faBan = faBan;
+  faExpand = faExpand;
+  faCompress = faCompress;
+
+  isFullscreen = signal(false);
+  private onFullscreenChange = () => this.isFullscreen.set(!!document.fullscreenElement);
   faTriangleExclamation = faTriangleExclamation;
 
   logout(): void {
@@ -83,6 +92,7 @@ export class VrJudgeComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    document.addEventListener('fullscreenchange', this.onFullscreenChange);
     const user = this.auth.user();
     if (user?.eventId) {
       this.eventId.set(user.eventId);
@@ -104,8 +114,12 @@ export class VrJudgeComponent implements OnInit, OnDestroy {
 
       this.socket.groupChanged$.subscribe((e) => {
         if (e.eventId !== this.eventId()) return;
-        const idx = this.teams().findIndex((t) => t._id === e.nextTeamId);
-        this.groupIndex.set(idx >= 0 ? idx + 1 : this.groupIndex() + 1);
+        const nextTeam = this.teams().find((t) => t._id === e.nextTeamId);
+        if (nextTeam) {
+          const sameCategory = this.teams().filter((t) => t.category === nextTeam.category);
+          const catIdx = sameCategory.findIndex((t) => t._id === e.nextTeamId);
+          this.groupIndex.set(catIdx >= 0 ? catIdx + 1 : this.groupIndex() + 1);
+        }
         this.loadTeam(e.nextTeamId, e.round);
         this.currentRound.set(e.round);
         this.throwVariety.set(null);
@@ -126,7 +140,16 @@ export class VrJudgeComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    document.removeEventListener('fullscreenchange', this.onFullscreenChange);
     this.subs.forEach((s) => s.unsubscribe());
+  }
+
+  toggleFullscreen(): void {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
   }
 
   loadSummary(eventId: string): void {
@@ -148,7 +171,9 @@ export class VrJudgeComponent implements OnInit, OnDestroy {
 
       this.currentTeam.set(team);
       this.currentRound.set(gameState.currentRound);
-      this.groupIndex.set(teams.findIndex((t) => t._id === gameState.currentTeamId) + 1);
+      const sameCategory = teams.filter((t) => t.category === team.category);
+      const catIdx = sameCategory.findIndex((t) => t._id === gameState.currentTeamId);
+      this.groupIndex.set(catIdx >= 0 ? catIdx + 1 : 1);
 
       // 初始化動作狀態，還原已完成與錯誤攻擊標記
       const series = ['A', 'B', 'C'][gameState.currentRound - 1] ?? 'A';

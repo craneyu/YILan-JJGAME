@@ -2,7 +2,15 @@
   <!-- 區塊一：賽事標題列 -->
   <div class="glass-card px-6 py-4 flex items-center justify-between">
     <h1 class="text-white font-bold text-xl">{{ eventName() }}</h1>
-    <span class="text-blue-300 font-bold text-2xl">{{ roundLabel() }}</span>
+    <div class="flex items-center gap-4">
+      <span class="text-blue-300 font-bold text-2xl">{{ roundLabel() }}</span>
+      <button
+        (click)="toggleFullscreen()"
+        class="text-white/50 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/10"
+        [title]="isFullscreen() ? '退出全螢幕' : '進入全螢幕'">
+        <fa-icon [icon]="isFullscreen() ? faCompress : faExpand" class="text-xl"></fa-icon>
+      </button>
+    </div>
   </div>
 
   <!-- 區塊二：累計總分 + 隊伍資訊 -->
