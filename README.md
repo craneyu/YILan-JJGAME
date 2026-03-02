@@ -5,6 +5,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-22-green)](https://nodejs.org/)
 [![Angular](https://img.shields.io/badge/Angular-20-red)](https://angular.dev/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-7-brightgreen)](https://www.mongodb.com/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-blue)](https://www.docker.com/)
 
 ---
 
@@ -14,17 +15,21 @@
 
 ### 核心功能
 
-| 功能       | 說明                                          |
-| ---------- | --------------------------------------------- |
-| 多角色登入 | 計分裁判 × 5、VR 裁判、賽序裁判、管理員、觀眾 |
-| 即時計分   | Socket.IO 廣播，所有畫面毫秒級同步更新        |
-| 自動計算   | 去掉最高/最低分，取中間三位裁判加總           |
-| 賽程控制   | 賽序裁判控制開放評分、換組、輪次推進          |
-| 棄權處理   | 支援設定/取消棄權，跳過 VR 評分直接換組       |
-| 分組管理   | 男子組 / 女子組 / 混合組，支援批次場次排序    |
-| 資料匯入   | 支援 Excel (.xlsx) / CSV 格式批次匯入隊伍     |
-| 觀眾介面   | 大螢幕顯示即時成績與組別排名                  |
-| 管理後台   | 賽事管理、隊伍管理、裁判帳號管理與密碼變更    |
+| 功能       | 說明                                                    |
+| ---------- | ------------------------------------------------------- |
+| 多角色登入 | 計分裁判 × 5、VR 裁判、賽序裁判、管理員、觀眾           |
+| 即時計分   | Socket.IO 廣播，所有畫面毫秒級同步更新                  |
+| 自動計算   | 去掉最高/最低分，取中間三位裁判加總                     |
+| 賽程控制   | 賽序裁判控制開放評分、換組、輪次推進                    |
+| 棄權處理   | 支援設定/取消棄權，跳過 VR 評分直接換組                 |
+| 分組管理   | 男子組 / 女子組 / 混合組，每個組別獨立計算排名         |
+| 錯誤攻擊   | VR 裁判可標記動作為錯誤攻擊（無分數）                   |
+| 多樣性評分 | VR 裁判依系列評分摔技與地板技多樣性（各 0–2 分）        |
+| 資料匯入   | 支援 Excel (.xlsx) / CSV 格式批次匯入隊伍               |
+| 賽果匯出   | 各組別分別匯出 Excel（詳細 PART 分數）與 PDF（簽名欄）  |
+| 觀眾介面   | 大螢幕顯示即時成績、組別標籤、排名，支援全螢幕模式     |
+| 全螢幕功能 | 觀眾、計分裁判、VR 裁判頁面皆可隱藏瀏覽器界面          |
+| 管理後台   | 賽事管理、隊伍管理、裁判帳號管理、刪除賽事              |
 
 ---
 
@@ -68,7 +73,7 @@
 - Docker + Docker Compose（推薦方式）
 - 或 Node.js 22+、MongoDB 7
 
-### Docker 啟動（推薦）
+### Docker 啟動（推薦 - 開發）
 
 ```bash
 # 複製專案
@@ -82,6 +87,22 @@ docker compose up --build
 # 前端：http://localhost:4200
 # 後端 API：http://localhost:3000
 ```
+
+### Docker 便攜包（MacBook / 部署）
+
+```bash
+# 解壓便攜包（jju-docker.tar.gz）
+tar -xzf jju-docker.tar.gz
+cd jju-package
+
+# 一鍵啟動（自動載入映像、啟動服務、保留資料）
+./start.sh
+
+# 開啟瀏覽器
+# 前端：http://localhost:4200
+```
+
+> 便攜包已包含 frontend、backend、MongoDB 映像，無需網路即可離線運作。
 
 ### 手動啟動（開發模式）
 
