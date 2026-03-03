@@ -12,3 +12,5 @@ coverage/
 .angular/
 jju-docker.tar.gz
 GEMINI.md
+.spectra/
+openspec/.vector-search.db*
