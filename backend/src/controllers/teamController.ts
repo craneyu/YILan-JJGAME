@@ -128,6 +128,7 @@ export async function importTeams(req: Request, res: Response): Promise<void> {
   }
 
   const eventId = req.params.id as string;
+  const competitionType: 'Duo' | 'Show' = req.body['competitionType'] === 'Show' ? 'Show' : 'Duo';
   const filename = req.file.originalname.toLowerCase();
   let rows: ImportRow[] = [];
 
@@ -151,7 +152,7 @@ export async function importTeams(req: Request, res: Response): Promise<void> {
 
   const successList: string[] = [];
   const conflictList: string[] = [];
-  const existingCount = await Team.countDocuments({ eventId });
+  const existingCount = await Team.countDocuments({ eventId, competitionType });
   let orderCounter = existingCount + 1;
 
   for (const row of rows) {
@@ -177,7 +178,7 @@ export async function importTeams(req: Request, res: Response): Promise<void> {
       continue;
     }
 
-    await Team.create({ eventId, name: teamName, members, category, order: orderCounter++ });
+    await Team.create({ eventId, name: teamName, members, category, order: orderCounter++, competitionType });
     successList.push(teamName);
   }
 

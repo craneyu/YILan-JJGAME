@@ -6,6 +6,7 @@ export interface ITeam extends Document {
   members: string[];
   category: 'male' | 'female' | 'mixed';
   order: number;
+  competitionType: 'Duo' | 'Show';
 }
 
 const TeamSchema = new Schema<ITeam>({
@@ -18,6 +19,11 @@ const TeamSchema = new Schema<ITeam>({
     required: true,
   },
   order: { type: Number, required: true },
+  competitionType: {
+    type: String,
+    enum: ['Duo', 'Show'],
+    default: 'Duo',
+  },
 });
 
 // 確保同一賽事內，各隊員姓名唯一

@@ -63,4 +63,26 @@ export const broadcast = {
   wrongAttackUpdated(eventId: string, data: object) {
     getIO().to(eventId).emit('wrongAttack:updated', data);
   },
+  // 創意演武事件
+  creativeScoringOpened(eventId: string, data: object) {
+    getIO().to(eventId).emit('creative:scoring-opened', data);
+  },
+  creativeScoreSubmitted(eventId: string, data: object) {
+    getIO().to(eventId).emit('creative-score:submitted', data);
+  },
+  creativeScoreCalculated(eventId: string, data: object) {
+    getIO().to(eventId).emit('creative-score:calculated', data);
+  },
+  creativeTeamChanged(eventId: string, data: object) {
+    getIO().to(eventId).emit('creative:team-changed', data);
+  },
+  timerStarted(eventId: string, data: object) {
+    getIO().to(eventId).emit('timer:started', data);
+  },
+  timerStopped(eventId: string, data: object) {
+    getIO().to(eventId).emit('timer:stopped', data);
+  },
+  penaltyUpdated(eventId: string, data: object) {
+    getIO().to(eventId).emit('penalty:updated', data);
+  },
 };

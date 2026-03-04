@@ -7,6 +7,9 @@ export interface IEvent extends Document {
   rounds: number;
   status: 'pending' | 'active' | 'closed';
   categoryOrder: string[];
+  categoryOrderDuo: string[];
+  categoryOrderShow: string[];
+  competitionTypes: ('Duo' | 'Show')[];
   createdAt: Date;
 }
 
@@ -22,6 +25,13 @@ const EventSchema = new Schema<IEvent>(
       default: 'pending',
     },
     categoryOrder: { type: [String], default: ['female', 'male', 'mixed'] },
+    categoryOrderDuo: { type: [String], default: [] },
+    categoryOrderShow: { type: [String], default: [] },
+    competitionTypes: {
+      type: [String],
+      enum: ['Duo', 'Show'],
+      default: ['Duo'],
+    },
   },
   { timestamps: true }
 );

@@ -14,6 +14,9 @@ import vrScoreRoutes from './routes/vrScores';
 import flowRoutes from './routes/flow';
 import backupRoutes from './routes/backup';
 import wrongAttackRoutes from './routes/wrongAttacks';
+import creativeScoreRoutes from './routes/creativeScores';
+import creativeFlowRoutes from './routes/creativeFlow';
+import creativePenaltyRoutes from './routes/creativePenalties';
 
 const app = express();
 const httpServer = createServer(app);
@@ -35,6 +38,9 @@ app.use('/api/v1/vr-scores', vrScoreRoutes);
 app.use('/api/v1/flow', flowRoutes);
 app.use('/api/v1/backup', backupRoutes);
 app.use('/api/v1/wrong-attacks', wrongAttackRoutes);
+app.use('/api/v1/creative-scores', creativeScoreRoutes);
+app.use('/api/v1/creative/flow', creativeFlowRoutes);
+app.use('/api/v1/creative/penalties', creativePenaltyRoutes);
 
 // 健康檢查
 app.get('/health', (_req, res) => {

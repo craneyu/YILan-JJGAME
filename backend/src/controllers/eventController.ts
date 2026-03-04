@@ -1,10 +1,13 @@
 import { Request, Response } from 'express';
 import Event from '../models/Event';
 import GameState from '../models/GameState';
+import CreativeGameState from '../models/CreativeGameState';
 import Team from '../models/Team';
 import Score from '../models/Score';
 import VRScore from '../models/VRScore';
 import WrongAttack from '../models/WrongAttack';
+import CreativeScore from '../models/CreativeScore';
+import CreativePenalty from '../models/CreativePenalty';
 import { calculateActionScores, CalculatedScore } from '../utils/scoring';
 import { sortTeams } from '../utils/teamSort';
 
@@ -16,14 +19,24 @@ export async function listEvents(req: Request, res: Response): Promise<void> {
 }
 
 export async function createEvent(req: Request, res: Response): Promise<void> {
-  const { name, date, venue } = req.body;
+  const { name, date, venue, competitionTypes } = req.body;
   if (!name) {
     res.status(400).json({ success: false, error: '賽事名稱為必填' });
     return;
   }
-  const event = await Event.create({ name, date, venue });
-  // 同時初始化賽程狀態
-  await GameState.create({ eventId: event._id });
+  const types: ('Duo' | 'Show')[] = Array.isArray(competitionTypes) && competitionTypes.length > 0
+    ? competitionTypes.filter((t: string) => t === 'Duo' || t === 'Show')
+    : ['Duo'];
+  if (types.length === 0) {
+    res.status(400).json({ success: false, error: 'competitionTypes 至少須包含 Duo 或 Show' });
+    return;
+  }
+  const event = await Event.create({ name, date, venue, competitionTypes: types });
+  // 根據啟用的競賽類型分別初始化賽程狀態
+  const inits: Promise<unknown>[] = [];
+  if (types.includes('Duo')) inits.push(GameState.create({ eventId: event._id }));
+  if (types.includes('Show')) inits.push(CreativeGameState.create({ eventId: event._id }));
+  await Promise.all(inits);
   res.status(201).json({ success: true, data: event });
 }
 
@@ -57,12 +70,16 @@ export async function deleteEvent(req: Request, res: Response): Promise<void> {
     res.status(404).json({ success: false, error: '賽事不存在' });
     return;
   }
-  // 一併刪除所有相關資料
+  // 一併刪除所有相關資料（雙人演武與創意演武各自的資料）
   await Promise.all([
     Team.deleteMany({ eventId }),
     Score.deleteMany({ eventId }),
     VRScore.deleteMany({ eventId }),
+    WrongAttack.deleteMany({ eventId }),
     GameState.deleteMany({ eventId }),
+    CreativeScore.deleteMany({ eventId }),
+    CreativePenalty.deleteMany({ eventId }),
+    CreativeGameState.deleteMany({ eventId }),
   ]);
   await event.deleteOne();
   res.json({ success: true, data: { message: '賽事已刪除' } });
@@ -75,19 +92,38 @@ export async function clearEventScores(req: Request, res: Response): Promise<voi
     res.status(404).json({ success: false, error: '賽事不存在' });
     return;
   }
-  const [scoreResult, vrResult] = await Promise.all([
-    Score.deleteMany({ eventId }),
-    VRScore.deleteMany({ eventId }),
-    WrongAttack.deleteMany({ eventId }),
-    GameState.findOneAndUpdate(
-      { eventId },
-      { currentTeamId: null, currentRound: 1, currentActionNo: null, currentActionOpen: false },
-      { new: true }
-    ),
-  ]);
+
+  const types = event.competitionTypes ?? ['Duo'];
+  const deleteTasks: Promise<unknown>[] = [];
+  let deletedDuoScores = 0, deletedShowScores = 0;
+
+  if (types.includes('Duo')) {
+    deleteTasks.push(
+      Score.deleteMany({ eventId }).then((r) => { deletedDuoScores += r.deletedCount; }),
+      VRScore.deleteMany({ eventId }),
+      WrongAttack.deleteMany({ eventId }),
+      GameState.findOneAndUpdate(
+        { eventId },
+        { currentTeamId: null, currentRound: 1, currentActionNo: null, currentActionOpen: false },
+        { new: true }
+      ),
+    );
+  }
+  if (types.includes('Show')) {
+    deleteTasks.push(
+      CreativeScore.deleteMany({ eventId }).then((r) => { deletedShowScores += r.deletedCount; }),
+      CreativePenalty.deleteMany({ eventId }),
+      CreativeGameState.findOneAndUpdate(
+        { eventId },
+        { currentTeamId: null, status: 'idle', timerStartedAt: null, timerStoppedAt: null, timerElapsedMs: null },
+        { new: true }
+      ),
+    );
+  }
+  await Promise.all(deleteTasks);
   res.json({
     success: true,
-    data: { message: '成績已清除', deletedScores: scoreResult.deletedCount, deletedVrScores: vrResult.deletedCount },
+    data: { message: '成績已清除', deletedDuoScores, deletedShowScores },
   });
 }
 
@@ -168,7 +204,12 @@ export async function getEventRankings(req: Request, res: Response): Promise<voi
 
   const eventDoc = await Event.findById(eventId).lean();
   const categoryOrder = eventDoc?.categoryOrder ?? ['female', 'male', 'mixed'];
-  const rawTeams = await Team.find({ eventId }).lean();
+  // 可選過濾：只回傳指定競賽類型的隊伍排名；預設只回傳 Duo（向後相容）
+  const teamFilter: Record<string, unknown> = { eventId };
+  const qType = req.query['competitionType'];
+  if (qType === 'Show') teamFilter['competitionType'] = 'Show';
+  else teamFilter['competitionType'] = { $ne: 'Show' }; // 預設排除 Show 隊伍（含舊資料無欄位者）
+  const rawTeams = await Team.find(teamFilter).lean();
   const teams = sortTeams(rawTeams, categoryOrder);
   const allScores = await Score.find({ eventId }).lean();
 
@@ -248,16 +289,16 @@ export async function getEventRankings(req: Request, res: Response): Promise<voi
 }
 
 export async function updateCategoryOrder(req: Request, res: Response): Promise<void> {
-  const { categoryOrder } = req.body;
-  if (!Array.isArray(categoryOrder) || categoryOrder.length === 0) {
-    res.status(400).json({ success: false, error: 'categoryOrder 為必填陣列' });
+  const { categoryOrder, categoryOrderDuo, categoryOrderShow } = req.body;
+  const update: Record<string, string[]> = {};
+  if (Array.isArray(categoryOrder) && categoryOrder.length > 0) update.categoryOrder = categoryOrder;
+  if (Array.isArray(categoryOrderDuo)) update.categoryOrderDuo = categoryOrderDuo;
+  if (Array.isArray(categoryOrderShow)) update.categoryOrderShow = categoryOrderShow;
+  if (Object.keys(update).length === 0) {
+    res.status(400).json({ success: false, error: '至少提供一個 categoryOrder 欄位' });
     return;
   }
-  const event = await Event.findByIdAndUpdate(
-    req.params.id,
-    { categoryOrder },
-    { new: true }
-  );
+  const event = await Event.findByIdAndUpdate(req.params.id, update, { new: true });
   if (!event) {
     res.status(404).json({ success: false, error: '賽事不存在' });
     return;
