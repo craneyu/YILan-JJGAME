@@ -1,0 +1,104 @@
+<div class="min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <div class="glass-card rounded-none px-4 py-3 flex items-center justify-between">
+    <div>
+      <h1 class="text-white font-bold text-lg">{{ eventName() || '創意演武' }}</h1>
+      @if (currentTeamName()) {
+        <p class="text-white/60 text-sm">{{ currentTeamName() }}</p>
+      }
+    </div>
+    <button class="glass-btn px-3 py-1.5 text-sm" (click)="toggleFullscreen()">
+      <fa-icon [icon]="isFullscreen() ? faCompress : faExpand"></fa-icon>
+    </button>
+  </div>
+
+  <!-- Body -->
+  <div class="flex-1 flex flex-col items-center justify-center p-6 gap-6">
+
+    <!-- 計時器 -->
+    <div class="glass-card p-6 w-full max-w-lg text-center">
+      <p class="text-white/50 text-sm mb-2">演武時間</p>
+      <div
+        class="font-mono text-8xl font-bold transition-colors"
+        [class]="timerColor() === 'green' ? 'text-green-400'
+          : timerColor() === 'yellow' ? 'text-yellow-400'
+          : timerColor() === 'red' ? 'text-red-400'
+          : 'text-white'">
+        {{ displayTime() }}
+      </div>
+
+      @if (timerFinished()) {
+        <div class="mt-3 text-sm font-medium"
+          [class]="timerColor() === 'green' ? 'text-green-400'
+            : timerColor() === 'yellow' ? 'text-yellow-400'
+            : timerColor() === 'red' ? 'text-red-400'
+            : 'text-white/40'">
+          @if (timerColor() === 'green') { 合規 }
+          @else if (timerColor() === 'yellow') { 未達規定時間 }
+          @else if (timerColor() === 'red') { 超出規定時間 }
+        </div>
+      } @else if (timerRunning()) {
+        <div class="mt-3 flex items-center justify-center gap-2 text-white/60 text-sm">
+          <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+          計時中
+        </div>
+      } @else {
+        <p class="mt-3 text-white/30 text-sm">等待開始</p>
+      }
+    </div>
+
+    <!-- 違例 -->
+    @if (currentPenalties().length > 0) {
+      <div class="glass-card p-4 w-full max-w-lg">
+        <p class="text-white/60 text-sm mb-2">違例標記</p>
+        <div class="flex flex-wrap gap-2">
+          @for (p of currentPenalties(); track p) {
+            <span class="px-3 py-1 rounded-full bg-red-500/30 border border-red-400/50 text-red-200 text-sm font-medium">
+              {{ getPenaltyLabel(p) }}
+            </span>
+          }
+        </div>
+        <p class="text-red-300 text-sm mt-2">總扣分：-{{ penaltyDeduction().toFixed(1) }}</p>
+      </div>
+    }
+
+    <!-- 計分結果 -->
+    @if (calculatedResult(); as result) {
+      <div class="glass-card p-5 w-full max-w-lg space-y-3">
+        <p class="text-white/60 text-sm">評分結果</p>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-blue-500/20 rounded-xl p-3 text-center">
+            <p class="text-blue-300 text-xs mb-1">技術總分</p>
+            <p class="text-white font-bold text-2xl font-mono">{{ result.technicalTotal.toFixed(1) }}</p>
+          </div>
+          <div class="bg-purple-500/20 rounded-xl p-3 text-center">
+            <p class="text-purple-300 text-xs mb-1">表演總分</p>
+            <p class="text-white font-bold text-2xl font-mono">{{ result.artisticTotal.toFixed(1) }}</p>
+          </div>
+        </div>
+
+        <div class="bg-white/10 rounded-xl p-3 text-center">
+          <p class="text-white/60 text-xs mb-1">大總分</p>
+          <p class="text-white font-bold text-3xl font-mono">{{ result.grandTotal.toFixed(1) }}</p>
+          @if (result.penaltyDeduction > 0) {
+            <p class="text-red-300 text-sm mt-1">扣分：-{{ result.penaltyDeduction.toFixed(1) }}</p>
+          }
+        </div>
+
+        <div class="bg-green-500/20 rounded-xl p-4 text-center border border-green-400/30">
+          <p class="text-green-300 text-sm mb-1">最終得分</p>
+          <p class="text-white font-bold text-5xl font-mono">{{ result.finalScore.toFixed(1) }}</p>
+        </div>
+
+        @if (myRank(); as rank) {
+          <div class="text-center text-white/60 text-sm">
+            分組排名：第 <span class="text-white font-bold">{{ rank.rank }}</span> 名 / {{ rank.total }} 隊
+          </div>
+        }
+      </div>
+    }
+
+  </div>
+</div>

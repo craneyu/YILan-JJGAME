@@ -68,6 +68,46 @@ export interface WrongAttackUpdatedEvent {
   actionTotal: number;
 }
 
+// ── 創意演武事件 ──
+export interface CreativeScoringOpenedEvent {
+  eventId: string;
+  teamId: string;
+  teamName: string;
+}
+
+export interface CreativeScoreCalculatedEvent {
+  eventId: string;
+  teamId: string;
+  technicalTotal: number;
+  artisticTotal: number;
+  grandTotal: number;
+  penaltyDeduction: number;
+  finalScore: number;
+}
+
+export interface CreativeTeamChangedEvent {
+  eventId: string;
+  nextTeamId: string | null;
+}
+
+export interface TimerStartedEvent {
+  eventId: string;
+  timerStartedAt: string;
+}
+
+export interface TimerStoppedEvent {
+  eventId: string;
+  elapsedMs: number;
+}
+
+export interface PenaltyUpdatedEvent {
+  eventId: string;
+  teamId: string;
+  penalties: string[];
+  penaltyDeduction: number;
+  finalScore?: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class SocketService {
   private socket: Socket;
@@ -120,5 +160,30 @@ export class SocketService {
 
   get wrongAttackUpdated$(): Observable<WrongAttackUpdatedEvent> {
     return fromEvent<WrongAttackUpdatedEvent>(this.socket, 'wrongAttack:updated');
+  }
+
+  // ── 創意演武 ──
+  get creativeScoringOpened$(): Observable<CreativeScoringOpenedEvent> {
+    return fromEvent<CreativeScoringOpenedEvent>(this.socket, 'creative:scoring-opened');
+  }
+
+  get creativeScoreCalculated$(): Observable<CreativeScoreCalculatedEvent> {
+    return fromEvent<CreativeScoreCalculatedEvent>(this.socket, 'creative-score:calculated');
+  }
+
+  get creativeTeamChanged$(): Observable<CreativeTeamChangedEvent> {
+    return fromEvent<CreativeTeamChangedEvent>(this.socket, 'creative:team-changed');
+  }
+
+  get timerStarted$(): Observable<TimerStartedEvent> {
+    return fromEvent<TimerStartedEvent>(this.socket, 'timer:started');
+  }
+
+  get timerStopped$(): Observable<TimerStoppedEvent> {
+    return fromEvent<TimerStoppedEvent>(this.socket, 'timer:stopped');
+  }
+
+  get penaltyUpdated$(): Observable<PenaltyUpdatedEvent> {
+    return fromEvent<PenaltyUpdatedEvent>(this.socket, 'penalty:updated');
   }
 }

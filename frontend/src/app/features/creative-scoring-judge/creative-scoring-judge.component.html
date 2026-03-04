@@ -1,0 +1,166 @@
+<div class="min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <div class="glass-card rounded-none px-4 py-3 flex items-center justify-between">
+    <h1 class="text-white font-bold text-lg">創意演武 — 評分裁判</h1>
+    <div class="flex items-center gap-2">
+      <button class="glass-btn px-3 py-1.5 text-sm" (click)="toggleFullscreen()">
+        <fa-icon [icon]="isFullscreen() ? faCompress : faExpand"></fa-icon>
+      </button>
+      <button class="glass-btn px-3 py-1.5 text-sm" (click)="logout()">
+        <fa-icon [icon]="faRightFromBracket"></fa-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="flex-1 flex items-center justify-center p-4">
+
+    <!-- ── 等待狀態 ── -->
+    @if (state() === 'waiting') {
+      <div class="glass-card p-8 text-center max-w-sm w-full">
+        <fa-icon [icon]="faHourglassHalf" class="text-blue-400 text-5xl mb-4"></fa-icon>
+        <h2 class="text-white text-xl font-semibold mb-2">等待賽序裁判開放評分</h2>
+        <p class="text-white/50 text-sm">請等待賽序裁判按下「開放評分」</p>
+      </div>
+    }
+
+    <!-- ── 評分狀態 ── -->
+    @if (state() === 'scoring') {
+      <div class="w-full max-w-lg space-y-4">
+
+        <!-- 隊伍名稱 -->
+        <div class="glass-card px-4 py-3 text-center">
+          <p class="text-white/60 text-sm">目前評分隊伍</p>
+          <p class="text-white font-bold text-xl">{{ currentTeamName() }}</p>
+        </div>
+
+        <!-- 技術分 -->
+        <div class="glass-card p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-white font-semibold text-base">技術分</h3>
+            <div class="text-white/80 font-mono text-2xl font-bold">
+              @if (technicalScore() !== null) {
+                {{ technicalScore()!.toFixed(1) }}
+              } @else {
+                <span class="text-white/30">—</span>
+              }
+            </div>
+          </div>
+
+          <!-- 9 宮格 + 0 -->
+          <div class="grid grid-cols-3 gap-2 mb-2">
+            @for (n of intButtons.slice(0, 9); track n) {
+              <button
+                class="aspect-square rounded-xl text-xl font-bold transition-all"
+                [class]="technical().intPart === n
+                  ? 'bg-blue-500 text-white shadow-lg scale-95'
+                  : 'bg-white/10 text-white/80 hover:bg-white/20 active:scale-95'"
+                (click)="setInt('technical', n)">
+                {{ n }}
+              </button>
+            }
+          </div>
+          <!-- 0 按鈕（獨佔一列） -->
+          <button
+            class="w-full py-3 rounded-xl text-xl font-bold transition-all mb-2"
+            [class]="technical().intPart === 0
+              ? 'bg-blue-500 text-white shadow-lg scale-95'
+              : 'bg-white/10 text-white/80 hover:bg-white/20 active:scale-95'"
+            (click)="setInt('technical', 0)">
+            0
+          </button>
+          <!-- 小數切換 -->
+          <button
+            class="w-full py-2 rounded-xl text-base font-semibold transition-all border"
+            [class]="technical().decPart === 0.5
+              ? 'bg-orange-500/80 text-white border-orange-400'
+              : 'bg-white/10 text-white/60 border-white/20 hover:bg-white/15'"
+            (click)="toggleDec('technical')">
+            {{ technical().decPart === 0 ? '.0' : '.5' }}
+          </button>
+        </div>
+
+        <!-- 表演分 -->
+        <div class="glass-card p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-white font-semibold text-base">表演分</h3>
+            <div class="text-white/80 font-mono text-2xl font-bold">
+              @if (artisticScore() !== null) {
+                {{ artisticScore()!.toFixed(1) }}
+              } @else {
+                <span class="text-white/30">—</span>
+              }
+            </div>
+          </div>
+
+          <!-- 9 宮格 -->
+          <div class="grid grid-cols-3 gap-2 mb-2">
+            @for (n of intButtons.slice(0, 9); track n) {
+              <button
+                class="aspect-square rounded-xl text-xl font-bold transition-all"
+                [class]="artistic().intPart === n
+                  ? 'bg-purple-500 text-white shadow-lg scale-95'
+                  : 'bg-white/10 text-white/80 hover:bg-white/20 active:scale-95'"
+                (click)="setInt('artistic', n)">
+                {{ n }}
+              </button>
+            }
+          </div>
+          <!-- 0 按鈕 -->
+          <button
+            class="w-full py-3 rounded-xl text-xl font-bold transition-all mb-2"
+            [class]="artistic().intPart === 0
+              ? 'bg-purple-500 text-white shadow-lg scale-95'
+              : 'bg-white/10 text-white/80 hover:bg-white/20 active:scale-95'"
+            (click)="setInt('artistic', 0)">
+            0
+          </button>
+          <!-- 小數切換 -->
+          <button
+            class="w-full py-2 rounded-xl text-base font-semibold transition-all border"
+            [class]="artistic().decPart === 0.5
+              ? 'bg-orange-500/80 text-white border-orange-400'
+              : 'bg-white/10 text-white/60 border-white/20 hover:bg-white/15'"
+            (click)="toggleDec('artistic')">
+            {{ artistic().decPart === 0 ? '.0' : '.5' }}
+          </button>
+        </div>
+
+        <!-- 確認送出 -->
+        <button
+          class="w-full py-4 rounded-2xl text-white font-bold text-lg transition-all"
+          [class]="canSubmit()
+            ? 'bg-green-500/80 hover:bg-green-500 active:scale-98 shadow-lg'
+            : 'bg-white/10 text-white/30 cursor-not-allowed'"
+          [disabled]="!canSubmit()"
+          (click)="submitScores()">
+          @if (loading()) { 送出中... } @else { 確認送出 }
+        </button>
+
+      </div>
+    }
+
+    <!-- ── 已送出狀態 ── -->
+    @if (state() === 'submitted') {
+      <div class="glass-card p-8 text-center max-w-sm w-full">
+        <fa-icon [icon]="faCheckCircle" class="text-green-400 text-5xl mb-4"></fa-icon>
+        <h2 class="text-white text-xl font-semibold mb-4">分數已送出</h2>
+
+        <div class="space-y-3 mb-6">
+          <div class="flex justify-between items-center bg-white/10 rounded-xl px-4 py-3">
+            <span class="text-white/70">技術分</span>
+            <span class="text-white font-bold text-xl font-mono">{{ submittedTechnical()?.toFixed(1) }}</span>
+          </div>
+          <div class="flex justify-between items-center bg-white/10 rounded-xl px-4 py-3">
+            <span class="text-white/70">表演分</span>
+            <span class="text-white font-bold text-xl font-mono">{{ submittedArtistic()?.toFixed(1) }}</span>
+          </div>
+        </div>
+
+        <p class="text-white/50 text-sm">等待賽序裁判確認收分</p>
+      </div>
+    }
+
+  </div>
+</div>

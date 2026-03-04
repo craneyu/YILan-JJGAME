@@ -16,6 +16,28 @@ interface EventItem {
   venue?: string;
   status: string;
   categoryOrder?: string[];
+  categoryOrderDuo?: string[];
+  categoryOrderShow?: string[];
+  competitionTypes?: ('Duo' | 'Show')[];
+}
+
+interface CreativeRankingItem {
+  rank: number;
+  teamId: string;
+  name: string;
+  members: string[];
+  category: string;
+  technicalTotal: number;
+  artisticTotal: number;
+  grandTotal: number;
+  penaltyDeduction: number;
+  finalScore: number;
+}
+
+interface CategoryCreativeRanking {
+  category: string;
+  label: string;
+  items: CreativeRankingItem[];
 }
 
 interface TeamItem {
@@ -24,6 +46,7 @@ interface TeamItem {
   members: string[];
   category: string;
   order: number;
+  competitionType?: 'Duo' | 'Show';
 }
 
 type ActionDetail = { p1?: number; p2?: number; p3?: number; p4?: number; p5?: number; total: number };
@@ -75,8 +98,24 @@ export class AdminComponent implements OnInit {
   selectedEvent = signal<EventItem | null>(null);
   teams = signal<TeamItem[]>([]);
 
+  // 賽事類型篩選（管理員可同時管理兩種比賽）
+  eventTypeFilter = signal<'all' | 'kata' | 'creative'>('all');
+  filteredEvents = computed(() => {
+    const f = this.eventTypeFilter();
+    if (f === 'all') return this.events();
+    const target = f === 'kata' ? 'Duo' : 'Show';
+    return this.events().filter(e => (e.competitionTypes ?? ['Duo']).includes(target));
+  });
+
+  eventsCountByType(type: string): number {
+    if (type === 'all') return this.events().length;
+    const target = type === 'kata' ? 'Duo' : 'Show';
+    return this.events().filter(e => (e.competitionTypes ?? ['Duo']).includes(target)).length;
+  }
+
   // 建立賽事表單
   newEvent = { name: '', date: '', venue: '' };
+  newEventCompetitionTypes = signal<('Duo' | 'Show')[]>(['Duo']);
   showCreateEvent = signal(false);
 
   // 編輯賽事
@@ -93,14 +132,35 @@ export class AdminComponent implements OnInit {
 
   // 組別順序
   editingCategoryOrderId = signal<string | null>(null);
-  categoryOrderDraft = signal<string[]>([]);
+  categoryOrderDraftDuo = signal<string[]>([]);
+  categoryOrderDraftShow = signal<string[]>([]);
+  categoryOrderEditType = signal<'Duo' | 'Show'>('Duo');
 
-  // 成績排名
+  // 成績排名（雙人演武）
   rankings = signal<RankingItem[]>([]);
   showRankings = signal(false);
   rankingsLoading = signal(false);
+
+  // 成績排名（創意演武）
+  creativeRankings = signal<CreativeRankingItem[]>([]);
+  showCreativeRankings = signal(false);
+  creativeRankingsLoading = signal(false);
+  creativeRankingsByCat = computed<CategoryCreativeRanking[]>(() => {
+    const byCategory: Record<string, CreativeRankingItem[]> = {};
+    for (const item of this.creativeRankings()) {
+      if (!byCategory[item.category]) byCategory[item.category] = [];
+      byCategory[item.category].push(item);
+    }
+    return ['female', 'male', 'mixed']
+      .filter(cat => (byCategory[cat]?.length ?? 0) > 0)
+      .map(cat => ({
+        category: cat,
+        label: this.categoryLabel(cat),
+        items: byCategory[cat],
+      }));
+  });
   rankingsByCat = computed<CategoryRanking[]>(() => {
-    const categoryOrder = this.selectedEvent()?.categoryOrder ?? ['female', 'male', 'mixed'];
+    const categoryOrder = this.effectiveCategoryOrder(this.selectedEvent(), 'Duo');
     const byCategory: Record<string, RankingItem[]> = {};
     for (const item of this.rankings()) {
       if (!byCategory[item.category]) byCategory[item.category] = [];
@@ -118,6 +178,10 @@ export class AdminComponent implements OnInit {
       });
   });
 
+  // 依競賽類型分群的隊伍 computed signals
+  duoTeams = computed(() => this.teams().filter(t => (t.competitionType ?? 'Duo') !== 'Show'));
+  showTeams = computed(() => this.teams().filter(t => t.competitionType === 'Show'));
+
   // 批次選取
   selectedTeamIds = signal<Set<string>>(new Set());
 
@@ -125,19 +189,31 @@ export class AdminComponent implements OnInit {
   reorderMode = signal(false);
   reorderMap = signal<Record<string, number>>({});
 
-  // 隊伍類別篩選
+  // 隊伍類型篩選（Duo / Show）
+  teamTypeFilter = signal<'all' | 'Duo' | 'Show'>('all');
+  typeFilteredTeams = computed(() => {
+    const f = this.teamTypeFilter();
+    if (f === 'all') return this.teams();
+    return this.teams().filter((t) => t.competitionType === f);
+  });
+
+  // 隊伍類別篩選（組別）
   teamFilter = signal<'all' | 'male' | 'female' | 'mixed'>('all');
   filteredTeams = computed(() => {
     const f = this.teamFilter();
-    if (f === 'all') return this.teams();
-    return this.teams().filter((t) => t.category === f);
+    const base = this.typeFilteredTeams();
+    if (f === 'all') return base;
+    return base.filter((t) => t.category === f);
   });
-  teamCounts = computed(() => ({
-    all: this.teams().length,
-    male: this.teams().filter((t) => t.category === 'male').length,
-    female: this.teams().filter((t) => t.category === 'female').length,
-    mixed: this.teams().filter((t) => t.category === 'mixed').length,
-  }));
+  teamCounts = computed(() => {
+    const base = this.typeFilteredTeams();
+    return {
+      all: base.length,
+      male: base.filter((t) => t.category === 'male').length,
+      female: base.filter((t) => t.category === 'female').length,
+      mixed: base.filter((t) => t.category === 'mixed').length,
+    };
+  });
   allSelected = computed(() =>
     this.filteredTeams().length > 0 &&
     this.filteredTeams().every((t) => this.selectedTeamIds().has(t._id))
@@ -202,11 +278,17 @@ export class AdminComponent implements OnInit {
       Swal.fire({ icon: 'warning', title: '請填寫賽事名稱', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
       return;
     }
-    this.api.post<{ success: boolean; data: EventItem }>('/events', this.newEvent).subscribe({
+    const competitionTypes = this.newEventCompetitionTypes();
+    if (competitionTypes.length === 0) {
+      Swal.fire({ icon: 'warning', title: '請至少選擇一個競賽項目', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+      return;
+    }
+    this.api.post<{ success: boolean; data: EventItem }>('/events', { ...this.newEvent, competitionTypes }).subscribe({
       next: (res) => {
         if (res.success) {
           this.events.update((e) => [res.data, ...e]);
           this.newEvent = { name: '', date: '', venue: '' };
+          this.newEventCompetitionTypes.set(['Duo']);
           this.showCreateEvent.set(false);
           Swal.fire({ icon: 'success', title: '賽事已建立', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
         }
@@ -306,14 +388,21 @@ export class AdminComponent implements OnInit {
     this.selectedTeamIds.set(new Set());
     this.editingTeamId.set(null);
     this.teamFilter.set('all');
+    this.teamTypeFilter.set('all');
     this.reorderMode.set(false);
     this.reorderMap.set({});
     this.editingCategoryOrderId.set(null);
-    this.categoryOrderDraft.set([]);
+    this.categoryOrderDraftDuo.set([]);
+    this.categoryOrderDraftShow.set([]);
     this.rankings.set([]);
     this.showRankings.set(false);
+    this.creativeRankings.set([]);
+    this.showCreativeRankings.set(false);
+    this.teams.set([]);   // 先清空，避免切換時顯示舊賽事的隊伍資料
     this.loadTeams(event._id);
-    this.loadRankings();
+    const types = event.competitionTypes ?? ['Duo'];
+    if (types.includes('Duo')) this.loadRankings();
+    if (types.includes('Show')) this.loadCreativeRankings();
   }
 
   async changePassword(judge: JudgeUser): Promise<void> {
@@ -545,11 +634,16 @@ export class AdminComponent implements OnInit {
 
   // ── 匯入 ──────────────────────────────────────────────
   importFile(event: Event): void {
+    this.importFileForType(event, 'Duo');
+  }
+
+  importFileForType(event: Event, competitionType: 'Duo' | 'Show'): void {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (!file || !this.selectedEvent()) return;
 
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('competitionType', competitionType);
 
     this.api.postFile<{ success: boolean; data: { imported: number; conflicts: number; successList: string[]; conflictList: string[] } }>(
       `/events/${this.selectedEvent()!._id}/teams/import`,
@@ -560,11 +654,10 @@ export class AdminComponent implements OnInit {
           this.loadTeams(this.selectedEvent()!._id);
           Swal.fire({
             icon: res.data.imported > 0 ? 'success' : 'info',
-            title: '匯入完成',
+            title: `匯入${competitionType === 'Show' ? '創意演武' : '雙人演武'}完成`,
             html: `成功：<b>${res.data.imported}</b> 筆${res.data.conflicts > 0 ? `<br>衝突（已略過）：${res.data.conflicts} 筆<br><small class="text-left block mt-1">${res.data.conflictList.join('<br>')}</small>` : ''}`,
           });
         }
-        // 清除 input value，讓同一檔案可再次選取
         (event.target as HTMLInputElement).value = '';
       },
       error: (err) => Swal.fire({ icon: 'error', title: err.error?.error ?? '匯入失敗', toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 }),
@@ -629,6 +722,152 @@ export class AdminComponent implements OnInit {
       },
       error: () => this.rankingsLoading.set(false),
     });
+  }
+
+  loadCreativeRankings(): void {
+    const event = this.selectedEvent();
+    if (!event) return;
+    this.creativeRankingsLoading.set(true);
+    this.api.get<{ success: boolean; data: CreativeRankingItem[] }>(`/events/${event._id}/creative-rankings`).subscribe({
+      next: (res) => {
+        if (res.success) {
+          this.creativeRankings.set(res.data);
+          if (res.data.length > 0) this.showCreativeRankings.set(true);
+        }
+        this.creativeRankingsLoading.set(false);
+      },
+      error: () => this.creativeRankingsLoading.set(false),
+    });
+  }
+
+  exportCreativeExcel(category: string): void {
+    const event = this.selectedEvent();
+    if (!event || this.creativeRankings().length === 0) return;
+    const groups = this.creativeRankingsByCat().filter(g => g.category === category);
+    if (groups.length === 0) return;
+
+    const group = groups[0];
+    const rows: (string | number)[][] = [];
+    const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
+    const merge = (c1: number, c2: number) =>
+      merges.push({ s: { r: rows.length - 1, c: c1 }, e: { r: rows.length - 1, c: c2 } });
+
+    const COL = 6;
+    rows.push([`${event.name} — ${group.label} 創意演武成績`]); merge(0, COL - 1);
+    rows.push([`列印日期：${new Date().toLocaleDateString('zh-TW')}`]); merge(0, COL - 1);
+    rows.push([]);
+    rows.push(['名次', '隊伍', '隊員', '技術總分', '表演總分', '大總分', '扣分', '最終得分']);
+
+    for (const item of group.items) {
+      const medalText = item.rank === 1 ? '金牌' : item.rank === 2 ? '銀牌' : item.rank === 3 ? '銅牌' : `第${item.rank}名`;
+      rows.push([
+        medalText,
+        item.name,
+        item.members.join(' / '),
+        item.technicalTotal,
+        item.artisticTotal,
+        item.grandTotal,
+        item.penaltyDeduction > 0 ? `-${item.penaltyDeduction}` : 0,
+        item.finalScore,
+      ]);
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!merges'] = merges;
+    ws['!cols'] = [{ wch: 6 }, { wch: 16 }, { wch: 16 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 6 }, { wch: 8 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, group.label);
+    XLSX.writeFile(wb, `${event.name}_${group.label}_創意演武成績.xlsx`);
+  }
+
+  printCreativePdf(category: string): void {
+    const event = this.selectedEvent();
+    if (!event || this.creativeRankings().length === 0) return;
+    const groups = this.creativeRankingsByCat().filter(g => g.category === category);
+    const medalText = (rank: number) => rank === 1 ? '金' : rank === 2 ? '銀' : rank === 3 ? '銅' : String(rank);
+    const medalStyle = (rank: number) =>
+      rank === 1 ? 'color:#b8860b;font-weight:bold'
+      : rank === 2 ? 'color:#6b7280;font-weight:bold'
+      : rank === 3 ? 'color:#b45309;font-weight:bold'
+      : 'color:#555';
+
+    let sectionsHtml = '';
+    let isFirst = true;
+    for (const group of groups) {
+      const breakCls = isFirst ? '' : ' class="pb"';
+      isFirst = false;
+      sectionsHtml += `
+        <section${breakCls}>
+          <h2>${group.label}</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>名次</th><th>隊伍名稱</th><th>隊員</th>
+                <th>技術總分</th><th>表演總分</th><th>大總分</th><th>扣分</th><th>最終得分</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${group.items.map(item => `
+                <tr>
+                  <td style="text-align:center;${medalStyle(item.rank)}">${medalText(item.rank)}</td>
+                  <td>${item.name}</td><td style="color:#555">${item.members.join(' / ')}</td>
+                  <td>${item.technicalTotal.toFixed(1)}</td>
+                  <td>${item.artisticTotal.toFixed(1)}</td>
+                  <td>${item.grandTotal.toFixed(1)}</td>
+                  <td style="color:#dc2626">${item.penaltyDeduction > 0 ? `-${item.penaltyDeduction.toFixed(1)}` : '—'}</td>
+                  <td style="font-weight:${item.rank <= 3 ? 'bold' : 'normal'}">${item.finalScore.toFixed(1)}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </section>`;
+    }
+
+    const win = window.open('', '_blank');
+    if (!win) {
+      Swal.fire({ icon: 'warning', title: '請允許彈出視窗', timer: 3000, showConfirmButton: false });
+      return;
+    }
+    win.document.write(`<!DOCTYPE html>
+<html lang="zh-TW"><head>
+<meta charset="utf-8">
+<title>${event.name} — 創意演武成績排名</title>
+<style>
+  *{box-sizing:border-box}
+  body{font-family:"Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif;padding:16px;color:#1a1a2e}
+  h1{text-align:center;font-size:18px;margin-bottom:4px}
+  .sub{text-align:center;color:#888;font-size:12px;margin-bottom:20px}
+  h2{font-size:14px;color:#1a3a6b;margin:0 0 6px;border-bottom:2px solid #1a3a6b;padding-bottom:3px}
+  table{width:100%;border-collapse:collapse;margin-bottom:12px;font-size:11px}
+  th,td{border:1px solid #ddd;padding:4px 6px;text-align:right;white-space:nowrap}
+  th:nth-child(1),th:nth-child(2),th:nth-child(3),
+  td:nth-child(1),td:nth-child(2),td:nth-child(3){text-align:left}
+  th{background:#e8f0fe;font-weight:600}
+  .pb{page-break-before:always}
+  .sign-area{display:flex;gap:60px;justify-content:flex-end;margin-top:32px;padding-top:16px;border-top:1px solid #ddd}
+  .sign-block{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:140px}
+  .sign-label{font-size:13px;font-weight:600;color:#333}
+  .sign-line{width:140px;border-bottom:1.5px solid #333;height:36px}
+  .sign-hint{font-size:11px;color:#999}
+  @page{size:A4 landscape;margin:10mm}
+  @media print{body{padding:0}}
+</style>
+</head>
+<body>
+<h1>${event.name} — 創意演武</h1>
+<p class="sub">成績排名 &nbsp;·&nbsp; 列印日期：${new Date().toLocaleDateString('zh-TW')}</p>
+${sectionsHtml}
+<div class="sign-area">
+  <div class="sign-block">
+    <div class="sign-label">裁判長</div><div class="sign-line"></div><div class="sign-hint">簽名</div>
+  </div>
+  <div class="sign-block">
+    <div class="sign-label">日期</div><div class="sign-line"></div><div class="sign-hint">&nbsp;</div>
+  </div>
+</div>
+</body></html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 600);
   }
 
   exportExcel(category: string): void {
@@ -822,41 +1061,81 @@ ${sectionsHtml}
     return map[cat] ?? cat;
   }
 
+  competitionTypesLabel(types?: ('Duo' | 'Show')[]): string {
+    const t = types ?? ['Duo'];
+    if (t.includes('Duo') && t.includes('Show')) return 'Duo + Show';
+    return t.includes('Show') ? '創意演武 Show' : '雙人演武 Duo';
+  }
+
+  toggleNewEventType(type: 'Duo' | 'Show'): void {
+    this.newEventCompetitionTypes.update(types => {
+      if (types.includes(type)) {
+        const next = types.filter(t => t !== type);
+        return next.length === 0 ? types : next; // 至少保留一個
+      }
+      return [...types, type];
+    });
+  }
+
+  effectiveCategoryOrder(event: EventItem | null, type: 'Duo' | 'Show'): string[] {
+    if (!event) return ['female', 'male', 'mixed'];
+    const specific = type === 'Duo' ? event.categoryOrderDuo : event.categoryOrderShow;
+    if (specific && specific.length > 0) return specific;
+    return event.categoryOrder?.length ? event.categoryOrder : ['female', 'male', 'mixed'];
+  }
+
   startEditCategoryOrder(event: EventItem): void {
     this.editingCategoryOrderId.set(event._id);
-    this.categoryOrderDraft.set([...(event.categoryOrder ?? ['female', 'male', 'mixed'])]);
+    const defaultOrder = ['female', 'male', 'mixed'];
+    this.categoryOrderDraftDuo.set([...this.effectiveCategoryOrder(event, 'Duo')]);
+    this.categoryOrderDraftShow.set([...this.effectiveCategoryOrder(event, 'Show')]);
+    const types = event.competitionTypes ?? ['Duo'];
+    this.categoryOrderEditType.set(types.includes('Duo') ? 'Duo' : 'Show');
+    void defaultOrder;
   }
 
   cancelEditCategoryOrder(): void {
     this.editingCategoryOrderId.set(null);
-    this.categoryOrderDraft.set([]);
+    this.categoryOrderDraftDuo.set([]);
+    this.categoryOrderDraftShow.set([]);
   }
 
   moveCategoryOrder(index: number, direction: -1 | 1): void {
-    const arr = [...this.categoryOrderDraft()];
+    const isShow = this.categoryOrderEditType() === 'Show';
+    const arr = [...(isShow ? this.categoryOrderDraftShow() : this.categoryOrderDraftDuo())];
     const newIdx = index + direction;
     if (newIdx < 0 || newIdx >= arr.length) return;
     [arr[index], arr[newIdx]] = [arr[newIdx], arr[index]];
-    this.categoryOrderDraft.set(arr);
+    if (isShow) this.categoryOrderDraftShow.set(arr);
+    else this.categoryOrderDraftDuo.set(arr);
   }
 
   saveCategoryOrder(): void {
     const eventId = this.editingCategoryOrderId();
     if (!eventId) return;
-    this.api.patch<{ success: boolean; data: EventItem }>(`/events/${eventId}/category-order`, {
-      categoryOrder: this.categoryOrderDraft(),
-    }).subscribe({
+    const types = this.selectedEvent()?.competitionTypes ?? ['Duo'];
+    const body: Record<string, string[]> = {};
+    if (types.includes('Duo')) body['categoryOrderDuo'] = this.categoryOrderDraftDuo();
+    if (types.includes('Show')) body['categoryOrderShow'] = this.categoryOrderDraftShow();
+    this.api.patch<{ success: boolean; data: EventItem }>(`/events/${eventId}/category-order`, body).subscribe({
       next: (res) => {
         if (res.success) {
           this.events.update((evts) => evts.map((e) => e._id === eventId ? res.data : e));
           if (this.selectedEvent()?._id === eventId) this.selectedEvent.set(res.data);
           this.editingCategoryOrderId.set(null);
-          this.categoryOrderDraft.set([]);
+          this.categoryOrderDraftDuo.set([]);
+          this.categoryOrderDraftShow.set([]);
           Swal.fire({ icon: 'success', title: '組別順序已更新', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
         }
       },
       error: () => Swal.fire({ icon: 'error', title: '更新失敗', toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 }),
     });
+  }
+
+  setTeamTypeFilter(type: 'all' | 'Duo' | 'Show'): void {
+    this.teamTypeFilter.set(type);
+    this.teamFilter.set('all');
+    this.selectedTeamIds.set(new Set());
   }
 
   logout(): void {

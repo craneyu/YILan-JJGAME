@@ -107,6 +107,27 @@
             class="w-full bg-white/10 text-white border border-white/30 rounded-lg px-3 py-2 outline-none focus:border-blue-400" />
           <input type="text" [(ngModel)]="newEvent.venue" placeholder="場地"
             class="w-full bg-white/10 text-white border border-white/30 rounded-lg px-3 py-2 outline-none focus:border-blue-400 placeholder:text-white/30" />
+          <div class="space-y-1.5">
+            <p class="text-white/50 text-xs">啟用項目（可複選，至少選一）</p>
+            <div class="flex gap-2">
+              <button
+                class="flex-1 py-2 rounded-lg text-sm font-medium border transition-all"
+                [class]="newEventCompetitionTypes().includes('Duo')
+                  ? 'bg-blue-500/30 border-blue-400/60 text-blue-200'
+                  : 'bg-white/5 border-white/20 text-white/50 hover:bg-white/10'"
+                (click)="toggleNewEventType('Duo')">
+                <span class="mr-1">{{ newEventCompetitionTypes().includes('Duo') ? '☑' : '☐' }}</span>雙人演武（Duo）
+              </button>
+              <button
+                class="flex-1 py-2 rounded-lg text-sm font-medium border transition-all"
+                [class]="newEventCompetitionTypes().includes('Show')
+                  ? 'bg-purple-500/30 border-purple-400/60 text-purple-200'
+                  : 'bg-white/5 border-white/20 text-white/50 hover:bg-white/10'"
+                (click)="toggleNewEventType('Show')">
+                <span class="mr-1">{{ newEventCompetitionTypes().includes('Show') ? '☑' : '☐' }}</span>創意演武（Show）
+              </button>
+            </div>
+          </div>
           <div class="flex gap-2">
             <button class="primary-btn flex-1" (click)="createEvent()">確認建立</button>
             <button class="glass-btn" (click)="showCreateEvent.set(false)">取消</button>
@@ -114,9 +135,28 @@
         </div>
       }
 
+      <!-- 賽事類型篩選 -->
+      <div class="flex gap-1 mb-3">
+        @for (tab of [{v:'all',l:'全部'},{v:'kata',l:'Duo'},{v:'creative',l:'Show'}]; track tab.v) {
+          <button
+            class="px-3 py-1 rounded-lg text-xs font-medium border transition-all"
+            [class]="eventTypeFilter() === tab.v
+              ? (tab.v === 'creative' ? 'bg-purple-500/30 border-purple-400/50 text-purple-200'
+                : tab.v === 'kata'    ? 'bg-blue-500/30 border-blue-400/50 text-blue-200'
+                                      : 'bg-white/20 border-white/40 text-white')
+              : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'"
+            (click)="eventTypeFilter.set($any(tab.v))">
+            {{ tab.l }}
+            <span class="opacity-60 ml-0.5 text-xs">
+              {{ eventsCountByType(tab.v) }}
+            </span>
+          </button>
+        }
+      </div>
+
       <!-- 賽事列表 -->
-      <div class="space-y-2 max-h-80 overflow-y-auto">
-        @for (event of events(); track event._id) {
+      <div class="space-y-2 max-h-72 overflow-y-auto">
+        @for (event of filteredEvents(); track event._id) {
           @if (editingEventId() !== event._id) {
             <!-- 一般顯示列 -->
             <div class="flex items-center gap-2 p-3 rounded-xl transition-all cursor-pointer"
@@ -131,6 +171,12 @@
                             : 'bg-white/10 text-white/50'">
                     {{ event.status === 'active' ? '進行中' : event.status === 'closed' ? '已關閉' : '準備中' }}
                   </span>
+                  @for (ct of (event.competitionTypes ?? ['Duo']); track ct) {
+                    <span class="text-xs px-1.5 py-0.5 rounded-full"
+                      [class]="ct === 'Show' ? 'bg-purple-500/20 text-purple-300' : 'bg-blue-500/10 text-blue-300/60'">
+                      {{ ct }}
+                    </span>
+                  }
                   @if (event.date) {
                     <span class="text-white/30 text-xs">{{ event.date | date:'MM/dd' }}</span>
                   }
@@ -194,34 +240,69 @@
     <!-- 右側：隊伍管理 -->
     <div class="glass-card p-5">
       @if (selectedEvent()) {
-        <!-- 標題列 + 操作按鈕 -->
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-white font-semibold text-lg">{{ selectedEvent()!.name }} - 隊伍</h2>
-          @if (!reorderMode()) {
-            <div class="flex gap-2">
-              <label class="primary-btn text-sm flex items-center gap-1 cursor-pointer">
-                <fa-icon [icon]="faFileArrowUp"></fa-icon> 匯入
-                <input type="file" accept=".xlsx,.csv" class="hidden" (change)="importFile($event)" />
-              </label>
-              <button class="primary-btn text-sm flex items-center gap-1" (click)="showAddTeam.set(!showAddTeam())">
-                <fa-icon [icon]="faPlus"></fa-icon> 新增
-              </button>
-            </div>
-          }
+        <!-- 競賽類型橫幅 -->
+        <div class="rounded-xl px-4 py-2.5 mb-3 flex items-center gap-3 bg-white/10 border border-white/20">
+          <div class="flex flex-col flex-1 min-w-0">
+            <span class="text-white/50 text-xs font-medium">目前管理的賽事</span>
+            <span class="text-white font-semibold text-sm truncate">{{ selectedEvent()!.name }}</span>
+          </div>
+          <div class="flex gap-1.5 flex-shrink-0">
+            @for (ct of (selectedEvent()!.competitionTypes ?? ['Duo']); track ct) {
+              <span class="text-sm font-bold px-2.5 py-1 rounded-lg"
+                [class]="ct === 'Show'
+                  ? 'bg-purple-500/40 text-purple-200 border border-purple-400/50'
+                  : 'bg-blue-500/40 text-blue-200 border border-blue-400/50'">
+                {{ ct === 'Show' ? 'Show' : 'Duo' }}
+              </span>
+            }
+          </div>
         </div>
+
+        <!-- 操作按鈕列 -->
+        @if (!reorderMode()) {
+          <div class="flex gap-2 mb-3 flex-wrap">
+            @if ((selectedEvent()!.competitionTypes ?? ['Duo']).includes('Duo')) {
+              <label class="primary-btn text-sm flex items-center gap-1 cursor-pointer">
+                <fa-icon [icon]="faFileArrowUp"></fa-icon>
+                匯入雙人演武
+                <input type="file" accept=".xlsx,.csv" class="hidden" (change)="importFileForType($event, 'Duo')" />
+              </label>
+            }
+            @if ((selectedEvent()!.competitionTypes ?? ['Duo']).includes('Show')) {
+              <label class="primary-btn text-sm flex items-center gap-1 cursor-pointer bg-purple-500/30 border border-purple-400/50 hover:bg-purple-500/40">
+                <fa-icon [icon]="faFileArrowUp"></fa-icon>
+                匯入創意演武
+                <input type="file" accept=".xlsx,.csv" class="hidden" (change)="importFileForType($event, 'Show')" />
+              </label>
+            }
+            <button class="primary-btn text-sm flex items-center gap-1" (click)="showAddTeam.set(!showAddTeam())">
+              <fa-icon [icon]="faPlus"></fa-icon> 新增
+            </button>
+          </div>
+        }
 
         <!-- 組別順序設定 -->
         @if (editingCategoryOrderId() === selectedEvent()!._id) {
           <div class="bg-indigo-500/10 border border-indigo-400/30 rounded-xl p-3 mb-3 space-y-2">
             <span class="text-indigo-300 text-xs font-medium block">調整組別執行順序</span>
-            @for (cat of categoryOrderDraft(); track cat; let i = $index) {
+            @if ((selectedEvent()!.competitionTypes ?? ['Duo']).length > 1) {
+              <div class="flex gap-1 bg-white/5 rounded-lg p-0.5">
+                <button class="flex-1 text-xs py-1 px-2 rounded-md transition-all"
+                  [class]="categoryOrderEditType() === 'Duo' ? 'bg-blue-500/70 text-white font-medium' : 'text-white/50 hover:text-white/80'"
+                  (click)="categoryOrderEditType.set('Duo')">雙人演武</button>
+                <button class="flex-1 text-xs py-1 px-2 rounded-md transition-all"
+                  [class]="categoryOrderEditType() === 'Show' ? 'bg-purple-500/70 text-white font-medium' : 'text-white/50 hover:text-white/80'"
+                  (click)="categoryOrderEditType.set('Show')">創意演武</button>
+              </div>
+            }
+            @for (cat of (categoryOrderEditType() === 'Show' ? categoryOrderDraftShow() : categoryOrderDraftDuo()); track cat; let i = $index) {
               <div class="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-1.5">
                 <span class="flex-1 text-sm text-white">{{ categoryLabel(cat) }}</span>
                 <button class="text-white/50 hover:text-white px-1.5 py-0.5 rounded transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
                   [disabled]="i === 0"
                   (click)="moveCategoryOrder(i, -1)">↑</button>
                 <button class="text-white/50 hover:text-white px-1.5 py-0.5 rounded transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
-                  [disabled]="i === categoryOrderDraft().length - 1"
+                  [disabled]="i === (categoryOrderEditType() === 'Show' ? categoryOrderDraftShow() : categoryOrderDraftDuo()).length - 1"
                   (click)="moveCategoryOrder(i, 1)">↓</button>
               </div>
             }
@@ -233,15 +314,36 @@
             </div>
           </div>
         } @else {
-          <div class="flex items-center gap-2 mb-3 bg-white/5 rounded-xl px-3 py-2">
-            <span class="text-white/40 text-xs flex-shrink-0">組別順序：</span>
-            <div class="flex items-center gap-1 flex-1 flex-wrap">
-              @for (cat of (selectedEvent()!.categoryOrder ?? ['female', 'male', 'mixed']); track cat; let last = $last) {
-                <span class="text-xs px-2 py-0.5 rounded-full"
-                  [class]="cat === 'male' ? 'bg-blue-500/20 text-blue-300'
-                          : cat === 'female' ? 'bg-pink-500/20 text-pink-300'
-                          : 'bg-purple-500/20 text-purple-300'">{{ categoryLabel(cat) }}</span>
-                @if (!last) { <span class="text-white/20 text-xs">→</span> }
+          <div class="flex items-start gap-2 mb-3 bg-white/5 rounded-xl px-3 py-2">
+            <span class="text-white/40 text-xs flex-shrink-0 mt-0.5">組別順序：</span>
+            <div class="flex flex-col gap-1 flex-1">
+              @if ((selectedEvent()!.competitionTypes ?? ['Duo']).includes('Duo')) {
+                <div class="flex items-center gap-1 flex-wrap">
+                  @if ((selectedEvent()!.competitionTypes ?? ['Duo']).length > 1) {
+                    <span class="text-xs text-blue-300/60 w-8 flex-shrink-0">Duo</span>
+                  }
+                  @for (cat of effectiveCategoryOrder(selectedEvent(), 'Duo'); track cat; let last = $last) {
+                    <span class="text-xs px-2 py-0.5 rounded-full"
+                      [class]="cat === 'male' ? 'bg-blue-500/20 text-blue-300'
+                              : cat === 'female' ? 'bg-pink-500/20 text-pink-300'
+                              : 'bg-purple-500/20 text-purple-300'">{{ categoryLabel(cat) }}</span>
+                    @if (!last) { <span class="text-white/20 text-xs">→</span> }
+                  }
+                </div>
+              }
+              @if ((selectedEvent()!.competitionTypes ?? ['Duo']).includes('Show')) {
+                <div class="flex items-center gap-1 flex-wrap">
+                  @if ((selectedEvent()!.competitionTypes ?? ['Duo']).length > 1) {
+                    <span class="text-xs text-purple-300/60 w-8 flex-shrink-0">Show</span>
+                  }
+                  @for (cat of effectiveCategoryOrder(selectedEvent(), 'Show'); track cat; let last = $last) {
+                    <span class="text-xs px-2 py-0.5 rounded-full"
+                      [class]="cat === 'male' ? 'bg-blue-500/20 text-blue-300'
+                              : cat === 'female' ? 'bg-pink-500/20 text-pink-300'
+                              : 'bg-purple-500/20 text-purple-300'">{{ categoryLabel(cat) }}</span>
+                    @if (!last) { <span class="text-white/20 text-xs">→</span> }
+                  }
+                </div>
               }
             </div>
             <button class="text-white/30 hover:text-white/70 transition-colors p-1 flex-shrink-0"
@@ -279,8 +381,29 @@
           </div>
         }
 
+        <!-- 競賽類型篩選（雙軌賽事才顯示） -->
+        @if ((selectedEvent()!.competitionTypes ?? ['Duo']).length > 1 && teams().length > 0) {
+          <div class="flex gap-1 mb-2 bg-white/5 rounded-xl p-1">
+            <button class="flex-1 text-xs py-1.5 px-2 rounded-lg transition-all"
+              [class]="teamTypeFilter() === 'all' ? 'bg-white/20 text-white font-medium' : 'text-white/50 hover:text-white/80'"
+              (click)="setTeamTypeFilter('all')">
+              全部 <span class="ml-1 opacity-70">{{ teams().length }}</span>
+            </button>
+            <button class="flex-1 text-xs py-1.5 px-2 rounded-lg transition-all"
+              [class]="teamTypeFilter() === 'Duo' ? 'bg-blue-500/80 text-white font-medium' : 'text-white/50 hover:text-white/80'"
+              (click)="setTeamTypeFilter('Duo')">
+              雙人演武 <span class="ml-1 opacity-70">{{ duoTeams().length }}</span>
+            </button>
+            <button class="flex-1 text-xs py-1.5 px-2 rounded-lg transition-all"
+              [class]="teamTypeFilter() === 'Show' ? 'bg-purple-500/80 text-white font-medium' : 'text-white/50 hover:text-white/80'"
+              (click)="setTeamTypeFilter('Show')">
+              創意演武 <span class="ml-1 opacity-70">{{ showTeams().length }}</span>
+            </button>
+          </div>
+        }
+
         <!-- 類別篩選分頁 -->
-        @if (teams().length > 0) {
+        @if (typeFilteredTeams().length > 0) {
           <div class="flex gap-1 mb-3 bg-white/5 rounded-xl p-1">
             @for (tab of [
               { key: 'all',    label: '全部',   count: teamCounts().all    },
@@ -393,6 +516,12 @@
                         {{ team.category === 'male' ? '男' : team.category === 'female' ? '女' : '混' }}
                       </span>
                     }
+                    @if ((selectedEvent()!.competitionTypes ?? ['Duo']).length > 1) {
+                      <span class="text-xs px-1.5 py-0.5 rounded-full flex-shrink-0"
+                        [class]="team.competitionType === 'Show' ? 'bg-purple-500/20 text-purple-300' : 'bg-blue-500/10 text-blue-300/70'">
+                        {{ team.competitionType ?? 'Duo' }}
+                      </span>
+                    }
                   </div>
                   <p class="text-white/60 text-sm truncate">{{ team.members.join(' / ') }}</p>
                 </div>
@@ -459,14 +588,14 @@
     </div>
   </div>
 
-  <!-- 成績排名 -->
-  @if (selectedEvent()) {
+  <!-- 成績排名（Duo） -->
+  @if (selectedEvent() && (selectedEvent()!.competitionTypes ?? ['Duo']).includes('Duo')) {
     <div class="glass-card p-4 mt-4">
       <!-- 標題列 -->
       <div class="flex items-center justify-between cursor-pointer" (click)="showRankings.set(!showRankings())">
         <div class="flex items-center gap-2">
           <fa-icon [icon]="faTrophy" class="text-yellow-400"></fa-icon>
-          <span class="text-white font-semibold">成績排名</span>
+          <span class="text-white font-semibold">Duo 成績排名</span>
           <span class="text-white/40 text-xs ml-1">{{ selectedEvent()!.name }}</span>
           @if (rankings().length > 0) {
             <span class="text-white/30 text-xs">（{{ rankings().length }} 隊）</span>
@@ -572,5 +701,98 @@
         </div>
       }
     </div>
+  }
+
+  <!-- 創意演武成績排名 -->
+  @if (selectedEvent() && (selectedEvent()!.competitionTypes ?? ['Duo']).includes('Show')) {
+      <div class="glass-card p-4 mt-4">
+        <div class="flex items-center justify-between cursor-pointer" (click)="showCreativeRankings.set(!showCreativeRankings())">
+          <div class="flex items-center gap-2">
+            <fa-icon [icon]="faTrophy" class="text-purple-400"></fa-icon>
+            <span class="text-white font-semibold">Show 成績排名</span>
+            <span class="text-white/40 text-xs ml-1">{{ selectedEvent()!.name }}</span>
+            @if (creativeRankings().length > 0) {
+              <span class="text-white/30 text-xs">（{{ creativeRankings().length }} 隊）</span>
+            }
+          </div>
+          <div class="flex items-center gap-2">
+            <button class="text-white/40 hover:text-white/80 p-1.5 rounded-lg transition-colors"
+              (click)="$event.stopPropagation(); loadCreativeRankings()" title="重新整理">
+              <fa-icon [icon]="faArrowsRotate" class="text-sm" [class.animate-spin]="creativeRankingsLoading()"></fa-icon>
+            </button>
+            <span class="text-white/40 text-sm">{{ showCreativeRankings() ? '▲' : '▼' }}</span>
+          </div>
+        </div>
+
+        @if (showCreativeRankings()) {
+          <div class="mt-4">
+            @if (creativeRankingsLoading()) {
+              <p class="text-white/40 text-center py-6">載入中...</p>
+            } @else if (creativeRankings().length === 0) {
+              <p class="text-white/40 text-center py-6">尚無成績資料</p>
+            } @else {
+              <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                @for (group of creativeRankingsByCat(); track group.category) {
+                  <div class="bg-white/5 border border-white/10 rounded-xl p-4">
+                    <div class="flex items-center gap-2 mb-3">
+                      <fa-icon [icon]="faMedal"
+                        [class]="group.category === 'female' ? 'text-pink-400' : group.category === 'male' ? 'text-blue-400' : 'text-purple-400'">
+                      </fa-icon>
+                      <span class="text-white font-semibold">{{ group.label }}</span>
+                      <span class="text-white/30 text-xs">{{ group.items.length }} 隊</span>
+                      <div class="flex items-center gap-1.5 ml-auto">
+                        <button class="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 border border-emerald-400/30 rounded-lg px-2 py-0.5 transition-colors"
+                          (click)="exportCreativeExcel(group.category)">
+                          <fa-icon [icon]="faDownload" class="text-xs"></fa-icon> Excel
+                        </button>
+                        <button class="flex items-center gap-1 text-xs text-rose-400 hover:text-rose-300 border border-rose-400/30 rounded-lg px-2 py-0.5 transition-colors"
+                          (click)="printCreativePdf(group.category)">
+                          <fa-icon [icon]="faDownload" class="text-xs"></fa-icon> PDF
+                        </button>
+                      </div>
+                    </div>
+                    <table class="w-full text-xs">
+                      <thead>
+                        <tr class="text-white/40 border-b border-white/10">
+                          <th class="text-center pb-2 w-8">名次</th>
+                          <th class="text-left pb-2">隊伍</th>
+                          <th class="text-right pb-2">技術</th>
+                          <th class="text-right pb-2">表演</th>
+                          <th class="text-right pb-2">最終</th>
+                        </tr>
+                      </thead>
+                      <tbody class="divide-y divide-white/5">
+                        @for (item of group.items; track item.teamId) {
+                          <tr>
+                            <td class="py-1.5 text-center">
+                              @if (item.rank === 1) { <span class="text-yellow-400 font-bold">1</span> }
+                              @else if (item.rank === 2) { <span class="text-gray-300 font-bold">2</span> }
+                              @else if (item.rank === 3) { <span class="text-orange-400 font-bold">3</span> }
+                              @else { <span class="text-white/30">{{ item.rank }}</span> }
+                            </td>
+                            <td class="py-1.5 pr-1">
+                              <p class="text-white/80 truncate">{{ item.name }}</p>
+                              <p class="text-white/30 truncate">{{ item.members.join(' / ') }}</p>
+                            </td>
+                            <td class="py-1.5 text-right text-blue-300/60">{{ item.technicalTotal.toFixed(1) }}</td>
+                            <td class="py-1.5 text-right text-purple-300/60">{{ item.artisticTotal.toFixed(1) }}</td>
+                            <td class="py-1.5 text-right">
+                              <span [class]="item.rank === 1 ? 'text-yellow-400 font-bold'
+                                           : item.rank <= 3 ? 'text-white font-semibold'
+                                           : 'text-white/70'">
+                                {{ item.finalScore.toFixed(1) }}
+                              </span>
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
   }
 </div>
