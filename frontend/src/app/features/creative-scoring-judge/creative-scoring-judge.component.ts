@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, signal, computed, inject, ChangeDetection
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
-import { faHourglassHalf, faCheckCircle, faCheck, faRightFromBracket, faExpand, faCompress } from '@fortawesome/free-solid-svg-icons';
+import { faHourglassHalf, faCheckCircle, faCheck, faRightFromBracket, faExpand, faCompress, faArrowsRotate } from '@fortawesome/free-solid-svg-icons';
 import Swal from 'sweetalert2';
 import { AuthService } from '../../core/services/auth.service';
 import { ApiService } from '../../core/services/api.service';
@@ -67,6 +67,10 @@ export class CreativeScoringJudgeComponent implements OnInit, OnDestroy {
   faRightFromBracket = faRightFromBracket;
   faExpand = faExpand;
   faCompress = faCompress;
+  faArrowsRotate = faArrowsRotate;
+
+  hasMultipleTypes = computed(() => this.auth.eventCompetitionTypes().length > 1);
+  currentTypeName = computed(() => this.auth.competitionType() === 'creative' ? '創意演武' : '雙人演武');
 
   private subs = new Subscription();
 
@@ -148,6 +152,12 @@ export class CreativeScoringJudgeComponent implements OnInit, OnDestroy {
         Swal.fire({ icon: 'error', title: msg, toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 });
       },
     });
+  }
+
+  switchCompetitionType(): void {
+    const newType = this.auth.competitionType() === 'creative' ? 'kata' : 'creative';
+    this.auth.setCompetitionType(newType);
+    this.router.navigate([newType === 'creative' ? '/creative/scoring' : '/judge/scoring']);
   }
 
   toggleFullscreen(): void {

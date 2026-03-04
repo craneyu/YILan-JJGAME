@@ -17,12 +17,16 @@ export class AuthService {
   private _competitionType = signal<CompetitionType>(
     (localStorage.getItem('jju_competition_type') as CompetitionType) ?? 'kata'
   );
+  private _eventCompetitionTypes = signal<('Duo' | 'Show')[]>(
+    JSON.parse(localStorage.getItem('jju_event_competition_types') ?? '[]')
+  );
 
   readonly token = this._token.asReadonly();
   readonly user = this._user.asReadonly();
   readonly isAuthenticated = computed(() => !!this._token());
   readonly currentRole = computed(() => this._user()?.role ?? null);
   readonly competitionType = this._competitionType.asReadonly();
+  readonly eventCompetitionTypes = this._eventCompetitionTypes.asReadonly();
 
   login(token: string, user: JwtPayload, competitionType?: CompetitionType): void {
     localStorage.setItem('jju_token', token);
@@ -39,12 +43,19 @@ export class AuthService {
     this._competitionType.set(type);
   }
 
+  setEventCompetitionTypes(types: ('Duo' | 'Show')[]): void {
+    localStorage.setItem('jju_event_competition_types', JSON.stringify(types));
+    this._eventCompetitionTypes.set(types);
+  }
+
   logout(): void {
     localStorage.removeItem('jju_token');
     localStorage.removeItem('jju_competition_type');
+    localStorage.removeItem('jju_event_competition_types');
     this._token.set(null);
     this._user.set(null);
     this._competitionType.set('kata');
+    this._eventCompetitionTypes.set([]);
   }
 
   getAuthHeader(): Record<string, string> {

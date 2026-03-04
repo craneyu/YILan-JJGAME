@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, signal, computed, inject } from '@angular
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
-import { faHourglassHalf, faCheckCircle, faCheck, faRightFromBracket, faBan, faExpand, faCompress } from '@fortawesome/free-solid-svg-icons';
+import { faHourglassHalf, faCheckCircle, faCheck, faRightFromBracket, faBan, faExpand, faCompress, faArrowsRotate, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons';
 import Swal from 'sweetalert2';
 import { AuthService } from '../../core/services/auth.service';
 import { ApiService } from '../../core/services/api.service';
@@ -27,7 +27,7 @@ interface TeamInfo {
 interface SummaryResponse {
   success: boolean;
   data: {
-    event: { name: string };
+    event: { name: string; competitionTypes?: ('Duo' | 'Show')[] };
     teams: TeamInfo[];
     gameState: {
       currentTeamId?: string;
@@ -125,9 +125,21 @@ export class ScoringJudgeComponent implements OnInit, OnDestroy {
   faBan = faBan;
   faExpand = faExpand;
   faCompress = faCompress;
+  faArrowsRotate = faArrowsRotate;
+  faTriangleExclamation = faTriangleExclamation;
+
+  hasEventId = computed(() => !!this.auth.user()?.eventId);
+  hasMultipleTypes = computed(() => this.auth.eventCompetitionTypes().length > 1);
+  currentTypeName = computed(() => this.auth.competitionType() === 'creative' ? '創意演武' : '雙人演武');
 
   isFullscreen = signal(false);
   private onFullscreenChange = () => this.isFullscreen.set(!!document.fullscreenElement);
+
+  switchCompetitionType(): void {
+    const newType = this.auth.competitionType() === 'creative' ? 'kata' : 'creative';
+    this.auth.setCompetitionType(newType);
+    this.router.navigate([newType === 'creative' ? '/creative/scoring' : '/judge/scoring']);
+  }
 
   logout(): void {
     this.auth.logout();
@@ -214,6 +226,9 @@ export class ScoringJudgeComponent implements OnInit, OnDestroy {
       const { event, teams, gameState, completedActionNos } = res.data;
 
       this.eventName.set(event.name);
+      if (event.competitionTypes?.length) {
+        this.auth.setEventCompetitionTypes(event.competitionTypes);
+      }
       this.teams.set(teams);
 
       if (gameState?.currentTeamId) {

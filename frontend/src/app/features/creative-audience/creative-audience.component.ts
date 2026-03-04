@@ -2,10 +2,10 @@ import {
   Component, OnInit, OnDestroy, signal, computed, inject, ChangeDetectionStrategy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
-import { faExpand, faCompress } from '@fortawesome/free-solid-svg-icons';
+import { faExpand, faCompress, faArrowsRotate } from '@fortawesome/free-solid-svg-icons';
 import { SocketService } from '../../core/services/socket.service';
 import { ApiService } from '../../core/services/api.service';
 
@@ -41,12 +41,16 @@ const PENALTY_LABEL: Record<string, string> = {
 })
 export class CreativeAudienceComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private socket = inject(SocketService);
   private api = inject(ApiService);
 
   eventId = signal('');
   eventName = signal('');
+  eventCompetitionTypes = signal<('Duo' | 'Show')[]>([]);
   isFullscreen = signal(false);
+
+  hasMultipleTypes = computed(() => this.eventCompetitionTypes().length > 1);
 
   // 計時器
   timerRunning = signal(false);
@@ -105,6 +109,7 @@ export class CreativeAudienceComponent implements OnInit, OnDestroy {
   readonly penaltyLabel = PENALTY_LABEL;
   faExpand = faExpand;
   faCompress = faCompress;
+  faArrowsRotate = faArrowsRotate;
 
   private subs = new Subscription();
   private timerInterval: ReturnType<typeof setInterval> | null = null;
@@ -194,10 +199,17 @@ export class CreativeAudienceComponent implements OnInit, OnDestroy {
   }
 
   loadEventName(eventId: string): void {
-    this.api.get<{ success: boolean; data: { name: string } }>(`/events/${eventId}`).subscribe({
-      next: (res) => this.eventName.set(res.data?.name ?? ''),
+    this.api.get<{ success: boolean; data: { name: string; competitionTypes?: ('Duo' | 'Show')[] } }>(`/events/${eventId}`).subscribe({
+      next: (res) => {
+        this.eventName.set(res.data?.name ?? '');
+        this.eventCompetitionTypes.set(res.data?.competitionTypes ?? ['Show']);
+      },
       error: () => {},
     });
+  }
+
+  switchToDuo(): void {
+    this.router.navigate(['/audience'], { queryParams: { eventId: this.eventId() } });
   }
 
   loadState(eventId: string): void {

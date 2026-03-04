@@ -186,3 +186,52 @@ code:
   - frontend/src/app/features/creative-audience/creative-audience.component.ts
   - backend/src/seeds/migrateEventTypes.ts
 -->
+
+---
+### Requirement: In-page competition type switching after login
+
+After login, authenticated users (scoring judge, sequence judge) and unauthenticated audience viewers SHALL be able to switch competition type from within their respective pages, without returning to the login page. Switching SHALL update the stored `competitionType` and navigate to the equivalent page for the new competition type.
+
+#### Scenario: Scoring judge switches from kata to creative in-page
+
+- **WHEN** a scoring judge is authenticated and viewing `/judge/scoring`
+- **AND** their assigned event supports both Duo and Show
+- **AND** they activate the in-page competition type switcher
+- **THEN** `competitionType: 'creative'` SHALL be persisted in localStorage
+- **AND** the user SHALL be navigated to `/creative/scoring`
+- **AND** no logout or re-authentication SHALL be required
+
+#### Scenario: Audience switches competition type in-page
+
+- **WHEN** an audience viewer is on `/audience?eventId=<id>`
+- **AND** the event has `competitionTypes: ['Duo', 'Show']`
+- **AND** they activate the competition type switcher
+- **THEN** the viewer SHALL be navigated to `/creative/audience?eventId=<id>`
+- **AND** no login is required
+
+<!-- @trace
+source: judge-competition-type-selection
+updated: 2026-03-04
+code:
+  - .github/skills/spectra-apply/SKILL.md
+  - .github/skills/spectra-ask/SKILL.md
+  - frontend/src/app/features/sequence-judge/sequence-judge.component.html
+  - backend/src/controllers/eventController.ts
+  - frontend/src/app/features/creative-sequence-judge/creative-sequence-judge.component.ts
+  - frontend/src/app/features/creative-sequence-judge/creative-sequence-judge.component.html
+  - frontend/src/app/core/services/auth.service.ts
+  - frontend/src/app/features/creative-audience/creative-audience.component.html
+  - frontend/src/app/features/scoring-judge/scoring-judge.component.html
+  - frontend/src/app/features/creative-audience/creative-audience.component.ts
+  - .github/skills/spectra-discuss/SKILL.md
+  - .github/skills/spectra-archive/SKILL.md
+  - frontend/src/app/features/audience/audience.component.ts
+  - .github/skills/spectra-propose/SKILL.md
+  - frontend/src/app/features/audience/audience.component.html
+  - frontend/src/app/features/scoring-judge/scoring-judge.component.ts
+  - frontend/src/app/features/creative-scoring-judge/creative-scoring-judge.component.html
+  - .github/skills/spectra-debug/SKILL.md
+  - frontend/src/app/features/login/login.component.ts
+  - frontend/src/app/features/sequence-judge/sequence-judge.component.ts
+  - frontend/src/app/features/creative-scoring-judge/creative-scoring-judge.component.ts
+-->

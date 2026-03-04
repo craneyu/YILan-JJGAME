@@ -186,6 +186,7 @@ export class LoginComponent implements OnInit {
             toast: true, position: 'top-end', showConfirmButton: false, timer: 2000,
           });
 
+          this.auth.setEventCompetitionTypes(types);
           if (types.length === 1) {
             const authType: CompetitionType = types[0] === 'Show' ? 'creative' : 'kata';
             this.auth.login(res.data.token, {
@@ -212,16 +213,28 @@ export class LoginComponent implements OnInit {
 
   /** 登入後決定競賽類型並導向（availableTypes determined from user's event） */
   private resolveTypeAndNavigate(eventId: string, role: string): void {
-    const event = this.events().find(e => e._id === eventId);
-    const types = event?.competitionTypes ?? ['Duo'];
-    this.availableTypes.set(types);
-    if (types.length === 1) {
-      const authType: CompetitionType = types[0] === 'Show' ? 'creative' : 'kata';
-      this.auth.setCompetitionType(authType);
-      this.navigateByRole(role);
+    const applyTypes = (types: ('Duo' | 'Show')[]) => {
+      this.availableTypes.set(types);
+      this.auth.setEventCompetitionTypes(types);
+      if (types.length === 1) {
+        const authType: CompetitionType = types[0] === 'Show' ? 'creative' : 'kata';
+        this.auth.setCompetitionType(authType);
+        this.navigateByRole(role);
+      } else {
+        // 多類型 → 顯示競賽類型選擇（Login page presents competition type selection）
+        this.loginStep.set('select-type');
+      }
+    };
+
+    const cached = this.events().find(e => e._id === eventId);
+    if (cached?.competitionTypes?.length) {
+      applyTypes(cached.competitionTypes);
     } else {
-      // 多類型 → 顯示競賽類型選擇（Login page presents competition type selection）
-      this.loginStep.set('select-type');
+      // events 尚未載入（timing），直接向 API 取得賽事資訊
+      this.api.get<{ success: boolean; data: EventItem }>(`/events/${eventId}`).subscribe({
+        next: (res) => applyTypes(res.data?.competitionTypes ?? ['Duo']),
+        error: () => applyTypes(['Duo']),
+      });
     }
   }
 

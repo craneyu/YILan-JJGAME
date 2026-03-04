@@ -5,6 +5,7 @@ import { FaIconComponent } from '@fortawesome/angular-fontawesome';
 import {
   faCheckCircle, faHourglassHalf, faLockOpen,
   faForwardStep, faPlay, faTrophy, faRightFromBracket, faBan, faRotateLeft, faTriangleExclamation,
+  faArrowsRotate, faExpand, faCompress,
 } from '@fortawesome/free-solid-svg-icons';
 import Swal from 'sweetalert2';
 import { AuthService } from '../../core/services/auth.service';
@@ -55,7 +56,7 @@ interface JudgeScoreEntry {
 interface SummaryResponse {
   success: boolean;
   data: {
-    event: { name: string };
+    event: { name: string; competitionTypes?: ('Duo' | 'Show')[] };
     teams: TeamInfo[];
     gameState: {
       currentTeamId?: string;
@@ -145,6 +146,23 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
   faBan = faBan;
   faRotateLeft = faRotateLeft;
   faTriangleExclamation = faTriangleExclamation;
+  faArrowsRotate = faArrowsRotate;
+
+  faExpand = faExpand;
+  faCompress = faCompress;
+
+  isFullscreen = signal(false);
+  private onFullscreenChange = () => this.isFullscreen.set(!!document.fullscreenElement);
+
+  hasEventId = computed(() => !!this.auth.user()?.eventId);
+  hasMultipleTypes = computed(() => this.auth.eventCompetitionTypes().length > 1);
+  currentTypeName = computed(() => this.auth.competitionType() === 'creative' ? '創意演武' : '雙人演武');
+
+  switchCompetitionType(): void {
+    const newType = this.auth.competitionType() === 'creative' ? 'kata' : 'creative';
+    this.auth.setCompetitionType(newType);
+    this.router.navigate([newType === 'creative' ? '/creative/sequence' : '/judge/sequence']);
+  }
 
   logout(): void {
     this.auth.logout();
@@ -152,6 +170,7 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    document.addEventListener('fullscreenchange', this.onFullscreenChange);
     const user = this.auth.user();
     if (user?.eventId) {
       this.eventId.set(user.eventId);
@@ -242,7 +261,16 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    document.removeEventListener('fullscreenchange', this.onFullscreenChange);
     this.subs.forEach((s) => s.unsubscribe());
+  }
+
+  toggleFullscreen(): void {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
   }
 
   // ── 載入摘要（頁面初始化 + 重整還原）─────────────────────────
@@ -252,6 +280,9 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
       const { event, teams, gameState, vrScore, submittedJudgeNos, currentActionJudgeScores, completedActionNos, completedActionJudgeScores, calculatedScores, wrongAttackActionNos } = res.data;
 
       this.eventName.set(event.name);
+      if (event.competitionTypes?.length) {
+        this.auth.setEventCompetitionTypes(event.competitionTypes);
+      }
       this.teams.set(teams);
 
       if (!gameState) return;

@@ -193,9 +193,10 @@ export async function getEventSummary(req: Request, res: Response): Promise<void
     }
   }
 
+  const eventInfo = { name: event.name, competitionTypes: event.competitionTypes ?? ['Duo'] };
   res.json({
     success: true,
-    data: { event, teams, gameState, vrScore, submittedJudgeNos, currentActionJudgeScores, completedActionNos, completedActionJudgeScores, calculatedScores, wrongAttackActionNos },
+    data: { event: eventInfo, teams, gameState, vrScore, submittedJudgeNos, currentActionJudgeScores, completedActionNos, completedActionJudgeScores, calculatedScores, wrongAttackActionNos },
   });
 }
 

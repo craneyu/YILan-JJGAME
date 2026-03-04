@@ -1,9 +1,9 @@
 import { Component, OnInit, OnDestroy, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
-import { faTriangleExclamation, faExpand, faCompress } from '@fortawesome/free-solid-svg-icons';
+import { faTriangleExclamation, faExpand, faCompress, faArrowsRotate } from '@fortawesome/free-solid-svg-icons';
 import { ApiService } from '../../core/services/api.service';
 import { SocketService, ScoreCalculatedEvent, WrongAttackUpdatedEvent } from '../../core/services/socket.service';
 
@@ -26,7 +26,7 @@ interface TeamInfo {
 }
 
 interface SummaryData {
-  event: { name: string };
+  event: { name: string; competitionTypes?: ('Duo' | 'Show')[] };
   teams: TeamInfo[];
   gameState: {
     currentTeamId?: string;
@@ -62,10 +62,12 @@ export class AudienceComponent implements OnInit, OnDestroy {
   private api = inject(ApiService);
   private socket = inject(SocketService);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
 
   faTriangleExclamation = faTriangleExclamation;
   faExpand = faExpand;
   faCompress = faCompress;
+  faArrowsRotate = faArrowsRotate;
 
   isFullscreen = signal(false);
   private onFullscreenChange = () => this.isFullscreen.set(!!document.fullscreenElement);
@@ -74,6 +76,7 @@ export class AudienceComponent implements OnInit, OnDestroy {
 
   eventId = signal('');
   eventName = signal('');
+  eventCompetitionTypes = signal<('Duo' | 'Show')[]>([]);
   teams = signal<TeamInfo[]>([]);
   currentTeam = signal<TeamInfo | null>(null);
   currentRound = signal(1);
@@ -85,6 +88,7 @@ export class AudienceComponent implements OnInit, OnDestroy {
   rankings = signal<RankingItem[]>([]);
 
   // Computed
+  hasMultipleTypes = computed(() => this.eventCompetitionTypes().length > 1);
   series = computed(() => ['A', 'B', 'C'][this.currentRound() - 1] ?? 'A');
   isCseries = computed(() => this.series() === 'C');
   roundLabel = computed(() => {
@@ -207,6 +211,10 @@ export class AudienceComponent implements OnInit, OnDestroy {
     this.subs.forEach((s) => s.unsubscribe());
   }
 
+  switchToCreative(): void {
+    this.router.navigate(['/creative/audience'], { queryParams: { eventId: this.eventId() } });
+  }
+
   toggleFullscreen(): void {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen();
@@ -223,6 +231,7 @@ export class AudienceComponent implements OnInit, OnDestroy {
       const { event, teams, gameState, calculatedScores, vrScore } = res.data;
 
       this.eventName.set(event.name);
+      this.eventCompetitionTypes.set(event.competitionTypes ?? ['Duo']);
       this.teams.set(teams);
 
       if (!gameState?.currentTeamId) return;

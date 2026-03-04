@@ -5,7 +5,7 @@ import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
 import {
-  faPlay, faStop, faCheck, faForward, faRightFromBracket, faExpand, faCompress,
+  faPlay, faStop, faCheck, faForward, faRightFromBracket, faExpand, faCompress, faArrowsRotate,
 } from '@fortawesome/free-solid-svg-icons';
 import Swal from 'sweetalert2';
 import { AuthService } from '../../core/services/auth.service';
@@ -106,6 +106,10 @@ export class CreativeSequenceJudgeComponent implements OnInit, OnDestroy {
   faRightFromBracket = faRightFromBracket;
   faExpand = faExpand;
   faCompress = faCompress;
+  faArrowsRotate = faArrowsRotate;
+
+  hasMultipleTypes = computed(() => this.auth.eventCompetitionTypes().length > 1);
+  currentTypeName = computed(() => this.auth.competitionType() === 'creative' ? '創意演武' : '雙人演武');
 
   private subs = new Subscription();
   private timerInterval: ReturnType<typeof setInterval> | null = null;
@@ -331,6 +335,12 @@ export class CreativeSequenceJudgeComponent implements OnInit, OnDestroy {
     this.timerRunning.set(false);
     this.elapsedMs.set(0);
     this.localStartMs.set(null);
+  }
+
+  switchCompetitionType(): void {
+    const newType = this.auth.competitionType() === 'creative' ? 'kata' : 'creative';
+    this.auth.setCompetitionType(newType);
+    this.router.navigate([newType === 'creative' ? '/creative/sequence' : '/judge/sequence']);
   }
 
   toggleFullscreen(): void {

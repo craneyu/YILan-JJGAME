@@ -5,11 +5,33 @@
     <span class="text-white/80 font-medium text-center flex-1 truncate px-4">{{ eventName() }}</span>
     <div class="flex items-center gap-3">
       <span class="text-blue-300 font-bold whitespace-nowrap">{{ roundLabel() }}</span>
+      @if (hasMultipleTypes()) {
+        <button class="glass-btn text-sm flex items-center gap-1" (click)="switchCompetitionType()"
+          [title]="'切換至' + (currentTypeName() === '雙人演武' ? '創意演武' : '雙人演武')">
+          <fa-icon [icon]="faArrowsRotate" class="text-xs"></fa-icon>
+          {{ currentTypeName() }}
+        </button>
+      }
+      <button class="text-white/40 hover:text-white/80 transition-colors p-1 rounded-lg hover:bg-white/10"
+        (click)="toggleFullscreen()" [title]="isFullscreen() ? '退出全螢幕' : '進入全螢幕'">
+        <fa-icon [icon]="isFullscreen() ? faCompress : faExpand" class="text-sm"></fa-icon>
+      </button>
       <button class="glass-btn text-sm flex items-center gap-1" (click)="logout()">
         <fa-icon [icon]="faRightFromBracket"></fa-icon> 登出
       </button>
     </div>
   </div>
+
+  <!-- 未指派賽事警告 -->
+  @if (!hasEventId()) {
+    <div class="glass-card px-6 py-5 flex items-center gap-4 border border-yellow-400/40 bg-yellow-500/10">
+      <fa-icon [icon]="faTriangleExclamation" class="text-yellow-400 text-2xl shrink-0"></fa-icon>
+      <div>
+        <p class="text-yellow-300 font-semibold">此帳號尚未被指派賽事</p>
+        <p class="text-white/60 text-sm mt-0.5">請聯繫管理員將此帳號指派至對應賽事後再重新登入。</p>
+      </div>
+    </div>
+  }
 
   <!-- 賽事完成 -->
   @if (isEventComplete()) {

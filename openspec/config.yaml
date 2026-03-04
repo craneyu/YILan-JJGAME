@@ -2,8 +2,8 @@ schema: spec-driven
 
 context: |
   ## 專案概覽
-  柔術競賽演武計分平台——支援多組別、多系列的日本柔術形（Kata）競賽即時計分系統，部署於區域網路（LAN），透過 Docker Compose 在 MacBook 離線運行，提供計分裁判、VR 裁判、賽序裁判、觀眾顯示、管理員等五種角色介面。
-
+  柔術競賽演武計分平台——支援多組別、多系列的柔術競賽即時計分系統，部署於區域網路（LAN），透過 Docker Compose 在 MacBook 離線運行，提供計分裁判、VR 裁判、賽序裁判、觀眾顯示、管理員等五種角色介面。
+  
   ## 技術棧
   前端：Angular 20.0.0（Standalone + OnPush，無 NgModule）、TypeScript 5.8.0（strict 嚴格模式）
   狀態管理：Angular Signals（signal<T>、computed()、effect()）——無 NgRx
@@ -18,7 +18,7 @@ context: |
   資料匯出：XLSX 0.18.5（Excel 匯入/匯出）
   HTTP：Angular HttpClient（ApiService 封裝）
   測試：Karma + Jasmine（Angular 預設）
-
+  
   後端：Express 5.0.1 + Node.js 22（ts-node CommonJS，無獨立 build 步驟）
   TypeScript：5.7.0（strict 嚴格模式）
   ORM：Mongoose 8.9.0（MongoDB 7 ODM，Schema + Index 定義）
@@ -28,7 +28,7 @@ context: |
   資料處理：xlsx 0.18.5、csv-parser 3.0.0
   環境管理：dotenv 16.4.5
   部署：Docker Compose + Nginx（前端 port 4200→80，後端 port 3000，MongoDB 不對外暴露，linux/arm64 支援 M1/M2/M3/M4）
-
+  
   ## 專案結構
   關鍵目錄：
   frontend/src/app/core/guards/    — 路由守衛（authGuard, roleGuard）
@@ -42,7 +42,7 @@ context: |
   backend/src/utils/               — 計分演算法（scoring.ts）、隊伍排序（teamSort.ts）
   backend/src/seeds/               — 初始裁判帳號種子資料
   SPEC/                            — 完整系統規格書（SPEC.md v1.1）
-
+  
   關鍵檔案：
   - frontend/src/styles.css           — Tailwind @theme CSS 變數、Glassmorphism 自訂類別（.glass-card/.glass-btn/.primary-btn）
   - frontend/src/app/app.routes.ts    — 路由設定與 roleGuard 守衛
@@ -52,27 +52,27 @@ context: |
   - backend/src/index.ts              — 主伺服器：Express + Socket.IO + MongoDB 連線，port 3000
   - backend/src/utils/scoring.ts      — calculateActionScores（去最高最低分，取中間3位加總）
   - docker-compose.yml                — 三服務部署（frontend, backend, mongo:7，linux/arm64）
-
+  
   ## 資料模型
   /users          — username: String, passwordHash: String, role: scoring_judge|vr_judge|sequence_judge|admin|audience, judgeNo?: Number(1-5), eventId?: ObjectId
-
+  
   /events         — name: String(required), date?: Date, venue?: String, rounds: Number(default:3), status: pending|active|closed, categoryOrder: String[]（預設['female','male','mixed']）, createdAt: Date
-
+  
   /teams          — eventId: ObjectId(required), name: String, members: String[], category: male|female|mixed, order: Number
   Index: { eventId: 1, order: 1 }
-
+  
   /scores         — eventId: ObjectId, teamId: ObjectId, round: Number(1-3), actionNo: String('A1'~'C5'), judgeId: ObjectId, judgeNo: Number(1-5), items: { p1, p2, p3, p4, p5?: Number(0-3) }, submittedAt: Date
   Unique Index: { eventId, teamId, round, actionNo, judgeId }
-
+  
   /vr_scores      — eventId: ObjectId, teamId: ObjectId, round: Number(1-3), throwVariety: Number(0-2), groundVariety: Number(0-2), submittedAt: Date
   Unique Index: { eventId, teamId, round }
-
+  
   /game_states    — eventId: ObjectId(unique), currentTeamId?: ObjectId, currentRound: Number, currentActionNo?: String, currentActionOpen: Boolean, currentTeamAbstained: Boolean, status: idle|action_open|action_closed|series_complete|event_complete
   Unique Index: { eventId }
-
+  
   /wrong_attacks  — eventId: ObjectId, teamId: ObjectId, round: Number(1-3), actionNo: String, markedAt: Date
   Unique Index: { eventId, teamId, round, actionNo }
-
+  
   ## 主要功能模組
   計分裁判介面        — 等待→評分→已送出三態轉換，Signal 管理選分狀態，A/B系列4項、C系列5項
   VR 裁判介面        — 摔技/地板技多樣性評分（各0-2分，按系列A/B/C），標記/取消錯誤攻擊
@@ -80,7 +80,7 @@ context: |
   觀眾顯示頁          — 即時總分、組別排名（MALE/FEMALE/MIXED前綴 + 組內編號G）、動作計分表（VRT欄、TOT欄）、紅色錯誤攻擊警告
   管理員頁            — 事件管理CRUD、Excel/CSV隊伍匯入（重複檢查）、分組別匯出Excel詳細版+PDF列印版、備份/清除成績
   計分演算法          — 每動作5位裁判評分，去掉最高分+最低分，取中間3位加總（每項最高9分；A/B系列4項共36分，C系列5項共45分）
-
+  
   ## 編碼規範
   - Angular 元件一律使用 Standalone + OnPush，禁止建立 NgModule
   - 依賴注入使用 inject() 函式（函式注入），禁止 constructor 參數注入
@@ -93,9 +93,9 @@ context: |
   - 後端業務邏輯放在 controller，禁止在 route handler 直接操作 Mongoose Model
   - Express 5 路由參數型別：req.params.id 需以 as string 轉型
   - 後端使用 CommonJS 模組（module: commonjs），import 路徑不需加 .js 副檔名
-
+  
   格式：縮排 2 空格、TypeScript 使用單引號
-
+  
   ## 認證與授權
   認證方式：JWT（jsonwebtoken 9，無 token 期限，LAN 專用環境，登出 = 關閉瀏覽器）
   Token 位置：Authorization: Bearer <JWT> 標頭
@@ -108,7 +108,7 @@ context: |
     audience                    — 唯讀，部分端點免 token（公開查詢）
   後端守衛：verifyToken（中介層）+ requireRole(...roles)（路由層）
   前端守衛：roleGuard(role1, role2) 函式型守衛，保護 /judge/* 與 /admin 路由
-
+  
   ## 設計規範
   視覺風格：Glassmorphism（毛玻璃），深藍漸層背景
   背景：bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900
@@ -120,12 +120,12 @@ context: |
   計分按鈕選中：.score-btn-selected — bg-blue-500 text-white border-blue-400 shadow-lg shadow-blue-500/30
   CSS 變數（@theme）：--color-glass-border, --color-glass-bg, --font-family-sans（Noto Sans TC）
   文字層次：主要 text-white、次要 text-white/70、說明 text-white/50、禁用 text-white/30
-
+  
   ## Bundle 大小限制
   Initial bundle 警告：500kB，錯誤：1MB
   元件樣式警告：4kB，錯誤：8kB
   完成開發後執行 cd frontend && npm run build，確認 dist/jju-frontend/ 大小未超標
-
+  
   ## API 規範
   Base URL：/api/v1
   認證：Authorization: Bearer <JWT>（audience 角色查詢端點可免驗證）
@@ -145,13 +145,13 @@ context: |
   Socket.IO 事件（廣播至 eventId 房間）：
     action:opened、score:submitted、score:calculated、vr:submitted
     group:changed、round:changed、team:abstained、team:abstain-cancelled、wrongAttack:updated
-
+  
   ## Commit 規範
   格式：type: 正體中文描述（Conventional Commits 風格，無 emoji 前綴）
   語言：正體中文，技術術語保留英文（如 Signal、Socket.IO、JWT、Standalone）
   主分支：main
   類型清單：feat（新功能）、fix（錯誤修正）、docs（文件更新）、chore（雜務/依賴更新）、refactor（重構）
-
+  
   ## 常用指令
   docker compose up --build         — 啟動全部服務（frontend:4200, backend:3000, mongo）
   docker compose up --build -d      — 背景執行
@@ -162,6 +162,7 @@ context: |
   cd frontend && npm run build      — 前端生產建置（輸出 dist/jju-frontend/）
   ./package-docker.sh               — 打包 Docker 映像為可攜式 jju-docker.tar.gz
   cd jju-package && ./start.sh      — 離線部署（載入映像並啟動，保留資料庫資料）
+locale: tw
 
 rules:
   proposal:

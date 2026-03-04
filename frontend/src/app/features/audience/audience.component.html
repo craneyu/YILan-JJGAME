@@ -4,6 +4,13 @@
     <h1 class="text-white font-bold text-xl">{{ eventName() }}</h1>
     <div class="flex items-center gap-4">
       <span class="text-blue-300 font-bold text-2xl">{{ roundLabel() }}</span>
+      @if (hasMultipleTypes()) {
+        <button class="glass-btn text-xs flex items-center gap-1 py-1 px-2" (click)="switchToCreative()"
+          title="切換至創意演武">
+          <fa-icon [icon]="faArrowsRotate" class="text-xs"></fa-icon>
+          雙人演武
+        </button>
+      }
       <button
         (click)="toggleFullscreen()"
         class="text-white/50 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/10"
