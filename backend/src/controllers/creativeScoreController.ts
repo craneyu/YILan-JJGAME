@@ -54,8 +54,8 @@ export async function submitCreativeScore(req: Request, res: Response): Promise<
     throw err;
   }
 
-  // 廣播已送出事件
-  broadcast.creativeScoreSubmitted(eventId, { eventId, teamId, judgeNo });
+  // 廣播已送出事件（含分數，供賽序裁判即時顯示）
+  broadcast.creativeScoreSubmitted(eventId, { eventId, teamId, judgeNo, technicalScore: Number(technicalScore), artisticScore: Number(artisticScore) });
 
   // 檢查是否 5 位裁判全部送出
   const allScores = await CreativeScore.find({ eventId, teamId }).lean();
@@ -79,7 +79,12 @@ export async function submitCreativeScore(req: Request, res: Response): Promise<
       { status: 'scores_collected' }
     );
 
-    broadcast.creativeScoreCalculated(eventId, { eventId, teamId, ...result });
+    const penaltyItems = penalties.map((p) => ({
+      type: p.penaltyType,
+      deduction: p.deduction,
+      count: 1,
+    }));
+    broadcast.creativeScoreCalculated(eventId, { eventId, teamId, ...result, penalties: penaltyItems });
   }
 
   res.status(201).json({ success: true, message: '評分已送出' });

@@ -679,30 +679,50 @@ export class AdminComponent implements OnInit {
     });
   }
 
-  clearEventScores(): void {
+  clearScoresByType(type?: 'Duo' | 'Show'): void {
     const event = this.selectedEvent();
     if (!event) return;
+
+    const typeName = type === 'Duo' ? '雙人演武' : type === 'Show' ? '創意演武' : '所有';
+    const typeHtml = type === 'Duo' ? '<b>雙人演武</b>的計分與 VR 裁判資料'
+                     : type === 'Show' ? '<b>創意演武</b>的計分與扣分資料'
+                     : '<b>所有</b>競賽項目的計分資料';
+
     Swal.fire({
       icon: 'warning',
-      title: '確定清除成績？',
-      html: `將清除 <b>${event.name}</b> 的所有計分與 VR 裁判資料<br><small>隊伍資料不受影響</small>`,
+      title: `確定清除${typeName}成績？`,
+      html: `將清除 <b>${event.name}</b> 的${typeHtml}<br><small>隊伍資料不受影響</small>`,
       showCancelButton: true,
       confirmButtonText: '確認清除',
       cancelButtonText: '取消',
       confirmButtonColor: '#dc2626',
     }).then((result) => {
       if (!result.isConfirmed) return;
+      const url = `/events/${event._id}/scores${type ? `?type=${type}` : ''}`;
       this.api.delete<{ success: boolean; data: { message: string; deletedScores: number; deletedVrScores: number } }>(
-        `/events/${event._id}/scores`
+        url
       ).subscribe({
-        next: (res) => Swal.fire({
-          icon: 'success',
-          title: '成績已清除',
-          html: `已刪除 ${res.data.deletedScores} 筆計分、${res.data.deletedVrScores} 筆 VR 裁判資料`,
-          timer: 3000,
-          showConfirmButton: false,
-        }),
-        error: () => Swal.fire({ icon: 'error', title: '清除失敗', toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 }),
+        next: (res) => {
+          Swal.fire({
+            icon: 'success',
+            title: `${typeName}成績已清除`,
+            html: `已刪除 ${res.data.deletedScores} 筆計分${res.data.deletedVrScores > 0 ? `、${res.data.deletedVrScores} 筆 VR 裁判資料` : ''}`,
+            timer: 3000,
+            showConfirmButton: false,
+          });
+          // 重新載入排名以更新介面
+          if (!type || type === 'Duo') {
+            this.rankings.set([]);
+            this.showRankings.set(false);
+            this.loadRankings();
+          }
+          if (!type || type === 'Show') {
+            this.creativeRankings.set([]);
+            this.showCreativeRankings.set(false);
+            this.loadCreativeRankings();
+          }
+        },
+        error: (err) => Swal.fire({ icon: 'error', title: err.error?.error ?? '清除失敗', toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 }),
       });
     });
   }

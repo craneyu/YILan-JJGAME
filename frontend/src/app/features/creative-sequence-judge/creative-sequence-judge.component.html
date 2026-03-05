@@ -3,12 +3,17 @@
   <!-- Header -->
   <div class="glass-card rounded-none px-4 py-3 flex items-center justify-between">
     <h1 class="text-white font-bold text-lg">創意演武 — 賽序裁判</h1>
+    <span class="text-white/80 font-medium truncate px-4 text-sm hidden md:block">{{ eventName() }}</span>
     <div class="flex items-center gap-2">
       @if (hasMultipleTypes()) {
-        <button class="glass-btn text-xs flex items-center gap-1 py-1 px-2" (click)="switchCompetitionType()"
-          [title]="'切換至' + (currentTypeName() === '雙人演武' ? '創意演武' : '雙人演武')">
+        <button class="glass-btn text-xs flex items-center gap-1 py-1 px-2"
+          [class.opacity-40]="!canSwitchType()"
+          [class.cursor-not-allowed]="!canSwitchType()"
+          [disabled]="!canSwitchType()"
+          (click)="switchCompetitionType()"
+          [title]="!canSwitchType() ? '賽程進行中，無法切換' : ('切換至' + otherTypeName())">
           <fa-icon [icon]="faArrowsRotate" class="text-xs"></fa-icon>
-          {{ currentTypeName() }}
+          切換至{{ otherTypeName() }}
         </button>
       }
       <button class="glass-btn px-3 py-1.5 text-sm" (click)="toggleFullscreen()">
@@ -23,23 +28,56 @@
   <!-- Body -->
   <div class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 p-4">
 
-    <!-- ── 左側：隊伍選擇 ── -->
+    <!-- ── 左側：隊伍選擇（依 category → order 排序） ── -->
     <div class="glass-card p-4 overflow-y-auto md:col-span-1">
       <h2 class="text-white font-semibold mb-3">選擇隊伍</h2>
-      @if (teams().length === 0) {
+      @if (groupedTeams().length === 0) {
         <p class="text-white/40 text-sm text-center py-4">尚無隊伍資料</p>
       } @else {
-        <div class="space-y-2">
-          @for (team of teams(); track team._id) {
-            <button
-              class="w-full text-left px-3 py-2.5 rounded-xl transition-all border"
-              [class]="currentTeam()?._id === team._id
-                ? 'bg-blue-500/30 border-blue-400/60 text-white'
-                : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'"
-              (click)="selectTeam(team)">
-              <p class="font-medium text-sm">{{ team.name }}</p>
-              <p class="text-xs opacity-60 mt-0.5">{{ team.members.join(' / ') }}</p>
-            </button>
+        <div class="space-y-3">
+          @for (group of groupedTeams(); track group.category) {
+            <!-- 組別標題（可收放） -->
+            <div>
+              <button
+                class="w-full flex items-center justify-between px-1 mb-1 py-0.5 rounded hover:bg-white/5 transition-colors"
+                (click)="toggleGroup(group.category)">
+                <span class="text-white/60 text-xs font-semibold uppercase tracking-wider">
+                  {{ group.label }}（{{ group.teams.length }} 隊）
+                </span>
+                <fa-icon
+                  [icon]="isGroupCollapsed(group.category) ? faChevronRight : faChevronDown"
+                  class="text-white/40 text-xs">
+                </fa-icon>
+              </button>
+              @if (!isGroupCollapsed(group.category)) {
+                <div class="space-y-1">
+                  @for (team of group.teams; track team._id) {
+                    <button
+                      class="w-full text-left px-3 py-2.5 rounded-xl transition-all border"
+                      [class]="currentTeam()?._id === team._id
+                        ? 'bg-blue-500/30 border-blue-400/60 text-white'
+                        : (team.isFinished ? 'bg-white/5 border-white/5 text-white/40' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10')"
+                      (click)="selectTeam(team)">
+                      <div class="flex items-start gap-2">
+                        <span class="text-white/40 text-xs font-mono min-w-[1.25rem] pt-0.5">{{ team.order }}.</span>
+                        <div class="flex-1 min-w-0">
+                          <div class="flex items-center justify-between gap-2">
+                            <p class="font-medium text-sm truncate">{{ team.name }}</p>
+                            @if (team.isFinished) {
+                              <span class="text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded flex items-center gap-1 shrink-0">
+                                <fa-icon [icon]="faCheckCircle"></fa-icon>
+                                已完賽
+                              </span>
+                            }
+                          </div>
+                          <p class="text-xs opacity-60 mt-0.5">{{ team.members.join(' / ') }}</p>
+                        </div>
+                      </div>
+                    </button>
+                  }
+                </div>
+              }
+            </div>
           }
         </div>
       }
@@ -48,120 +86,288 @@
     <!-- ── 中右：控制面板 ── -->
     <div class="md:col-span-2 space-y-4">
 
-      <!-- 目前隊伍 -->
-      <div class="glass-card px-4 py-3">
-        @if (currentTeam()) {
-          <p class="text-white/60 text-sm">目前隊伍</p>
-          <p class="text-white font-bold text-xl">{{ currentTeam()!.name }}</p>
-          <p class="text-white/50 text-sm">{{ currentTeam()!.members.join('、') }}</p>
-        } @else {
-          <p class="text-white/40">尚未選擇隊伍</p>
-        }
-      </div>
+      <!-- 完賽成績檢視模式 (唯讀) -->
+      @if (currentTeam()?.isFinished) {
+        <div class="glass-card p-6 border-green-500/30">
+          <div class="flex items-center gap-2 text-green-400 font-bold mb-4">
+            <fa-icon [icon]="faCheckCircle"></fa-icon>
+            <span>此隊伍已完賽 — 成績唯讀檢視</span>
+          </div>
 
-      <!-- 計時器 -->
-      <div class="glass-card p-5 text-center">
-        <!-- 時間顯示 -->
-        <div
-          class="font-mono text-6xl font-bold mb-3 transition-colors"
-          [class]="timerColor() === 'green' ? 'text-green-400'
-            : timerColor() === 'yellow' ? 'text-yellow-400'
-            : timerColor() === 'red' ? 'text-red-400'
-            : 'text-white'">
-          {{ displayTime() }}
-        </div>
+          <div class="mb-6 pb-4 border-b border-white/10 text-center">
+            <span class="text-blue-300 text-xs font-medium uppercase tracking-wider">{{ currentCategory() }}</span>
+            <p class="text-white font-bold text-2xl leading-tight mt-1">{{ currentTeamName() }}</p>
+            <p class="text-white/50 text-sm mt-1">{{ currentMembers().join('、') }}</p>
+          </div>
 
-        <!-- 規定時間指示 -->
-        <p class="text-sm mb-4"
-          [class]="timerColor() === 'green' ? 'text-green-400'
-            : timerColor() === 'yellow' ? 'text-yellow-400'
-            : timerColor() === 'red' ? 'text-red-400'
-            : 'text-white/40'">
-          @if (displayMs() === 0) { 規定時間：1:30 – 2:00 }
-          @else if (timerColor() === 'yellow') { 未達規定時間（最短 1:30） }
-          @else if (timerColor() === 'green') { 合規時間範圍 }
-          @else { 超出規定時間（最長 2:00） }
-        </p>
+          @if (lastScoreResult(); as result) {
+            <div class="space-y-6">
+              <div class="grid grid-cols-2 gap-4">
+                <div class="bg-blue-500/10 rounded-2xl p-4 border border-blue-400/20 text-center">
+                  <p class="text-blue-400 text-xs font-bold uppercase tracking-wider mb-1">技術得分 Technical</p>
+                  <p class="text-white font-black text-3xl font-mono">{{ result.technicalTotal.toFixed(1) }}</p>
+                </div>
+                <div class="bg-purple-500/10 rounded-2xl p-4 border border-purple-400/20 text-center">
+                  <p class="text-purple-400 text-xs font-bold uppercase tracking-wider mb-1">表演得分 Artistic</p>
+                  <p class="text-white font-black text-3xl font-mono">{{ result.artisticTotal.toFixed(1) }}</p>
+                </div>
+              </div>
 
-        <!-- 開始 / 停止按鈕 -->
-        <button
-          class="w-full py-3 rounded-xl font-bold text-lg transition-all"
-          [class]="timerRunning()
-            ? 'bg-red-500/80 hover:bg-red-500 text-white'
-            : currentTeam() ? 'bg-green-500/80 hover:bg-green-500 text-white' : 'bg-white/10 text-white/30 cursor-not-allowed'"
-          [disabled]="!currentTeam() || loading()"
-          (click)="toggleTimer()">
-          @if (timerRunning()) {
-            <fa-icon [icon]="faStop" class="mr-2"></fa-icon> 停止計時
+              @if (result.penalties.length > 0) {
+                <div class="bg-red-500/5 rounded-2xl p-4 border border-red-500/20">
+                  <p class="text-red-400 text-xs font-bold uppercase tracking-widest mb-3 text-center">違例紀錄 Penalties</p>
+                  <div class="flex flex-wrap justify-center gap-2 mb-3">
+                    @for (p of result.penalties; track p.type) {
+                      <span class="px-3 py-1 rounded-lg bg-red-500/20 border border-red-500/30 text-red-200 text-xs font-bold">
+                        {{ getPenaltyTypeLabel(p.type) }}
+                      </span>
+                    }
+                  </div>
+                  <p class="text-right text-red-400 font-bold text-sm">
+                    總扣分：-{{ result.totalPenaltyDeduction.toFixed(1) }}
+                  </p>
+                </div>
+              }
+
+              <div class="bg-gradient-to-r from-blue-600/30 via-blue-500/40 to-blue-600/30 rounded-3xl p-6 text-center border-2 border-blue-400/50 shadow-lg">
+                <p class="text-blue-300 text-sm font-black uppercase tracking-widest mb-1">最終得分 Final Score</p>
+                <p class="text-white font-black text-6xl font-mono leading-none">{{ result.finalScore.toFixed(1) }}</p>
+              </div>
+            </div>
           } @else {
-            <fa-icon [icon]="faPlay" class="mr-2"></fa-icon> 開始計時
+            <div class="py-12 text-center">
+              <fa-icon [icon]="faInfoCircle" class="text-white/20 text-4xl mb-3"></fa-icon>
+              <p class="text-white/40">正在載入成績資料...</p>
+            </div>
           }
-        </button>
-        <p class="text-white/30 text-xs mt-2">或按 <kbd class="bg-white/10 px-1.5 py-0.5 rounded text-white/50">Space</kbd> 切換</p>
-      </div>
 
-      <!-- 違例標記 -->
-      <div class="glass-card p-4">
-        <h3 class="text-white font-semibold mb-3">違例標記</h3>
-        <div class="grid grid-cols-2 gap-2">
-          @for (type of allPenalties; track type) {
+          <div class="mt-8 pt-4 border-t border-white/10">
             <button
-              class="px-3 py-2.5 rounded-xl text-sm font-medium transition-all border text-left"
-              [class]="isPenaltySelected(type)
-                ? 'bg-red-500/40 border-red-400/60 text-red-200'
-                : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'"
-              [disabled]="!currentTeam()"
-              (click)="togglePenalty(type)">
-              @if (isPenaltySelected(type)) { ✓ }
-              {{ penaltyLabels[type] }}
+              class="w-full py-3 rounded-xl font-semibold transition-all border border-white/20 bg-white/10 hover:bg-white/20 text-white"
+              (click)="nextTeam()">
+              <fa-icon [icon]="faForward" class="mr-2"></fa-icon>
+              下一組
             </button>
+          </div>
+        </div>
+      } @else {
+        <!-- 計時器（含隊伍資訊 — Timer view displays current team information in real-time） -->
+        <div class="glass-card p-5">
+
+          <!-- 隊伍資訊：即時顯示組別、隊伍名稱、參賽者 -->
+          @if (currentTeam()) {
+            <div class="mb-3 pb-3 border-b border-white/10 text-center">
+              <span class="text-blue-300 text-xs font-medium uppercase tracking-wider">{{ currentCategory() }}</span>
+              <p class="text-white font-bold text-lg leading-tight mt-1">{{ currentTeamName() }}</p>
+              <p class="text-white/50 text-sm mt-1">{{ currentMembers().join('、') }}</p>
+            </div>
+          } @else {
+            <div class="mb-3 pb-3 border-b border-white/10 text-center">
+              <p class="text-white/30 text-sm">尚未選擇隊伍</p>
+            </div>
+          }
+
+          <!-- 時間顯示 -->
+          <div class="text-center mb-3">
+            <div
+              class="font-mono text-6xl font-bold transition-colors tabular-nums"
+              [class]="timerColor() === 'green' ? 'text-green-400'
+                : timerColor() === 'yellow' ? 'text-yellow-400'
+                : timerColor() === 'red' ? 'text-red-400'
+                : 'text-white'">
+              {{ displayTime() }}
+            </div>
+            <p class="text-sm mt-1"
+              [class]="timerColor() === 'green' ? 'text-green-400'
+                : timerColor() === 'yellow' ? 'text-yellow-400'
+                : timerColor() === 'red' ? 'text-red-400'
+                : 'text-white/40'">
+              @if (displayMs() === 0 && timerStatus() === 'idle') { 規定時間：1:30 – 2:00 }
+              @else if (timerColor() === 'yellow') { 未達規定時間（最短 1:30） }
+              @else if (timerColor() === 'green') { 合規時間範圍 }
+              @else if (timerColor() === 'red') { 超出規定時間（最長 2:00） }
+            </p>
+            @if (timerStatus() === 'paused') {
+              <p class="text-yellow-400/80 text-xs mt-1">⏸ 計時已暫停</p>
+            }
+          </div>
+
+          <!-- 計時控制按鈕（pause / resume / reset — Timer view provides pause, resume, and reset controls） -->
+          <div class="flex gap-2">
+            @if (timerStatus() === 'idle') {
+              <!-- 開始計時 -->
+              <button
+                class="flex-1 py-3 rounded-xl font-bold text-base transition-all"
+                [class]="currentTeam() && !loading() && !scoringOpen() ? 'bg-green-500/80 hover:bg-green-500 text-white' : 'bg-white/10 text-white/30 cursor-not-allowed'"
+                [disabled]="!currentTeam() || loading() || scoringOpen()"
+                (click)="startTimer()">
+                <fa-icon [icon]="faPlay" class="mr-2"></fa-icon>開始計時
+              </button>
+            } @else if (timerStatus() === 'running') {
+              <!-- 暫停 -->
+              <button
+                class="flex-1 py-3 rounded-xl font-bold text-base transition-all"
+                [class]="!loading() && !scoringOpen() ? 'bg-yellow-500/80 hover:bg-yellow-500 text-white' : 'bg-white/10 text-white/30 cursor-not-allowed'"
+                [disabled]="loading() || scoringOpen()"
+                (click)="pauseTimer()">
+                <fa-icon [icon]="faPause" class="mr-2"></fa-icon>暫停
+              </button>
+            } @else {
+              <!-- 繼續（paused） -->
+              <button
+                class="flex-1 py-3 rounded-xl font-bold text-base transition-all"
+                [class]="!loading() && !scoringOpen() ? 'bg-green-500/80 hover:bg-green-500 text-white' : 'bg-white/10 text-white/30 cursor-not-allowed'"
+                [disabled]="loading() || scoringOpen()"
+                (click)="resumeTimer()">
+                <fa-icon [icon]="faPlay" class="mr-2"></fa-icon>繼續計時
+              </button>
+            }
+            <!-- 歸零（Reset — 永遠顯示） -->
+            <button
+              class="py-3 px-4 rounded-xl font-bold text-sm transition-all border"
+              [class]="!loading() && !scoringOpen() ? 'bg-white/10 hover:bg-white/20 text-white/70 border-white/20' : 'bg-white/5 text-white/20 border-white/10 cursor-not-allowed'"
+              [disabled]="loading() || scoringOpen()"
+              (click)="resetTimer()">
+              <fa-icon [icon]="faRotateLeft" class="mr-1"></fa-icon>歸零
+            </button>
+          </div>
+          <p class="text-white/30 text-xs mt-2 text-center">
+            Space 鍵：
+            @if (timerStatus() === 'running') { 暫停 }
+            @else if (timerStatus() === 'paused') { 繼續 }
+            @else { 開始 }
+          </p>
+
+          <!-- 各裁判即時評分進度 -->
+          @if (scoringOpen()) {
+            <div class="mt-4 pt-4 border-t border-white/10">
+              <p class="text-white/40 text-xs uppercase tracking-wider mb-2">裁判評分進度（{{ submittedCount() }}/5）</p>
+              <div class="grid grid-cols-5 gap-1.5">
+                @for (n of [1,2,3,4,5]; track n) {
+                  @if (judgeSubmissions().get(n); as s) {
+                    <div class="rounded-lg p-2 text-center bg-green-500/15 border border-green-400/30">
+                      <p class="text-white/40 text-xs mb-1">裁{{ n }}</p>
+                      <p class="text-blue-300 text-xs font-mono leading-tight">{{ s.tech.toFixed(1) }}</p>
+                      <p class="text-purple-300 text-xs font-mono leading-tight">{{ s.art.toFixed(1) }}</p>
+                    </div>
+                  } @else {
+                    <div class="rounded-lg p-2 text-center bg-white/5 border border-white/10">
+                      <p class="text-white/30 text-xs mb-1">裁{{ n }}</p>
+                      <p class="text-white/20 text-xs">—</p>
+                      <p class="text-white/20 text-xs">—</p>
+                    </div>
+                  }
+                }
+              </div>
+            </div>
+          }
+
+          <!-- 計分結果面板（Sequence judge timer view displays real-time calculated score） -->
+          @if (lastScoreResult(); as result) {
+            <div class="mt-4 pt-4 border-t border-white/10 space-y-2">
+              <p class="text-white/50 text-xs uppercase tracking-wider">計分結果</p>
+              <div class="grid grid-cols-2 gap-2">
+                <div class="bg-blue-500/15 rounded-lg p-2 text-center">
+                  <p class="text-blue-300 text-xs">技術分</p>
+                  <p class="text-white font-bold text-xl font-mono">{{ result.technicalTotal.toFixed(1) }}</p>
+                </div>
+                <div class="bg-purple-500/15 rounded-lg p-2 text-center">
+                  <p class="text-purple-300 text-xs">表演分</p>
+                  <p class="text-white font-bold text-xl font-mono">{{ result.artisticTotal.toFixed(1) }}</p>
+                </div>
+              </div>
+              @if (result.penalties.length > 0) {
+                <div class="space-y-1">
+                  @for (p of result.penalties; track p.type) {
+                    <div class="flex justify-between items-center px-2 py-1 bg-red-500/10 rounded-lg border border-red-400/20">
+                      <span class="text-red-300 text-xs">{{ getPenaltyTypeLabel(p.type) }}</span>
+                      <span class="text-red-300 text-xs font-mono">-{{ p.deduction.toFixed(1) }}</span>
+                    </div>
+                  }
+                  <div class="flex justify-between items-center px-2 text-xs text-red-400">
+                    <span>扣分合計</span>
+                    <span class="font-mono">-{{ result.totalPenaltyDeduction.toFixed(1) }}</span>
+                  </div>
+                </div>
+              }
+              <div class="bg-green-500/20 rounded-xl p-3 text-center border border-green-400/30">
+                <p class="text-green-300 text-xs mb-1">最終得分</p>
+                <p class="text-white font-black text-3xl font-mono">{{ result.finalScore.toFixed(1) }}</p>
+              </div>
+            </div>
           }
         </div>
-      </div>
 
-      <!-- 流程控制按鈕 -->
-      <div class="glass-card p-4 space-y-3">
-        <h3 class="text-white font-semibold mb-1">流程控制</h3>
+        <!-- 違例標記 -->
+        <div class="glass-card p-4">
+          <h3 class="text-white font-semibold mb-3 text-sm">違例標記</h3>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+            @for (type of allPenalties; track type) {
+              <button
+                class="px-2 py-2 rounded-xl text-xs font-medium transition-all border text-center"
+                [class]="isPenaltySelected(type)
+                  ? 'bg-red-500/40 border-red-400/60 text-red-200'
+                  : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'"
+                [disabled]="!currentTeam()"
+                (click)="togglePenalty(type)">
+                @if (isPenaltySelected(type)) { ✓ }
+                {{ penaltyLabels[type] }}
+              </button>
+            }
+          </div>
+        </div>
 
-        <!-- 開放評分 -->
-        <button
-          class="w-full py-3 rounded-xl font-semibold transition-all"
-          [class]="currentTeam() && !scoringOpen() && !loading()
-            ? 'bg-blue-500/80 hover:bg-blue-500 text-white'
-            : 'bg-white/10 text-white/30 cursor-not-allowed'"
-          [disabled]="!currentTeam() || scoringOpen() || loading()"
-          (click)="openScoring()">
-          <fa-icon [icon]="faCheck" class="mr-2"></fa-icon>
-          開放評分
-        </button>
+        <!-- 流程控制按鈕 -->
+        <div class="glass-card p-4 space-y-3">
+          <h3 class="text-white font-semibold mb-1 text-sm">流程控制</h3>
 
-        <!-- 確認收分 -->
-        <button
-          class="w-full py-3 rounded-xl font-semibold transition-all"
-          [class]="scoringOpen() && !loading()
-            ? 'bg-green-500/80 hover:bg-green-500 text-white'
-            : 'bg-white/10 text-white/30 cursor-not-allowed'"
-          [disabled]="!scoringOpen() || loading()"
-          (click)="confirmScores()">
-          <fa-icon [icon]="faCheck" class="mr-2"></fa-icon>
-          確認收分
-          @if (scoringOpen()) {
-            <span class="text-sm opacity-80">（{{ submittedCount() }}/5 裁判已送出）</span>
+          <!-- 開放評分（防呆：必須先計時並暫停） -->
+          <button
+            class="w-full py-3 rounded-xl font-semibold transition-all"
+            [class]="currentTeam() && timerStatus() === 'paused' && !scoringOpen() && !loading()
+              ? 'bg-blue-500/80 hover:bg-blue-500 text-white'
+              : 'bg-white/10 text-white/30 cursor-not-allowed'"
+            [disabled]="!currentTeam() || timerStatus() !== 'paused' || scoringOpen() || loading()"
+            (click)="openScoring()">
+            <fa-icon [icon]="faCheck" class="mr-2"></fa-icon>
+            開放評分
+          </button>
+          @if (currentTeam() && !scoringOpen()) {
+            @if (timerStatus() === 'idle') {
+              <p class="text-white/30 text-[10px] text-center -mt-1">請先開始計時，表演結束後暫停</p>
+            } @else if (timerStatus() === 'running') {
+              <p class="text-yellow-400/60 text-[10px] text-center -mt-1">計時中⋯請等表演結束後暫停</p>
+            }
           }
-        </button>
 
-        <!-- 下一組 -->
-        <button
-          class="w-full py-3 rounded-xl font-semibold transition-all border border-white/20"
-          [class]="currentTeam() && !loading()
-            ? 'bg-white/10 hover:bg-white/20 text-white'
-            : 'bg-white/5 text-white/30 cursor-not-allowed'"
-          [disabled]="!currentTeam() || loading()"
-          (click)="nextTeam()">
-          <fa-icon [icon]="faForward" class="mr-2"></fa-icon>
-          下一組
-        </button>
-      </div>
+          <!-- 確認收分 -->
+          <button
+            class="w-full py-3 rounded-xl font-semibold transition-all"
+            [class]="scoringOpen() && !loading()
+              ? 'bg-green-500/80 hover:bg-green-500 text-white'
+              : 'bg-white/10 text-white/30 cursor-not-allowed'"
+            [disabled]="!scoringOpen() || loading()"
+            (click)="confirmScores()">
+            <fa-icon [icon]="faCheck" class="mr-2"></fa-icon>
+            確認收分
+            @if (scoringOpen()) {
+              <span class="text-sm opacity-80">（{{ submittedCount() }}/5 裁判已送出）</span>
+            }
+          </button>
+
+          <!-- 下一組 -->
+          <button
+            class="w-full py-3 rounded-xl font-semibold transition-all border border-white/20"
+            [class]="currentTeam() && !loading()
+              ? 'bg-white/10 hover:bg-white/20 text-white'
+              : 'bg-white/5 text-white/30 cursor-not-allowed'"
+            [disabled]="!currentTeam() || loading()"
+            (click)="nextTeam()">
+            <fa-icon [icon]="faForward" class="mr-2"></fa-icon>
+            下一組
+          </button>
+        </div>
+      }
 
     </div>
   </div>

@@ -87,6 +87,7 @@ export async function deleteEvent(req: Request, res: Response): Promise<void> {
 
 export async function clearEventScores(req: Request, res: Response): Promise<void> {
   const eventId = req.params.id;
+  const requestedType = req.query.type as string | undefined;
   const event = await Event.findById(eventId);
   if (!event) {
     res.status(404).json({ success: false, error: '賽事不存在' });
@@ -94,13 +95,27 @@ export async function clearEventScores(req: Request, res: Response): Promise<voi
   }
 
   const types = event.competitionTypes ?? ['Duo'];
-  const deleteTasks: Promise<unknown>[] = [];
-  let deletedDuoScores = 0, deletedShowScores = 0;
 
-  if (types.includes('Duo')) {
+  // 驗證 type 參數
+  if (requestedType) {
+    if (!['Duo', 'Show'].includes(requestedType)) {
+      res.status(400).json({ success: false, error: '無效的競賽類型' });
+      return;
+    }
+    if (!types.includes(requestedType as any)) {
+      res.status(400).json({ success: false, error: `此賽事不包含${requestedType === 'Duo' ? '雙人' : '創意'}演武` });
+      return;
+    }
+  }
+
+  let deletedScores = 0, deletedVrScores = 0;
+  const deleteTasks: Promise<unknown>[] = [];
+
+  // 若無指定 type，則兩者皆清除；若有指定，則僅清除指定類型
+  if (types.includes('Duo') && (!requestedType || requestedType === 'Duo')) {
     deleteTasks.push(
-      Score.deleteMany({ eventId }).then((r) => { deletedDuoScores += r.deletedCount; }),
-      VRScore.deleteMany({ eventId }),
+      Score.deleteMany({ eventId }).then((r) => { deletedScores += r.deletedCount; }),
+      VRScore.deleteMany({ eventId }).then((r) => { deletedVrScores += r.deletedCount; }),
       WrongAttack.deleteMany({ eventId }),
       GameState.findOneAndUpdate(
         { eventId },
@@ -109,9 +124,9 @@ export async function clearEventScores(req: Request, res: Response): Promise<voi
       ),
     );
   }
-  if (types.includes('Show')) {
+  if (types.includes('Show') && (!requestedType || requestedType === 'Show')) {
     deleteTasks.push(
-      CreativeScore.deleteMany({ eventId }).then((r) => { deletedShowScores += r.deletedCount; }),
+      CreativeScore.deleteMany({ eventId }).then((r) => { deletedScores += r.deletedCount; }),
       CreativePenalty.deleteMany({ eventId }),
       CreativeGameState.findOneAndUpdate(
         { eventId },
@@ -123,7 +138,7 @@ export async function clearEventScores(req: Request, res: Response): Promise<voi
   await Promise.all(deleteTasks);
   res.json({
     success: true,
-    data: { message: '成績已清除', deletedDuoScores, deletedShowScores },
+    data: { message: '成績已清除', deletedScores, deletedVrScores },
   });
 }
 

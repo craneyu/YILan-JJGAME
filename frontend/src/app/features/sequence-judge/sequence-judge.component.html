@@ -7,9 +7,9 @@
       <span class="text-blue-300 font-bold whitespace-nowrap">{{ roundLabel() }}</span>
       @if (hasMultipleTypes()) {
         <button class="glass-btn text-sm flex items-center gap-1" (click)="switchCompetitionType()"
-          [title]="'切換至' + (currentTypeName() === '雙人演武' ? '創意演武' : '雙人演武')">
+          [title]="'切換至' + otherTypeName()">
           <fa-icon [icon]="faArrowsRotate" class="text-xs"></fa-icon>
-          {{ currentTypeName() }}
+          切換至{{ otherTypeName() }}
         </button>
       }
       <button class="text-white/40 hover:text-white/80 transition-colors p-1 rounded-lg hover:bg-white/10"

@@ -2,13 +2,21 @@
 
   <!-- Header -->
   <div class="glass-card rounded-none px-4 py-3 flex items-center justify-between">
-    <h1 class="text-white font-bold text-lg">創意演武 — 評分裁判</h1>
+    <div class="flex items-center gap-2">
+      <h1 class="text-white font-bold text-lg">創意演武</h1>
+      <span class="text-blue-300 font-bold bg-blue-500/20 px-2 py-0.5 rounded-lg text-sm">#{{ judgeNo() }}</span>
+    </div>
+    <span class="text-white/80 font-medium truncate px-4 text-sm hidden md:block">{{ eventName() }}</span>
     <div class="flex items-center gap-2">
       @if (hasMultipleTypes()) {
-        <button class="glass-btn text-xs flex items-center gap-1 py-1 px-2" (click)="switchCompetitionType()"
-          [title]="'切換至' + (currentTypeName() === '雙人演武' ? '創意演武' : '雙人演武')">
+        <button class="glass-btn text-xs flex items-center gap-1 py-1 px-2"
+          [class.opacity-40]="state() !== 'waiting'"
+          [class.cursor-not-allowed]="state() !== 'waiting'"
+          [disabled]="state() !== 'waiting'"
+          (click)="switchCompetitionType()"
+          [title]="state() !== 'waiting' ? '評分進行中，無法切換' : ('切換至' + otherTypeName())">
           <fa-icon [icon]="faArrowsRotate" class="text-xs"></fa-icon>
-          {{ currentTypeName() }}
+          切換至{{ otherTypeName() }}
         </button>
       }
       <button class="glass-btn px-3 py-1.5 text-sm" (click)="toggleFullscreen()">
@@ -25,10 +33,24 @@
 
     <!-- ── 等待狀態 ── -->
     @if (state() === 'waiting') {
-      <div class="glass-card p-8 text-center max-w-sm w-full">
-        <fa-icon [icon]="faHourglassHalf" class="text-blue-400 text-5xl mb-4"></fa-icon>
-        <h2 class="text-white text-xl font-semibold mb-2">等待賽序裁判開放評分</h2>
-        <p class="text-white/50 text-sm">請等待賽序裁判按下「開放評分」</p>
+      <div class="w-full max-w-lg space-y-4">
+        @if (currentTeamName()) {
+          <div class="glass-card px-4 py-3 text-center">
+            <p class="text-white/60 text-sm">目前上場隊伍</p>
+            @if (currentCategoryLabel()) {
+              <p class="text-blue-300 text-sm font-medium">{{ currentCategoryLabel() }}</p>
+            }
+            <p class="text-white font-bold text-xl">{{ currentTeamName() }}</p>
+            @if (currentMembers().length > 0) {
+              <p class="text-white/50 text-sm mt-0.5">{{ currentMembers().join('、') }}</p>
+            }
+          </div>
+        }
+        <div class="glass-card p-8 text-center">
+          <fa-icon [icon]="faHourglassHalf" class="text-blue-400 text-5xl mb-4"></fa-icon>
+          <h2 class="text-white text-xl font-semibold mb-2">等待賽序裁判開放評分</h2>
+          <p class="text-white/50 text-sm">請等待賽序裁判按下「開放評分」</p>
+        </div>
       </div>
     }
 
@@ -39,100 +61,131 @@
         <!-- 隊伍名稱 -->
         <div class="glass-card px-4 py-3 text-center">
           <p class="text-white/60 text-sm">目前評分隊伍</p>
+          @if (currentCategoryLabel()) {
+            <p class="text-blue-300 text-sm font-medium">{{ currentCategoryLabel() }}</p>
+          }
           <p class="text-white font-bold text-xl">{{ currentTeamName() }}</p>
+          @if (currentMembers().length > 0) {
+            <p class="text-white/50 text-sm mt-0.5">{{ currentMembers().join('、') }}</p>
+          }
         </div>
 
-        <!-- 技術分 -->
-        <div class="glass-card p-5">
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="text-white font-semibold text-base">技術分</h3>
-            <div class="text-white/80 font-mono text-2xl font-bold">
-              @if (technicalScore() !== null) {
-                {{ technicalScore()!.toFixed(1) }}
-              } @else {
-                <span class="text-white/30">—</span>
-              }
+        <!-- 技術分 + 表演分（左右並排一行） -->
+        <div class="glass-card p-4">
+          <div class="grid grid-cols-2 gap-3">
+
+            <!-- 技術分 -->
+            <div>
+              <p class="text-blue-300 text-xs font-semibold mb-2 text-center uppercase tracking-wider">技術分</p>
+              <div class="flex gap-2">
+                <button
+                  class="flex-1 py-4 rounded-xl text-4xl font-bold font-mono transition-all border"
+                  [class]="technical().intPart !== null
+                    ? 'bg-blue-500/30 border-blue-400/50 text-white'
+                    : 'bg-white/10 border-white/20 text-white/30 hover:bg-white/15'"
+                  (click)="openPopup('technical')">
+                  {{ technical().intPart !== null ? technical().intPart : '—' }}
+                </button>
+                <button
+                  class="w-16 py-4 rounded-xl text-3xl font-bold font-mono transition-all border"
+                  [class]="technical().decPart === 0.5
+                    ? 'bg-orange-500/80 border-orange-400 text-white'
+                    : 'bg-white/10 border-white/20 text-white/50 hover:bg-white/15'"
+                  (click)="toggleDec('technical')">
+                  .{{ technical().decPart === 0 ? '0' : '5' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- 表演分 -->
+            <div>
+              <p class="text-purple-300 text-xs font-semibold mb-2 text-center uppercase tracking-wider">表演分</p>
+              <div class="flex gap-2">
+                <button
+                  class="flex-1 py-4 rounded-xl text-4xl font-bold font-mono transition-all border"
+                  [class]="artistic().intPart !== null
+                    ? 'bg-purple-500/30 border-purple-400/50 text-white'
+                    : 'bg-white/10 border-white/20 text-white/30 hover:bg-white/15'"
+                  (click)="openPopup('artistic')">
+                  {{ artistic().intPart !== null ? artistic().intPart : '—' }}
+                </button>
+                <button
+                  class="w-16 py-4 rounded-xl text-3xl font-bold font-mono transition-all border"
+                  [class]="artistic().decPart === 0.5
+                    ? 'bg-orange-500/80 border-orange-400 text-white'
+                    : 'bg-white/10 border-white/20 text-white/50 hover:bg-white/15'"
+                  (click)="toggleDec('artistic')">
+                  .{{ artistic().decPart === 0 ? '0' : '5' }}
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- 九宮格 popup — 技術分 -->
+        @if (activePopup() === 'technical') {
+          <div class="fixed inset-0 z-50 flex items-end justify-center p-4 bg-black/50"
+            (click)="closePopup()">
+            <div class="w-full max-w-sm rounded-2xl p-4 shadow-2xl border border-white/20"
+              style="background: rgba(15,23,42,0.97); backdrop-filter: blur(12px);"
+              (click)="$event.stopPropagation()">
+              <p class="text-white/40 text-xs text-center mb-3 uppercase tracking-wider">技術分 — 選擇整數</p>
+              <div class="grid grid-cols-3 gap-3 mb-3">
+                @for (n of intButtons.slice(0, 9); track n) {
+                  <button
+                    class="aspect-square rounded-xl text-2xl font-bold font-mono transition-all"
+                    [class]="technical().intPart === n
+                      ? 'bg-blue-500 text-white shadow-lg'
+                      : 'bg-white/10 text-white/80 hover:bg-white/20 active:scale-95'"
+                    (click)="setInt('technical', n)">
+                    {{ n }}
+                  </button>
+                }
+              </div>
+              <button
+                class="w-full py-3 rounded-xl text-2xl font-bold font-mono transition-all"
+                [class]="technical().intPart === 0
+                  ? 'bg-blue-500 text-white shadow-lg'
+                  : 'bg-white/10 text-white/80 hover:bg-white/20 active:scale-95'"
+                (click)="setInt('technical', 0)">
+                0
+              </button>
             </div>
           </div>
+        }
 
-          <!-- 9 宮格 + 0 -->
-          <div class="grid grid-cols-3 gap-2 mb-2">
-            @for (n of intButtons.slice(0, 9); track n) {
+        <!-- 九宮格 popup — 表演分 -->
+        @if (activePopup() === 'artistic') {
+          <div class="fixed inset-0 z-50 flex items-end justify-center p-4 bg-black/50"
+            (click)="closePopup()">
+            <div class="w-full max-w-sm rounded-2xl p-4 shadow-2xl border border-white/20"
+              style="background: rgba(15,23,42,0.97); backdrop-filter: blur(12px);"
+              (click)="$event.stopPropagation()">
+              <p class="text-white/40 text-xs text-center mb-3 uppercase tracking-wider">表演分 — 選擇整數</p>
+              <div class="grid grid-cols-3 gap-3 mb-3">
+                @for (n of intButtons.slice(0, 9); track n) {
+                  <button
+                    class="aspect-square rounded-xl text-2xl font-bold font-mono transition-all"
+                    [class]="artistic().intPart === n
+                      ? 'bg-purple-500 text-white shadow-lg'
+                      : 'bg-white/10 text-white/80 hover:bg-white/20 active:scale-95'"
+                    (click)="setInt('artistic', n)">
+                    {{ n }}
+                  </button>
+                }
+              </div>
               <button
-                class="aspect-square rounded-xl text-xl font-bold transition-all"
-                [class]="technical().intPart === n
-                  ? 'bg-blue-500 text-white shadow-lg scale-95'
+                class="w-full py-3 rounded-xl text-2xl font-bold font-mono transition-all"
+                [class]="artistic().intPart === 0
+                  ? 'bg-purple-500 text-white shadow-lg'
                   : 'bg-white/10 text-white/80 hover:bg-white/20 active:scale-95'"
-                (click)="setInt('technical', n)">
-                {{ n }}
+                (click)="setInt('artistic', 0)">
+                0
               </button>
-            }
-          </div>
-          <!-- 0 按鈕（獨佔一列） -->
-          <button
-            class="w-full py-3 rounded-xl text-xl font-bold transition-all mb-2"
-            [class]="technical().intPart === 0
-              ? 'bg-blue-500 text-white shadow-lg scale-95'
-              : 'bg-white/10 text-white/80 hover:bg-white/20 active:scale-95'"
-            (click)="setInt('technical', 0)">
-            0
-          </button>
-          <!-- 小數切換 -->
-          <button
-            class="w-full py-2 rounded-xl text-base font-semibold transition-all border"
-            [class]="technical().decPart === 0.5
-              ? 'bg-orange-500/80 text-white border-orange-400'
-              : 'bg-white/10 text-white/60 border-white/20 hover:bg-white/15'"
-            (click)="toggleDec('technical')">
-            {{ technical().decPart === 0 ? '.0' : '.5' }}
-          </button>
-        </div>
-
-        <!-- 表演分 -->
-        <div class="glass-card p-5">
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="text-white font-semibold text-base">表演分</h3>
-            <div class="text-white/80 font-mono text-2xl font-bold">
-              @if (artisticScore() !== null) {
-                {{ artisticScore()!.toFixed(1) }}
-              } @else {
-                <span class="text-white/30">—</span>
-              }
             </div>
           </div>
-
-          <!-- 9 宮格 -->
-          <div class="grid grid-cols-3 gap-2 mb-2">
-            @for (n of intButtons.slice(0, 9); track n) {
-              <button
-                class="aspect-square rounded-xl text-xl font-bold transition-all"
-                [class]="artistic().intPart === n
-                  ? 'bg-purple-500 text-white shadow-lg scale-95'
-                  : 'bg-white/10 text-white/80 hover:bg-white/20 active:scale-95'"
-                (click)="setInt('artistic', n)">
-                {{ n }}
-              </button>
-            }
-          </div>
-          <!-- 0 按鈕 -->
-          <button
-            class="w-full py-3 rounded-xl text-xl font-bold transition-all mb-2"
-            [class]="artistic().intPart === 0
-              ? 'bg-purple-500 text-white shadow-lg scale-95'
-              : 'bg-white/10 text-white/80 hover:bg-white/20 active:scale-95'"
-            (click)="setInt('artistic', 0)">
-            0
-          </button>
-          <!-- 小數切換 -->
-          <button
-            class="w-full py-2 rounded-xl text-base font-semibold transition-all border"
-            [class]="artistic().decPart === 0.5
-              ? 'bg-orange-500/80 text-white border-orange-400'
-              : 'bg-white/10 text-white/60 border-white/20 hover:bg-white/15'"
-            (click)="toggleDec('artistic')">
-            {{ artistic().decPart === 0 ? '.0' : '.5' }}
-          </button>
-        </div>
+        }
 
         <!-- 確認送出 -->
         <button

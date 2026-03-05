@@ -41,14 +41,12 @@ export async function updatePenalties(req: Request, res: Response): Promise<void
   const penaltyList = await CreativePenalty.find({ eventId, teamId }).lean();
   const totalDeduction = penaltyList.reduce((sum, p) => sum + p.deduction, 0);
 
+  // 廣播格式需符合前端 PenaltyUpdatedEvent：penalties 為 string[]，penaltyDeduction 為 number
   broadcast.penaltyUpdated(eventId, {
     eventId,
     teamId,
-    penalties: penaltyList.map((p) => ({
-      penaltyType: p.penaltyType,
-      deduction: p.deduction,
-    })),
-    totalDeduction,
+    penalties: penaltyList.map((p) => p.penaltyType),
+    penaltyDeduction: totalDeduction,
   });
 
   // 若 5 位裁判已評分，重新計算並廣播最新 finalScore
@@ -62,7 +60,8 @@ export async function updatePenalties(req: Request, res: Response): Promise<void
       })),
       totalDeduction
     );
-    broadcast.creativeScoreCalculated(eventId, { eventId, teamId, ...result });
+    const penaltyItems = penaltyList.map((p) => ({ type: p.penaltyType, deduction: p.deduction, count: 1 }));
+    broadcast.creativeScoreCalculated(eventId, { eventId, teamId, ...result, penalties: penaltyItems });
   }
 
   res.json({ success: true, penalties: penaltyList, totalDeduction });

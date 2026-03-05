@@ -4,9 +4,6 @@
   <div class="glass-card rounded-none px-4 py-3 flex items-center justify-between">
     <div>
       <h1 class="text-white font-bold text-lg">{{ eventName() || '創意演武' }}</h1>
-      @if (currentTeamName()) {
-        <p class="text-white/60 text-sm">{{ currentTeamName() }}</p>
-      }
     </div>
     <div class="flex items-center gap-2">
       @if (hasMultipleTypes()) {
@@ -23,91 +20,160 @@
   </div>
 
   <!-- Body -->
-  <div class="flex-1 flex flex-col items-center justify-center p-6 gap-6">
+  <div class="flex-1 flex flex-col items-center justify-start p-4 md:p-8 lg:p-12 gap-4 md:gap-8">
 
-    <!-- 計時器 -->
-    <div class="glass-card p-6 w-full max-w-lg text-center">
-      <p class="text-white/50 text-sm mb-2">演武時間</p>
-      <div
-        class="font-mono text-8xl font-bold transition-colors"
-        [class]="timerColor() === 'green' ? 'text-green-400'
-          : timerColor() === 'yellow' ? 'text-yellow-400'
-          : timerColor() === 'red' ? 'text-red-400'
-          : 'text-white'">
-        {{ displayTime() }}
-      </div>
-
-      @if (timerFinished()) {
-        <div class="mt-3 text-sm font-medium"
-          [class]="timerColor() === 'green' ? 'text-green-400'
-            : timerColor() === 'yellow' ? 'text-yellow-400'
-            : timerColor() === 'red' ? 'text-red-400'
-            : 'text-white/40'">
-          @if (timerColor() === 'green') { 合規 }
-          @else if (timerColor() === 'yellow') { 未達規定時間 }
-          @else if (timerColor() === 'red') { 超出規定時間 }
+    <!-- 隊伍大字顯示 (頂部) -->
+    @if (currentTeamName()) {
+      <div class="text-center space-y-2 animate-in fade-in slide-in-from-top-4 duration-700">
+        <div class="inline-flex items-center gap-3 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-400/30 mb-2">
+          <span class="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+          <p class="text-blue-300 text-lg md:text-xl font-bold tracking-widest uppercase">{{ currentCategoryLabel() }}</p>
         </div>
-      } @else if (timerRunning()) {
-        <div class="mt-3 flex items-center justify-center gap-2 text-white/60 text-sm">
-          <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
-          計時中
-        </div>
-      } @else {
-        <p class="mt-3 text-white/30 text-sm">等待開始</p>
-      }
-    </div>
-
-    <!-- 違例 -->
-    @if (currentPenalties().length > 0) {
-      <div class="glass-card p-4 w-full max-w-lg">
-        <p class="text-white/60 text-sm mb-2">違例標記</p>
-        <div class="flex flex-wrap gap-2">
-          @for (p of currentPenalties(); track p) {
-            <span class="px-3 py-1 rounded-full bg-red-500/30 border border-red-400/50 text-red-200 text-sm font-medium">
-              {{ getPenaltyLabel(p) }}
-            </span>
-          }
-        </div>
-        <p class="text-red-300 text-sm mt-2">總扣分：-{{ penaltyDeduction().toFixed(1) }}</p>
-      </div>
-    }
-
-    <!-- 計分結果 -->
-    @if (calculatedResult(); as result) {
-      <div class="glass-card p-5 w-full max-w-lg space-y-3">
-        <p class="text-white/60 text-sm">評分結果</p>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div class="bg-blue-500/20 rounded-xl p-3 text-center">
-            <p class="text-blue-300 text-xs mb-1">技術總分</p>
-            <p class="text-white font-bold text-2xl font-mono">{{ result.technicalTotal.toFixed(1) }}</p>
-          </div>
-          <div class="bg-purple-500/20 rounded-xl p-3 text-center">
-            <p class="text-purple-300 text-xs mb-1">表演總分</p>
-            <p class="text-white font-bold text-2xl font-mono">{{ result.artisticTotal.toFixed(1) }}</p>
-          </div>
-        </div>
-
-        <div class="bg-white/10 rounded-xl p-3 text-center">
-          <p class="text-white/60 text-xs mb-1">大總分</p>
-          <p class="text-white font-bold text-3xl font-mono">{{ result.grandTotal.toFixed(1) }}</p>
-          @if (result.penaltyDeduction > 0) {
-            <p class="text-red-300 text-sm mt-1">扣分：-{{ result.penaltyDeduction.toFixed(1) }}</p>
-          }
-        </div>
-
-        <div class="bg-green-500/20 rounded-xl p-4 text-center border border-green-400/30">
-          <p class="text-green-300 text-sm mb-1">最終得分</p>
-          <p class="text-white font-bold text-5xl font-mono">{{ result.finalScore.toFixed(1) }}</p>
-        </div>
-
-        @if (myRank(); as rank) {
-          <div class="text-center text-white/60 text-sm">
-            分組排名：第 <span class="text-white font-bold">{{ rank.rank }}</span> 名 / {{ rank.total }} 隊
-          </div>
+        <h2 class="text-white font-black text-5xl md:text-7xl lg:text-8xl leading-none tracking-tighter drop-shadow-2xl">
+          {{ currentTeamName() }}
+        </h2>
+        @if (currentMembers().length > 0) {
+          <p class="text-white/70 text-2xl md:text-3xl lg:text-4xl font-medium tracking-wide">
+            {{ currentMembers().join('　') }}
+          </p>
         }
       </div>
     }
+
+    <!-- 主內容區：計時與計分整合 -->
+    <div class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+      <!-- 左側/上方：計時器與狀態 -->
+      <div class="lg:col-span-6 flex flex-col gap-6 h-full">
+        <div class="glass-card px-12 py-8 text-center flex-1 flex flex-col justify-center relative overflow-hidden group">
+          <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent pointer-events-none"></div>
+          <p class="text-white/40 text-xs md:text-sm font-bold uppercase tracking-[0.2em] mb-4">演武計時 Performance Time</p>
+          <div
+            class="font-mono text-7xl md:text-8xl lg:text-8xl font-black transition-all duration-500 tabular-nums drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]"
+            [class]="timerColor() === 'green' ? 'text-green-400 drop-shadow-[0_0_30px_rgba(74,222,128,0.2)]'
+              : timerColor() === 'yellow' ? 'text-yellow-400 drop-shadow-[0_0_30px_rgba(250,204,21,0.2)]'
+              : timerColor() === 'red' ? 'text-red-400 drop-shadow-[0_0_30px_rgba(248,113,113,0.2)]'
+              : 'text-white'">
+            {{ displayTime() }}
+          </div>
+
+          @if (timerFinished()) {
+            <div class="mt-6 inline-flex self-center px-4 py-1.5 rounded-lg border text-sm font-bold tracking-wider animate-in zoom-in duration-300"
+              [class]="timerColor() === 'green' ? 'bg-green-500/20 text-green-300 border-green-500/30'
+                : timerColor() === 'yellow' ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30'
+                : timerColor() === 'red' ? 'bg-red-500/20 text-red-300 border-red-500/30'
+                : 'bg-white/10 text-white/40 border-white/10'">
+              @if (timerColor() === 'green') { <fa-icon [icon]="faCheck" class="mr-1.5"></fa-icon> 時間合規 }
+              @else if (timerColor() === 'yellow') { <fa-icon [icon]="faClock" class="mr-1.5"></fa-icon> 未達規定時間 }
+              @else if (timerColor() === 'red') { <fa-icon [icon]="faTriangleExclamation" class="mr-1.5"></fa-icon> 超出規定時間 }
+            </div>
+          } @else if (timerRunning()) {
+            <div class="mt-6 flex items-center justify-center gap-3 text-green-400 text-sm font-bold tracking-widest uppercase">
+              <span class="w-2.5 h-2.5 rounded-full bg-green-400 animate-ping"></span>
+              Performance In Progress
+            </div>
+          } @else {
+            <p class="mt-6 text-white/20 text-sm font-bold tracking-widest uppercase">Waiting for Start</p>
+          }
+        </div>
+
+        <!-- 違例細節 (僅在有違例且尚未結算時顯示，結算後併入計分板) -->
+        @if (currentPenalties().length > 0 && !calculatedResult()) {
+          <div class="glass-card p-6 animate-in fade-in duration-500">
+            <h3 class="text-red-400/80 text-xs font-bold uppercase tracking-wider mb-4 flex items-center gap-2">
+              <fa-icon [icon]="faTriangleExclamation"></fa-icon> 違例即時標記 Live Penalties
+            </h3>
+            <div class="flex flex-wrap gap-2">
+              @for (p of currentPenalties(); track p) {
+                <span class="px-3 py-1.5 rounded-lg bg-red-500/20 border border-red-500/30 text-red-200 text-sm font-bold">
+                  {{ getPenaltyLabel(p) }}
+                </span>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- 右側/下方：計分結果 -->
+      <div class="lg:col-span-6">
+        @if (calculatedResult(); as result) {
+          <div class="glass-card p-8 space-y-8 animate-in zoom-in-95 duration-700">
+            
+            <div class="flex items-center justify-between border-b border-white/10 pb-4">
+              <h3 class="text-white font-black text-xl tracking-wider">評分結算結算 Score Summary</h3>
+              @if (myRank(); as rank) {
+                <div class="text-blue-300 font-bold text-sm bg-blue-500/20 px-3 py-1 rounded-full border border-blue-400/30">
+                  RANK #{{ rank.rank }} / {{ rank.total }}
+                </div>
+              }
+            </div>
+
+            <!-- 技術分與表演分 (整合單行) -->
+            <div class="grid grid-cols-2 gap-4">
+              <div class="bg-blue-500/10 rounded-2xl p-6 border border-blue-400/20 text-center group hover:bg-blue-500/20 transition-all duration-300">
+                <p class="text-blue-400 text-xs font-bold uppercase tracking-[0.2em] mb-2">技術得分 Technical</p>
+                <p class="text-white font-black text-4xl md:text-5xl font-mono tabular-nums">{{ result.technicalTotal.toFixed(1) }}</p>
+              </div>
+              <div class="bg-purple-500/10 rounded-2xl p-6 border border-purple-400/20 text-center group hover:bg-purple-500/20 transition-all duration-300">
+                <p class="text-purple-400 text-xs font-bold uppercase tracking-[0.2em] mb-2">表演得分 Artistic</p>
+                <p class="text-white font-black text-4xl md:text-5xl font-mono tabular-nums">{{ result.artisticTotal.toFixed(1) }}</p>
+              </div>
+            </div>
+
+            <!-- 違例細節整合 -->
+            @if (result.penalties.length > 0) {
+              <div class="space-y-3">
+                <div class="flex items-center gap-2 text-red-400/60 text-xs font-bold uppercase tracking-widest">
+                  <span class="h-px flex-1 bg-red-500/20"></span>
+                  違例扣分 Penalties
+                  <span class="h-px flex-1 bg-red-500/20"></span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  @for (p of result.penalties; track p.type) {
+                    <div class="flex justify-between items-center px-4 py-2.5 bg-red-500/5 rounded-xl border border-red-500/20">
+                      <span class="text-white/70 text-sm font-bold">{{ getPenaltyLabel(p.type) }}</span>
+                      <span class="text-red-400 font-black font-mono">-{{ p.deduction.toFixed(1) }}</span>
+                    </div>
+                  }
+                </div>
+                <div class="flex justify-end items-center gap-3 px-2 text-red-400 font-black uppercase tracking-wider">
+                  <span class="text-xs opacity-60">Deduction Total</span>
+                  <span class="text-2xl font-mono">-{{ result.penaltyDeduction.toFixed(1) }}</span>
+                </div>
+              </div>
+            }
+
+            <!-- 最終得分 (最醒目) -->
+            <div class="relative mt-8 pt-8 border-t border-white/10">
+              <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#0f172a] px-4 py-1 border border-white/10 rounded-full text-white/40 text-[10px] font-black uppercase tracking-[0.3em]">Final Official Score</div>
+              <div class="bg-gradient-to-r from-blue-600/30 via-blue-500/40 to-blue-600/30 rounded-3xl p-8 text-center border-2 border-blue-400/50 shadow-[0_0_50px_rgba(59,130,246,0.2)]">
+                <p class="text-blue-300 text-base md:text-lg font-black uppercase tracking-[0.4em] mb-2">最終得分</p>
+                <p class="text-white font-black text-8xl md:text-9xl font-mono tabular-nums leading-none drop-shadow-[0_0_20px_rgba(255,255,255,0.3)]">
+                  {{ result.finalScore.toFixed(1) }}
+                </p>
+              </div>
+            </div>
+          </div>
+        } @else {
+          <!-- 未結算時的佔位 -->
+          <div class="glass-card p-8 h-full min-h-[400px] flex flex-col items-center justify-center text-center space-y-6">
+            <div class="w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center animate-pulse">
+              <fa-icon [icon]="faGavel" class="text-white/20 text-3xl"></fa-icon>
+            </div>
+            <div class="space-y-2">
+              <h3 class="text-white/60 font-black text-xl tracking-widest uppercase">Scoring in Progress</h3>
+              <p class="text-white/30 text-sm">等待 5 位裁判完成評分與扣分計算</p>
+            </div>
+            <div class="flex gap-2">
+              @for (i of [1,2,3,4,5]; track i) {
+                <div class="w-3 h-3 rounded-full bg-white/10 border border-white/20"></div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+    </div>
 
   </div>
 </div>

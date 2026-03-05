@@ -5,8 +5,8 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
-import { faExpand, faCompress, faArrowsRotate } from '@fortawesome/free-solid-svg-icons';
-import { SocketService } from '../../core/services/socket.service';
+import { faExpand, faCompress, faArrowsRotate, faCheck, faClock, faTriangleExclamation, faGavel } from '@fortawesome/free-solid-svg-icons';
+import { SocketService, CreativePenaltyItem } from '../../core/services/socket.service';
 import { ApiService } from '../../core/services/api.service';
 
 interface RankEntry {
@@ -31,6 +31,8 @@ const PENALTY_LABEL: Record<string, string> = {
   props: '使用道具',
   attacks: '實際攻防',
 };
+
+const CATEGORY_LABEL: Record<string, string> = { male: '男子組', female: '女子組', mixed: '混合組' };
 
 @Component({
   selector: 'app-creative-audience',
@@ -58,8 +60,10 @@ export class CreativeAudienceComponent implements OnInit, OnDestroy {
   localStartMs = signal<number | null>(null);
   timerFinished = signal(false);
   finalElapsedMs = signal<number | null>(null);
+  private tick = signal(0); // 每 200ms 遞增，強制 displayMs 重算
 
   displayMs = computed(() => {
+    this.tick(); // 訂閱 tick，確保 OnPush 下每 200ms 重算
     if (this.timerFinished() && this.finalElapsedMs() !== null) {
       return this.finalElapsedMs()!;
     }
@@ -98,6 +102,7 @@ export class CreativeAudienceComponent implements OnInit, OnDestroy {
     grandTotal: number;
     penaltyDeduction: number;
     finalScore: number;
+    penalties: CreativePenaltyItem[];
   } | null>(null);
 
   // 排名
@@ -105,11 +110,18 @@ export class CreativeAudienceComponent implements OnInit, OnDestroy {
 
   currentTeamId = signal<string | null>(null);
   currentTeamName = signal<string>('');
+  currentMembers = signal<string[]>([]);
+  currentCategory = signal<string>('');
+  currentCategoryLabel = computed(() => CATEGORY_LABEL[this.currentCategory()] ?? this.currentCategory());
 
   readonly penaltyLabel = PENALTY_LABEL;
   faExpand = faExpand;
   faCompress = faCompress;
   faArrowsRotate = faArrowsRotate;
+  faCheck = faCheck;
+  faClock = faClock;
+  faTriangleExclamation = faTriangleExclamation;
+  faGavel = faGavel;
 
   private subs = new Subscription();
   private timerInterval: ReturnType<typeof setInterval> | null = null;
@@ -128,22 +140,24 @@ export class CreativeAudienceComponent implements OnInit, OnDestroy {
         if (evt.eventId !== this.eventId()) return;
         this.currentTeamId.set(evt.teamId);
         this.currentTeamName.set(evt.teamName);
-        this.timerFinished.set(false);
-        this.finalElapsedMs.set(null);
-        this.elapsedMs.set(0);
-        this.localStartMs.set(null);
+        this.currentMembers.set(evt.members ?? []);
+        this.currentCategory.set(evt.category ?? '');
+        // 不重置計時器：計時狀態由 timerStarted$/timerStopped$ 管理
+        // 開放評分時保留已停止的計時結果供觀眾查看
         this.calculatedResult.set(null);
         this.myRank.set(null);
-        this.stopLocalInterval();
-        this.timerRunning.set(false);
       })
     );
 
     this.subs.add(
       this.socket.timerStarted$.subscribe((evt) => {
         if (evt.eventId !== this.eventId()) return;
+        if (evt.teamName) this.currentTeamName.set(evt.teamName);
+        if (evt.members) this.currentMembers.set(evt.members);
+        if (evt.category) this.currentCategory.set(evt.category);
         this.timerFinished.set(false);
         this.finalElapsedMs.set(null);
+        this.elapsedMs.set(evt.elapsedMs ?? 0);
         this.localStartMs.set(new Date(evt.timerStartedAt).getTime());
         this.timerRunning.set(true);
         this.startLocalInterval();
@@ -177,6 +191,7 @@ export class CreativeAudienceComponent implements OnInit, OnDestroy {
           grandTotal: evt.grandTotal,
           penaltyDeduction: evt.penaltyDeduction,
           finalScore: evt.finalScore,
+          penalties: evt.penalties ?? [],
         });
         // 載入排名
         this.loadRanking(this.eventId(), evt.teamId);
@@ -187,6 +202,10 @@ export class CreativeAudienceComponent implements OnInit, OnDestroy {
       this.socket.creativeTeamChanged$.subscribe((evt) => {
         if (evt.eventId !== this.eventId()) return;
         this.resetState();
+        if (evt.nextTeamId) {
+          // Sync state to get new team details
+          this.loadState(this.eventId());
+        }
       })
     );
   }
@@ -211,19 +230,43 @@ export class CreativeAudienceComponent implements OnInit, OnDestroy {
   switchToDuo(): void {
     this.router.navigate(['/audience'], { queryParams: { eventId: this.eventId() } });
   }
+loadState(eventId: string): void {
+  this.api.get<{
+    success: boolean;
+    data: {
+      currentTeamId?: string;
+      currentTeamName?: string;
+      currentMembers?: string[];
+      currentCategory?: string;
+      status: string;
+      timerElapsedMs?: number;
+      timerStartedAt?: string;
+    }
+  }>(`/creative/flow/state/${eventId}`).subscribe({
+    next: (res) => {
+      const s = res.data;
+      if (!s) return;
 
-  loadState(eventId: string): void {
-    this.api.get<{ success: boolean; data: { currentTeamId?: string; status: string; timerElapsedMs?: number; timerStartedAt?: string } }>(
-      `/creative/flow/state/${eventId}`
-    ).subscribe({
-      next: (res) => {
-        const s = res.data;
-        if (s.timerElapsedMs !== undefined) this.elapsedMs.set(s.timerElapsedMs);
-        if (s.status === 'timer_running' && s.timerStartedAt) {
-          this.localStartMs.set(new Date(s.timerStartedAt).getTime());
-          this.timerRunning.set(true);
-          this.startLocalInterval();
-        }
+      // 還原隊伍資訊
+      if (s.currentTeamId) {
+        this.currentTeamId.set(s.currentTeamId);
+        this.currentTeamName.set(s.currentTeamName ?? '');
+        this.currentMembers.set(s.currentMembers ?? []);
+        this.currentCategory.set(s.currentCategory ?? '');
+      } else {
+        this.currentTeamId.set(null);
+        this.currentTeamName.set('');
+        this.currentMembers.set([]);
+        this.currentCategory.set('');
+      }
+
+      // 還原計時器狀態
+      if (s.timerElapsedMs !== undefined) this.elapsedMs.set(s.timerElapsedMs);
+      if (s.status === 'timer_running' && s.timerStartedAt) {
+        this.localStartMs.set(new Date(s.timerStartedAt).getTime());
+        this.timerRunning.set(true);
+        this.startLocalInterval();
+      }
       },
       error: () => {},
     });
@@ -248,7 +291,7 @@ export class CreativeAudienceComponent implements OnInit, OnDestroy {
   private startLocalInterval(): void {
     this.stopLocalInterval();
     this.timerInterval = setInterval(() => {
-      this.elapsedMs.update(v => v);
+      this.tick.update(n => (n + 1) % 1000);
     }, 200);
   }
 
@@ -269,6 +312,8 @@ export class CreativeAudienceComponent implements OnInit, OnDestroy {
     this.myRank.set(null);
     this.currentTeamId.set(null);
     this.currentTeamName.set('');
+    this.currentMembers.set([]);
+    this.currentCategory.set('');
   }
 
   toggleFullscreen(): void {

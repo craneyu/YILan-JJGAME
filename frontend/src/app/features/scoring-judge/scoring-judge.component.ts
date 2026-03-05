@@ -131,6 +131,8 @@ export class ScoringJudgeComponent implements OnInit, OnDestroy {
   hasEventId = computed(() => !!this.auth.user()?.eventId);
   hasMultipleTypes = computed(() => this.auth.eventCompetitionTypes().length > 1);
   currentTypeName = computed(() => this.auth.competitionType() === 'creative' ? '創意演武' : '雙人演武');
+  otherTypeName = computed(() => this.auth.competitionType() === 'creative' ? '雙人演武' : '創意演武');
+  judgeNo = computed(() => this.auth.user()?.judgeNo ?? 0);
 
   isFullscreen = signal(false);
   private onFullscreenChange = () => this.isFullscreen.set(!!document.fullscreenElement);
@@ -362,9 +364,5 @@ export class ScoringJudgeComponent implements OnInit, OnDestroy {
     const series = this.series();
     const count = this.currentTeam()?.category === 'male' ? 4 : 3;
     return Array.from({ length: count }, (_, i) => `${series}${i + 1}`);
-  }
-
-  get judgeNo(): number {
-    return this.auth.user()?.judgeNo ?? 0;
   }
 }

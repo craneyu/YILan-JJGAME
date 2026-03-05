@@ -234,3 +234,75 @@ code:
   - frontend/src/app/features/admin/admin.component.ts
   - frontend/src/app/features/login/login.component.html
 -->
+
+---
+### Requirement: Admin can selectively clear scores per competition type from the dashboard
+
+The admin dashboard SHALL display up to three score-clearing actions per event, depending on which competition types are enabled on the event:
+
+- "清除雙人演武成績" — visible only when the event includes `competitionTypes: ['Duo', ...]`
+- "清除創意演武成績" — visible only when the event includes `competitionTypes: [..., 'Show']`
+- "清除全部成績" — always visible
+
+Each action SHALL display a SweetAlert2 confirmation dialog naming the specific type being cleared before proceeding. The dialog SHALL explicitly state that the operation is irreversible.
+
+On confirmation, the frontend SHALL call `DELETE /api/v1/events/:id/scores` with the appropriate `type` query parameter (`Duo`, `Show`, or omitted for all). On success, the frontend SHALL display a toast notification showing the count of deleted records.
+
+#### Scenario: Event with both Duo and Show types shows three buttons
+
+- **WHEN** admin views an event card where `competitionTypes` includes both `Duo` and `Show`
+- **THEN** three clearing buttons SHALL be displayed: "清除雙人演武成績", "清除創意演武成績", and "清除全部成績"
+
+#### Scenario: Event with only Duo shows one type button plus all-clear
+
+- **WHEN** admin views an event card where `competitionTypes` is `['Duo']`
+- **THEN** only "清除雙人演武成績" and "清除全部成績" SHALL be displayed
+- **AND** "清除創意演武成績" SHALL NOT be displayed
+
+#### Scenario: Confirmation dialog names the clearing scope
+
+- **WHEN** admin clicks "清除雙人演武成績"
+- **THEN** a SweetAlert2 confirmation dialog SHALL appear with text indicating that all 雙人演武 scores will be permanently deleted
+
+#### Scenario: Success toast shows deleted record count
+
+- **WHEN** admin confirms a selective clear and the API returns successfully
+- **THEN** a toast notification SHALL appear showing the number of deleted score records
+
+<!-- @trace
+source: clear-scores-by-type
+updated: 2026-03-04
+code:
+  - frontend/src/app/features/creative-audience/creative-audience.component.html
+  - frontend/src/app/features/creative-scoring-judge/creative-scoring-judge.component.html
+  - CLAUDE.md
+  - .github/skills/spectra-ask/SKILL.md
+  - .github/prompts/spectra-archive.prompt.md
+  - .github/skills/spectra-archive/SKILL.md
+  - .github/skills/spectra-apply/SKILL.md
+  - .github/skills/spectra-debug/SKILL.md
+  - frontend/src/app/features/creative-audience/creative-audience.component.ts
+  - frontend/src/app/features/creative-sequence-judge/creative-sequence-judge.component.html
+  - AGENTS.md
+  - backend/src/models/CreativeGameState.ts
+  - frontend/src/app/features/creative-scoring-judge/creative-scoring-judge.component.ts
+  - backend/src/controllers/creativePenaltyController.ts
+  - .github/skills/spectra-discuss/SKILL.md
+  - .github/prompts/spectra-debug.prompt.md
+  - backend/src/controllers/creativeTimerController.ts
+  - backend/src/controllers/creativeFlowController.ts
+  - .github/prompts/spectra-apply.prompt.md
+  - frontend/src/app/features/admin/admin.component.html
+  - frontend/src/app/features/creative-sequence-judge/creative-sequence-judge.component.ts
+  - backend/src/controllers/creativeScoreController.ts
+  - .github/skills/spectra-propose/SKILL.md
+  - frontend/src/app/core/services/socket.service.ts
+  - .github/prompts/spectra-ask.prompt.md
+  - backend/src/controllers/teamController.ts
+  - SPEC/SPEC-v3.md
+  - backend/src/routes/creativeFlow.ts
+  - backend/src/controllers/eventController.ts
+  - .github/prompts/spectra-discuss.prompt.md
+  - .github/prompts/spectra-propose.prompt.md
+  - frontend/src/app/features/admin/admin.component.ts
+-->

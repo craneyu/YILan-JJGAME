@@ -6,19 +6,34 @@
       <span class="text-white font-bold">管理員</span>
     </div>
     <h1 class="text-white font-medium">柔術競賽演武計分平台</h1>
-    <div class="flex items-center gap-2">
-      <button class="glass-btn text-sm flex items-center gap-1.5" (click)="backupDatabase()" title="備份資料庫">
-        <fa-icon [icon]="faDatabase" class="text-blue-400 text-xs"></fa-icon>
-        <span>備份</span>
-      </button>
-      @if (selectedEvent()) {
-        <button class="glass-btn text-sm flex items-center gap-1.5 text-red-400" (click)="clearEventScores()" title="清除當前賽事成績">
-          <fa-icon [icon]="faEraser" class="text-xs"></fa-icon>
-          <span>清除成績</span>
+      <div class="flex items-center gap-1.5">
+        <button class="glass-btn text-sm flex items-center gap-1.5" (click)="backupDatabase()" title="備份資料庫">
+          <fa-icon [icon]="faDatabase" class="text-blue-400 text-xs"></fa-icon>
+          <span>備份</span>
         </button>
-      }
-      <button class="glass-btn text-sm" (click)="logout()">登出</button>
-    </div>
+
+        @if (selectedEvent()) {
+          <!-- 分項清除按鈕 (較小對比度) -->
+          @if ((selectedEvent()?.competitionTypes ?? ['Duo']).includes('Duo')) {
+            <button class="glass-btn text-xs flex items-center gap-1 text-red-400/60 hover:text-red-400" (click)="clearScoresByType('Duo')" title="僅清除雙人演武成績">
+              <fa-icon [icon]="faEraser" class="text-[10px]"></fa-icon>
+              <span>清雙人</span>
+            </button>
+          }
+          @if ((selectedEvent()?.competitionTypes ?? ['Duo']).includes('Show')) {
+            <button class="glass-btn text-xs flex items-center gap-1 text-red-400/60 hover:text-red-400" (click)="clearScoresByType('Show')" title="僅清除創意演武成績">
+              <fa-icon [icon]="faEraser" class="text-[10px]"></fa-icon>
+              <span>清創意</span>
+            </button>
+          }
+          <!-- 全部清除按鈕 (較顯眼) -->
+          <button class="glass-btn text-sm flex items-center gap-1.5 text-red-500 font-medium" (click)="clearScoresByType()" title="清除當前賽事所有成績">
+            <fa-icon [icon]="faEraser" class="text-xs"></fa-icon>
+            <span>清除全部</span>
+          </button>
+        }
+        <button class="glass-btn text-sm" (click)="logout()">登出</button>
+      </div>
   </div>
 
   <!-- 裁判管理摺疊區 -->

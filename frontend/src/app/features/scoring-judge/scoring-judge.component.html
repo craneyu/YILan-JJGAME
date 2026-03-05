@@ -1,15 +1,15 @@
 <div class="min-h-screen p-2">
   <!-- 頁首列 -->
   <div class="glass-card px-4 py-2 mb-2 flex items-center justify-between">
-    <span class="text-white font-bold text-sm">計分裁判 #{{ judgeNo }}</span>
+    <span class="text-white font-bold text-sm">計分裁判 #{{ judgeNo() }}</span>
     <span class="text-white/80 font-medium text-center flex-1 truncate px-4 text-sm">{{ eventName() }}</span>
     <div class="flex items-center gap-2">
       <span class="text-blue-300 font-bold text-sm whitespace-nowrap">{{ roundLabel() }}</span>
       @if (hasMultipleTypes()) {
         <button class="glass-btn text-xs flex items-center gap-1 py-1 px-2" (click)="switchCompetitionType()"
-          [title]="'切換至' + (currentTypeName() === '雙人演武' ? '創意演武' : '雙人演武')">
+          [title]="'切換至' + otherTypeName()">
           <fa-icon [icon]="faArrowsRotate" class="text-xs"></fa-icon>
-          {{ currentTypeName() }}
+          切換至{{ otherTypeName() }}
         </button>
       }
       <button class="text-white/40 hover:text-white/80 transition-colors p-1 rounded-lg hover:bg-white/10"

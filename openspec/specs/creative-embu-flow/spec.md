@@ -8,49 +8,44 @@ TBD - created by archiving change 'add-creative-embu'. Update Purpose after arch
 
 ### Requirement: Sequence judge opens scoring for a team
 
-Before scoring begins, the sequence judge SHALL select the correct group (category: male/female/mixed) and team order, then open scoring. This broadcasts the current team information to all connected clients.
+Before scoring begins, the sequence judge SHALL select the correct team from a list sorted first by category (male / female / mixed) and then by team order within each category. After selecting the team, the judge opens scoring, which broadcasts the current team information to all connected clients.
+
+#### Scenario: Team list sorted by category then order
+
+- **WHEN** the sequence judge views the team selection list
+- **THEN** the list SHALL be grouped by category in the order: female → male → mixed (or as configured by event `categoryOrder`), and within each category teams SHALL be ordered by ascending `order` value
 
 #### Scenario: Sequence judge opens scoring
 
 - **WHEN** the sequence judge calls `POST /api/v1/creative/flow/open-scoring` with `{ eventId, teamId }`
-- **THEN** the system SHALL update `/creative_game_states` to `status: 'scoring_open'`, set `currentTeamId`, and broadcast a `creative:scoring-opened` event with `{ eventId, teamId, teamName, category }`
+- **THEN** the system SHALL update `/creative_game_states` to `status: 'scoring_open'`, set `currentTeamId`, and broadcast a `creative:scoring-opened` event with `{ eventId, teamId, teamName, members: string[], category }`
 
 
 <!-- @trace
-source: add-creative-embu
+source: fix-creative-show
 updated: 2026-03-04
 code:
-  - frontend/src/app/features/creative-sequence-judge/creative-sequence-judge.component.ts
-  - backend/src/controllers/creativeTimerController.ts
-  - frontend/src/app/features/admin/admin.component.html
-  - frontend/src/app/core/services/auth.service.ts
-  - backend/src/controllers/eventController.ts
-  - backend/src/models/CreativeGameState.ts
-  - SPEC/SPEC-v2.md
-  - backend/src/routes/creativePenalties.ts
-  - backend/src/routes/creativeFlow.ts
-  - backend/src/models/CreativeScore.ts
-  - backend/src/controllers/creativeFlowController.ts
-  - frontend/src/app/features/creative-scoring-judge/creative-scoring-judge.component.html
-  - frontend/src/app/features/creative-sequence-judge/creative-sequence-judge.component.html
-  - frontend/src/app/features/creative-scoring-judge/creative-scoring-judge.component.ts
-  - backend/src/models/CreativePenalty.ts
-  - frontend/src/app/features/creative-audience/creative-audience.component.ts
-  - backend/src/utils/creativeScoring.ts
-  - backend/src/models/Event.ts
+  - .github/skills/spectra-archive/SKILL.md
   - frontend/src/app/features/creative-audience/creative-audience.component.html
-  - backend/src/controllers/creativeRankingsController.ts
-  - backend/src/controllers/creativeScoreController.ts
-  - backend/src/index.ts
-  - backend/src/routes/events.ts
-  - frontend/src/app/app.routes.ts
-  - frontend/src/app/core/services/socket.service.ts
-  - frontend/src/app/features/login/login.component.ts
-  - backend/src/routes/creativeScores.ts
+  - frontend/src/app/features/creative-sequence-judge/creative-sequence-judge.component.html
+  - .github/skills/spectra-ask/SKILL.md
   - backend/src/controllers/creativePenaltyController.ts
-  - backend/src/sockets/index.ts
-  - frontend/src/app/features/admin/admin.component.ts
-  - frontend/src/app/features/login/login.component.html
+  - .github/skills/spectra-debug/SKILL.md
+  - backend/src/routes/creativeFlow.ts
+  - backend/src/controllers/creativeFlowController.ts
+  - backend/src/controllers/creativeTimerController.ts
+  - frontend/src/app/features/creative-scoring-judge/creative-scoring-judge.component.html
+  - SPEC/SPEC-v3.md
+  - frontend/src/app/features/creative-scoring-judge/creative-scoring-judge.component.ts
+  - frontend/src/app/core/services/socket.service.ts
+  - frontend/src/app/features/creative-sequence-judge/creative-sequence-judge.component.ts
+  - .github/skills/spectra-apply/SKILL.md
+  - backend/src/controllers/creativeScoreController.ts
+  - backend/src/controllers/teamController.ts
+  - backend/src/models/CreativeGameState.ts
+  - frontend/src/app/features/creative-audience/creative-audience.component.ts
+  - .github/skills/spectra-propose/SKILL.md
+  - .github/skills/spectra-discuss/SKILL.md
 -->
 
 ---
@@ -205,4 +200,57 @@ code:
   - backend/src/sockets/index.ts
   - frontend/src/app/features/admin/admin.component.ts
   - frontend/src/app/features/login/login.component.html
+-->
+
+---
+### Requirement: Team list includes completion status
+
+The backend API for listing teams SHALL include an `isFinished` boolean for each team in creative competition. A team SHALL be determined as finished if a record exists in `CreativeScore` for that team in the current event.
+
+#### Scenario: Team list shows finished teams
+
+- **WHEN** a sequence judge requests the team list for a creative event
+- **THEN** each team object in the response SHALL contain an `isFinished` property
+- **AND** if `isFinished` is true, the object SHALL also include `finalScore` and `totalPenaltyDeduction`
+
+<!-- @trace
+source: creative-judge-view-finished-teams
+updated: 2026-03-04
+code:
+  - frontend/src/app/features/admin/admin.component.ts
+  - .github/prompts/spectra-archive.prompt.md
+  - frontend/src/app/features/creative-sequence-judge/creative-sequence-judge.component.html
+  - backend/src/controllers/creativePenaltyController.ts
+  - frontend/src/app/features/admin/admin.component.html
+  - SPEC/SPEC-v3.md
+  - AGENTS.md
+  - backend/src/controllers/eventController.ts
+  - .github/skills/spectra-discuss/SKILL.md
+  - backend/src/controllers/creativeTimerController.ts
+  - backend/src/models/CreativeGameState.ts
+  - backend/src/controllers/creativeScoreController.ts
+  - frontend/src/app/features/creative-audience/creative-audience.component.html
+  - frontend/src/app/features/creative-scoring-judge/creative-scoring-judge.component.html
+  - .github/skills/spectra-propose/SKILL.md
+  - frontend/src/app/features/creative-sequence-judge/creative-sequence-judge.component.ts
+  - .github/prompts/spectra-apply.prompt.md
+  - .github/skills/spectra-archive/SKILL.md
+  - frontend/src/app/features/creative-audience/creative-audience.component.ts
+  - .github/skills/spectra-debug/SKILL.md
+  - frontend/src/app/features/scoring-judge/scoring-judge.component.ts
+  - .github/prompts/spectra-propose.prompt.md
+  - .github/skills/spectra-apply/SKILL.md
+  - backend/src/routes/creativeFlow.ts
+  - CLAUDE.md
+  - .github/prompts/spectra-ask.prompt.md
+  - .github/skills/spectra-ask/SKILL.md
+  - .github/prompts/spectra-debug.prompt.md
+  - backend/src/controllers/creativeFlowController.ts
+  - backend/src/controllers/teamController.ts
+  - frontend/src/app/core/services/socket.service.ts
+  - frontend/src/app/features/sequence-judge/sequence-judge.component.html
+  - frontend/src/app/features/sequence-judge/sequence-judge.component.ts
+  - frontend/src/app/features/creative-scoring-judge/creative-scoring-judge.component.ts
+  - .github/prompts/spectra-discuss.prompt.md
+  - frontend/src/app/features/scoring-judge/scoring-judge.component.html
 -->

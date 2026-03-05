@@ -73,6 +73,14 @@ export interface CreativeScoringOpenedEvent {
   eventId: string;
   teamId: string;
   teamName: string;
+  members: string[];
+  category: string;
+}
+
+export interface CreativePenaltyItem {
+  type: string;
+  deduction: number;
+  count: number;
 }
 
 export interface CreativeScoreCalculatedEvent {
@@ -83,6 +91,15 @@ export interface CreativeScoreCalculatedEvent {
   grandTotal: number;
   penaltyDeduction: number;
   finalScore: number;
+  penalties: CreativePenaltyItem[];
+}
+
+export interface CreativeScoreSubmittedEvent {
+  eventId: string;
+  teamId: string;
+  judgeNo: number;
+  technicalScore: number;
+  artisticScore: number;
 }
 
 export interface CreativeTeamChangedEvent {
@@ -93,6 +110,10 @@ export interface CreativeTeamChangedEvent {
 export interface TimerStartedEvent {
   eventId: string;
   timerStartedAt: string;
+  elapsedMs: number;
+  teamName?: string;
+  members?: string[];
+  category?: string;
 }
 
 export interface TimerStoppedEvent {
@@ -163,6 +184,10 @@ export class SocketService {
   }
 
   // ── 創意演武 ──
+  get creativeScoreSubmitted$(): Observable<CreativeScoreSubmittedEvent> {
+    return fromEvent<CreativeScoreSubmittedEvent>(this.socket, 'creative-score:submitted');
+  }
+
   get creativeScoringOpened$(): Observable<CreativeScoringOpenedEvent> {
     return fromEvent<CreativeScoringOpenedEvent>(this.socket, 'creative:scoring-opened');
   }

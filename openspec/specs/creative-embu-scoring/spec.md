@@ -71,55 +71,58 @@ code:
 ---
 ### Requirement: Final score calculated when all 5 judges have submitted
 
-When all 5 judges have submitted their scores for a team, the system SHALL automatically calculate the final score. Calculation: for each score type (technical, artistic), remove the highest and lowest values, then sum the remaining 3. The grand total is the sum of the technical total and artistic total. Penalty deductions are subtracted from the grand total to produce the final score.
+When all 5 judges have submitted their scores for a team, the system SHALL automatically calculate the final score. Calculation: for each score type (technical, artistic), remove the highest and lowest values, then sum the remaining 3. The grand total is the sum of the technical total and artistic total. Penalty deductions are subtracted from the grand total to produce the final score. The broadcast payload SHALL include `teamId` and a `penalties` array describing each penalty item so that both the sequence judge and audience displays can update in real-time without querying additional endpoints.
 
-#### Scenario: Score calculation with all 5 judges submitted
+#### Scenario: Score calculation with all 5 judges submitted — broadcast payload
 
 - **WHEN** the 5th judge submits their score
 - **THEN** the system SHALL compute: technicalTotal = sum of middle 3 technical scores, artisticTotal = sum of middle 3 artistic scores, grandTotal = technicalTotal + artisticTotal, finalScore = grandTotal - totalPenaltyDeduction
-- **AND** the system SHALL broadcast a `creative-score:calculated` Socket.IO event to the event room with the computed values
+- **AND** the system SHALL broadcast a `creative:score:calculated` Socket.IO event to the event room with the payload:
+  ```
+  {
+    eventId: string,
+    teamId: string,
+    technicalTotal: number,
+    artisticTotal: number,
+    grandTotal: number,
+    totalPenaltyDeduction: number,
+    finalScore: number,
+    penalties: Array<{ type: string, deduction: number, count: number }>
+  }
+  ```
 
 #### Scenario: Maximum possible final score
 
 - **WHEN** all 5 judges submit technical=9.5 and artistic=9.5 and no penalties exist
 - **THEN** technicalTotal = 28.5 (middle 3 × 9.5), artisticTotal = 28.5, grandTotal = 57.0, finalScore = 57.0
+- **AND** the broadcast payload SHALL include `teamId` and `penalties: []`
 
 
 <!-- @trace
-source: add-creative-embu
+source: fix-creative-show
 updated: 2026-03-04
 code:
-  - frontend/src/app/features/creative-sequence-judge/creative-sequence-judge.component.ts
-  - backend/src/controllers/creativeTimerController.ts
-  - frontend/src/app/features/admin/admin.component.html
-  - frontend/src/app/core/services/auth.service.ts
-  - backend/src/controllers/eventController.ts
-  - backend/src/models/CreativeGameState.ts
-  - SPEC/SPEC-v2.md
-  - backend/src/routes/creativePenalties.ts
-  - backend/src/routes/creativeFlow.ts
-  - backend/src/models/CreativeScore.ts
-  - backend/src/controllers/creativeFlowController.ts
-  - frontend/src/app/features/creative-scoring-judge/creative-scoring-judge.component.html
-  - frontend/src/app/features/creative-sequence-judge/creative-sequence-judge.component.html
-  - frontend/src/app/features/creative-scoring-judge/creative-scoring-judge.component.ts
-  - backend/src/models/CreativePenalty.ts
-  - frontend/src/app/features/creative-audience/creative-audience.component.ts
-  - backend/src/utils/creativeScoring.ts
-  - backend/src/models/Event.ts
+  - .github/skills/spectra-archive/SKILL.md
   - frontend/src/app/features/creative-audience/creative-audience.component.html
-  - backend/src/controllers/creativeRankingsController.ts
-  - backend/src/controllers/creativeScoreController.ts
-  - backend/src/index.ts
-  - backend/src/routes/events.ts
-  - frontend/src/app/app.routes.ts
-  - frontend/src/app/core/services/socket.service.ts
-  - frontend/src/app/features/login/login.component.ts
-  - backend/src/routes/creativeScores.ts
+  - frontend/src/app/features/creative-sequence-judge/creative-sequence-judge.component.html
+  - .github/skills/spectra-ask/SKILL.md
   - backend/src/controllers/creativePenaltyController.ts
-  - backend/src/sockets/index.ts
-  - frontend/src/app/features/admin/admin.component.ts
-  - frontend/src/app/features/login/login.component.html
+  - .github/skills/spectra-debug/SKILL.md
+  - backend/src/routes/creativeFlow.ts
+  - backend/src/controllers/creativeFlowController.ts
+  - backend/src/controllers/creativeTimerController.ts
+  - frontend/src/app/features/creative-scoring-judge/creative-scoring-judge.component.html
+  - SPEC/SPEC-v3.md
+  - frontend/src/app/features/creative-scoring-judge/creative-scoring-judge.component.ts
+  - frontend/src/app/core/services/socket.service.ts
+  - frontend/src/app/features/creative-sequence-judge/creative-sequence-judge.component.ts
+  - .github/skills/spectra-apply/SKILL.md
+  - backend/src/controllers/creativeScoreController.ts
+  - backend/src/controllers/teamController.ts
+  - backend/src/models/CreativeGameState.ts
+  - frontend/src/app/features/creative-audience/creative-audience.component.ts
+  - .github/skills/spectra-propose/SKILL.md
+  - .github/skills/spectra-discuss/SKILL.md
 -->
 
 ---

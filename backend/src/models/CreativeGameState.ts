@@ -8,12 +8,15 @@ export type CreativeGameStatus =
   | 'scores_collected'
   | 'complete';
 
+export type CreativeTimerStatus = 'idle' | 'running' | 'paused';
+
 export interface ICreativeGameState extends Document {
   eventId: mongoose.Types.ObjectId;
   currentTeamId?: mongoose.Types.ObjectId;
   timerStartedAt?: Date;
   timerStoppedAt?: Date;
   timerElapsedMs?: number;
+  timerStatus: CreativeTimerStatus;
   status: CreativeGameStatus;
 }
 
@@ -23,6 +26,11 @@ const CreativeGameStateSchema = new Schema<ICreativeGameState>({
   timerStartedAt: { type: Date },
   timerStoppedAt: { type: Date },
   timerElapsedMs: { type: Number },
+  timerStatus: {
+    type: String,
+    enum: ['idle', 'running', 'paused'],
+    default: 'idle',
+  },
   status: {
     type: String,
     enum: ['idle', 'scoring_open', 'timer_running', 'timer_stopped', 'scores_collected', 'complete'],

@@ -5,6 +5,7 @@ import CreativePenalty from '../models/CreativePenalty';
 import Team from '../models/Team';
 import Event from '../models/Event';
 import { broadcast } from '../sockets/index';
+import { sortTeams } from '../utils/teamSort';
 
 export async function openScoring(req: Request, res: Response): Promise<void> {
   const { eventId, teamId } = req.body;
@@ -30,9 +31,6 @@ export async function openScoring(req: Request, res: Response): Promise<void> {
     {
       currentTeamId: teamId,
       status: 'scoring_open',
-      timerStartedAt: undefined,
-      timerStoppedAt: undefined,
-      timerElapsedMs: undefined,
     },
     { upsert: true, new: true }
   );
@@ -41,6 +39,7 @@ export async function openScoring(req: Request, res: Response): Promise<void> {
     eventId,
     teamId,
     teamName: team.name,
+    members: team.members,
     category: team.category,
   });
 
@@ -72,31 +71,87 @@ export async function confirmScores(req: Request, res: Response): Promise<void> 
 }
 
 export async function nextTeam(req: Request, res: Response): Promise<void> {
-  const { eventId } = req.body;
+  const { eventId, currentTeamId: bodyTeamId } = req.body;
   if (!eventId) {
     res.status(400).json({ success: false, error: '缺少 eventId' });
     return;
   }
 
-  // 清空計時器與賽程狀態，等待賽序裁判選下一組
+  const [state, event, allTeams, allScores] = await Promise.all([
+    CreativeGameState.findOne({ eventId }),
+    Event.findById(eventId).lean(),
+    Team.find({ eventId, competitionType: 'Show' }).lean(),
+    CreativeScore.find({ eventId }).lean(),
+  ]);
+
+  const categoryOrder = event?.categoryOrder ?? ['female', 'male', 'mixed'];
+  const sortedTeams = sortTeams(allTeams, categoryOrder);
+
+  // 計算已完賽隊伍（有 5 筆評分即視為完賽）
+  const scoreCountByTeam = new Map<string, number>();
+  for (const score of allScores) {
+    const tid = String(score.teamId);
+    scoreCountByTeam.set(tid, (scoreCountByTeam.get(tid) ?? 0) + 1);
+  }
+  const isFinished = (teamId: string) => (scoreCountByTeam.get(teamId) ?? 0) >= 5;
+
+  // 優先使用前端傳入的 currentTeamId（手動選取），否則從 state 讀取
+  const currentId = bodyTeamId || (state?.currentTeamId ? String(state.currentTeamId) : null);
+
+  let nextTeamId = null;
+  if (currentId) {
+    const currentIdx = sortedTeams.findIndex(t => String(t._id) === currentId);
+    // 從當前位置往後找第一個未完賽的隊伍
+    const startIdx = currentIdx === -1 ? 0 : currentIdx + 1;
+    for (let i = startIdx; i < sortedTeams.length; i++) {
+      if (!isFinished(String(sortedTeams[i]._id))) {
+        nextTeamId = sortedTeams[i]._id;
+        break;
+      }
+    }
+  } else {
+    // 無當前隊伍：找第一個未完賽的隊伍
+    for (const team of sortedTeams) {
+      if (!isFinished(String(team._id))) {
+        nextTeamId = team._id;
+        break;
+      }
+    }
+  }
+
+  // 清空計時器與賽程狀態，切換至下一組
   await CreativeGameState.findOneAndUpdate(
     { eventId },
     {
-      currentTeamId: undefined,
-      timerStartedAt: undefined,
-      timerStoppedAt: undefined,
-      timerElapsedMs: undefined,
+      currentTeamId: nextTeamId,
+      timerElapsedMs: 0,
+      timerStatus: 'idle',
       status: 'idle',
-    }
+    },
+    { upsert: true }
   );
 
-  broadcast.creativeTeamChanged(eventId, { eventId });
+  broadcast.creativeTeamChanged(eventId, { eventId, nextTeamId: nextTeamId ? String(nextTeamId) : null });
 
-  res.json({ success: true, message: '已切換至下一組' });
+  res.json({ success: true, message: '已切換至下一組', data: { nextTeamId } });
 }
 
 export async function getCreativeState(req: Request, res: Response): Promise<void> {
   const eventId = req.params['eventId'] as string;
   const state = await CreativeGameState.findOne({ eventId }).lean();
-  res.json({ success: true, data: state });
+
+  let currentTeamName: string | undefined;
+  let currentMembers: string[] | undefined;
+  let currentCategory: string | undefined;
+
+  if (state?.currentTeamId) {
+    const team = await Team.findById(state.currentTeamId).lean();
+    if (team) {
+      currentTeamName = team.name;
+      currentMembers = team.members;
+      currentCategory = team.category;
+    }
+  }
+
+  res.json({ success: true, data: { ...state, currentTeamName, currentMembers, currentCategory } });
 }

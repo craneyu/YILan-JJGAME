@@ -157,6 +157,7 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
   hasEventId = computed(() => !!this.auth.user()?.eventId);
   hasMultipleTypes = computed(() => this.auth.eventCompetitionTypes().length > 1);
   currentTypeName = computed(() => this.auth.competitionType() === 'creative' ? '創意演武' : '雙人演武');
+  otherTypeName = computed(() => this.auth.competitionType() === 'creative' ? '雙人演武' : '創意演武');
 
   switchCompetitionType(): void {
     const newType = this.auth.competitionType() === 'creative' ? 'kata' : 'creative';

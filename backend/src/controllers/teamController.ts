@@ -1,12 +1,64 @@
 import { Request, Response } from 'express';
 import Team from '../models/Team';
+import CreativeScore from '../models/CreativeScore';
+import CreativePenalty from '../models/CreativePenalty';
+import { calculateCreativeScore } from '../utils/creativeScoring';
 import multer from 'multer';
 import csvParser from 'csv-parser';
 import { Readable } from 'stream';
 import * as XLSX from 'xlsx';
 
 export async function listTeams(req: Request, res: Response): Promise<void> {
-  const teams = await Team.find({ eventId: req.params.id }).sort({ order: 1 });
+  const eventId = req.params.id;
+  const filter: Record<string, unknown> = { eventId };
+  const qType = req.query['competitionType'];
+  if (qType === 'Show') filter['competitionType'] = 'Show';
+  else if (qType === 'Duo') filter['competitionType'] = { $ne: 'Show' };
+
+  const teams = await Team.find(filter).sort({ order: 1 }).lean();
+
+  if (qType === 'Show') {
+    // 獲取所有創意演武的計分與扣分
+    const allScores = await CreativeScore.find({ eventId }).lean();
+    const allPenalties = await CreativePenalty.find({ eventId }).lean();
+
+    const teamsWithStatus = teams.map((team) => {
+      const teamId = team._id.toString();
+      const teamScores = allScores.filter((s) => s.teamId.toString() === teamId);
+      const teamPenalties = allPenalties.filter((p) => p.teamId.toString() === teamId);
+
+      const isFinished = teamScores.length >= 5;
+      let result = null;
+
+      if (isFinished) {
+        const totalPenalty = teamPenalties.reduce((sum, p) => sum + p.deduction, 0);
+        result = calculateCreativeScore(
+          teamScores.map((s) => ({
+            judgeNo: s.judgeNo,
+            technicalScore: s.technicalScore,
+            artisticScore: s.artisticScore,
+          })),
+          totalPenalty
+        );
+      }
+
+      return {
+        ...team,
+        isFinished,
+        scoreSummary: result ? {
+          technicalTotal: result.technicalTotal,
+          artisticTotal: result.artisticTotal,
+          finalScore: result.finalScore,
+          penaltyDeduction: result.penaltyDeduction,
+          penalties: teamPenalties.map(p => p.penaltyType)
+        } : null
+      };
+    });
+
+    res.json({ success: true, data: teamsWithStatus });
+    return;
+  }
+
   res.json({ success: true, data: teams });
 }
 
