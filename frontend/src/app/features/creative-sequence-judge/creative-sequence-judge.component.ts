@@ -11,7 +11,7 @@ import {
 import Swal from 'sweetalert2';
 import { AuthService } from '../../core/services/auth.service';
 import { ApiService } from '../../core/services/api.service';
-import { SocketService, CreativeScoreSubmittedEvent } from '../../core/services/socket.service';
+import { SocketService, CreativeScoreSubmittedEvent, CreativeTeamAbstainedEvent } from '../../core/services/socket.service';
 import { Router } from '@angular/router';
 
 type PenaltyType = 'overtime' | 'undertime' | 'props' | 'attacks';
@@ -53,6 +53,7 @@ interface CreativeStateData {
   timerStoppedAt?: string;
   timerElapsedMs?: number;
   timerStatus?: TimerStatus;
+  isAbstained?: boolean;
 }
 
 interface ScoreResult {
@@ -163,6 +164,9 @@ export class CreativeSequenceJudgeComponent implements OnInit, OnDestroy {
   readonly allPenalties = ALL_PENALTIES;
   readonly penaltyLabels = PENALTY_LABELS;
 
+  // 棄權狀態
+  isAbstained = signal(false);
+
   // 賽事狀態
   scoringOpen = signal(false);
   submittedCount = signal(0);
@@ -271,6 +275,7 @@ export class CreativeSequenceJudgeComponent implements OnInit, OnDestroy {
         this.submittedCount.set(0);
         this.lastScoreResult.set(null);
         this.judgeSubmissions.set(new Map());
+        this.isAbstained.set(false);
         
         // 收到換組通知後，一律重新載入隊伍列表以更新完賽狀態
         this.api.get<{ success: boolean; data: TeamItem[] }>(`/events/${this.eventId}/teams?competitionType=Show`).subscribe({
@@ -294,6 +299,20 @@ export class CreativeSequenceJudgeComponent implements OnInit, OnDestroy {
             console.error('換組後載入隊伍失敗');
           }
         });
+      })
+    );
+
+    // 棄權廣播同步
+    this.subs.add(
+      this.socket.creativeTeamAbstained$.subscribe((evt: CreativeTeamAbstainedEvent) => {
+        if (evt.eventId !== this.eventId) return;
+        this.isAbstained.set(true);
+      })
+    );
+    this.subs.add(
+      this.socket.creativeTeamAbstainCancelled$.subscribe((evt: CreativeTeamAbstainedEvent) => {
+        if (evt.eventId !== this.eventId) return;
+        this.isAbstained.set(false);
       })
     );
 
@@ -415,6 +434,7 @@ export class CreativeSequenceJudgeComponent implements OnInit, OnDestroy {
           this.scoringOpen.set(
             state.status === 'scoring_open' || state.status === 'scores_collected'
           );
+          this.isAbstained.set(state.isAbstained ?? false);
         },
         error: () => {},
       });
@@ -427,6 +447,7 @@ export class CreativeSequenceJudgeComponent implements OnInit, OnDestroy {
     this.scoringOpen.set(false);
     this.submittedCount.set(0);
     this.judgeSubmissions.set(new Map());
+    this.isAbstained.set(false);
 
     if (team.isFinished && team.scoreSummary) {
       this.lastScoreResult.set({
@@ -578,6 +599,40 @@ export class CreativeSequenceJudgeComponent implements OnInit, OnDestroy {
       error: () => {
         this.loading.set(false);
         Swal.fire({ icon: 'error', title: '下一組失敗', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+      },
+    });
+  }
+
+  abstainTeam(): void {
+    const teamId = this.currentTeam()?._id;
+    if (!teamId) return;
+    this.loading.set(true);
+    this.api.post<{ success: boolean }>('/creative/flow/abstain', { eventId: this.eventId, teamId }).subscribe({
+      next: () => {
+        this.loading.set(false);
+        this.isAbstained.set(true);
+        Swal.fire({ icon: 'warning', title: '已設定棄權', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+      },
+      error: () => {
+        this.loading.set(false);
+        Swal.fire({ icon: 'error', title: '棄權設定失敗', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+      },
+    });
+  }
+
+  cancelAbstain(): void {
+    const teamId = this.currentTeam()?._id;
+    if (!teamId) return;
+    this.loading.set(true);
+    this.api.post<{ success: boolean }>('/creative/flow/abstain-cancel', { eventId: this.eventId, teamId }).subscribe({
+      next: () => {
+        this.loading.set(false);
+        this.isAbstained.set(false);
+        Swal.fire({ icon: 'success', title: '已取消棄權', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+      },
+      error: () => {
+        this.loading.set(false);
+        Swal.fire({ icon: 'error', title: '取消棄權失敗', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
       },
     });
   }

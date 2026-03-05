@@ -355,6 +355,26 @@
             }
           </button>
 
+          <!-- 棄權 / 取消棄權 -->
+          @if (!isAbstained()) {
+            <button
+              class="w-full py-2 rounded-xl font-medium text-sm transition-all border"
+              [class]="currentTeam() && !loading() && timerStatus() === 'idle' && !scoringOpen()
+                ? 'bg-orange-500/20 hover:bg-orange-500/30 border-orange-400/40 text-orange-300'
+                : 'bg-white/5 border-white/10 text-white/20 cursor-not-allowed'"
+              [disabled]="!currentTeam() || loading() || timerStatus() !== 'idle' || scoringOpen()"
+              (click)="abstainTeam()">
+              設定此組棄權
+            </button>
+          } @else {
+            <button
+              class="w-full py-2 rounded-xl font-medium text-sm transition-all border bg-orange-500/30 border-orange-400/60 text-orange-200 hover:bg-orange-500/40"
+              [disabled]="loading()"
+              (click)="cancelAbstain()">
+              取消棄權
+            </button>
+          }
+
           <!-- 下一組 -->
           <button
             class="w-full py-3 rounded-xl font-semibold transition-all border border-white/20"

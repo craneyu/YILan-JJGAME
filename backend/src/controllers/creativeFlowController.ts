@@ -119,7 +119,7 @@ export async function nextTeam(req: Request, res: Response): Promise<void> {
     }
   }
 
-  // 清空計時器與賽程狀態，切換至下一組
+  // 清空計時器與賽程狀態，切換至下一組（isAbstained 重置避免繼承前組棄權狀態）
   await CreativeGameState.findOneAndUpdate(
     { eventId },
     {
@@ -127,6 +127,7 @@ export async function nextTeam(req: Request, res: Response): Promise<void> {
       timerElapsedMs: 0,
       timerStatus: 'idle',
       status: 'idle',
+      isAbstained: false,
     },
     { upsert: true }
   );
@@ -134,6 +135,40 @@ export async function nextTeam(req: Request, res: Response): Promise<void> {
   broadcast.creativeTeamChanged(eventId, { eventId, nextTeamId: nextTeamId ? String(nextTeamId) : null });
 
   res.json({ success: true, message: '已切換至下一組', data: { nextTeamId } });
+}
+
+export async function abstainTeam(req: Request, res: Response): Promise<void> {
+  const { eventId, teamId } = req.body;
+  if (!eventId || !teamId) {
+    res.status(400).json({ success: false, error: '缺少 eventId 或 teamId' });
+    return;
+  }
+
+  await CreativeGameState.findOneAndUpdate(
+    { eventId },
+    { isAbstained: true, $addToSet: { abstainedTeamIds: teamId } },
+    { upsert: true, new: true }
+  );
+
+  broadcast.creativeTeamAbstained(eventId, { eventId, teamId });
+  res.json({ success: true, message: '已設定棄權' });
+}
+
+export async function cancelAbstain(req: Request, res: Response): Promise<void> {
+  const { eventId, teamId } = req.body;
+  if (!eventId || !teamId) {
+    res.status(400).json({ success: false, error: '缺少 eventId 或 teamId' });
+    return;
+  }
+
+  await CreativeGameState.findOneAndUpdate(
+    { eventId },
+    { isAbstained: false, $pull: { abstainedTeamIds: teamId } },
+    { upsert: true, new: true }
+  );
+
+  broadcast.creativeTeamAbstainCancelled(eventId, { eventId, teamId });
+  res.json({ success: true, message: '已取消棄權' });
 }
 
 export async function getCreativeState(req: Request, res: Response): Promise<void> {
@@ -153,5 +188,5 @@ export async function getCreativeState(req: Request, res: Response): Promise<voi
     }
   }
 
-  res.json({ success: true, data: { ...state, currentTeamName, currentMembers, currentCategory } });
+  res.json({ success: true, data: { ...state, currentTeamName, currentMembers, currentCategory, isAbstained: state?.isAbstained ?? false } });
 }

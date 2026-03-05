@@ -76,6 +76,12 @@ export const broadcast = {
   creativeTeamChanged(eventId: string, data: object) {
     getIO().to(eventId).emit('creative:team-changed', data);
   },
+  creativeTeamAbstained(eventId: string, data: object) {
+    getIO().to(eventId).emit('creative:team-abstained', data);
+  },
+  creativeTeamAbstainCancelled(eventId: string, data: object) {
+    getIO().to(eventId).emit('creative:team-abstain-cancelled', data);
+  },
   timerStarted(eventId: string, data: object) {
     getIO().to(eventId).emit('timer:started', data);
   },

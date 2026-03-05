@@ -18,6 +18,8 @@ export interface ICreativeGameState extends Document {
   timerElapsedMs?: number;
   timerStatus: CreativeTimerStatus;
   status: CreativeGameStatus;
+  isAbstained: boolean;
+  abstainedTeamIds: mongoose.Types.ObjectId[];
 }
 
 const CreativeGameStateSchema = new Schema<ICreativeGameState>({
@@ -36,6 +38,8 @@ const CreativeGameStateSchema = new Schema<ICreativeGameState>({
     enum: ['idle', 'scoring_open', 'timer_running', 'timer_stopped', 'scores_collected', 'complete'],
     default: 'idle',
   },
+  isAbstained: { type: Boolean, default: false },
+  abstainedTeamIds: [{ type: Schema.Types.ObjectId, ref: 'Team' }],
 });
 
 CreativeGameStateSchema.index({ eventId: 1 }, { unique: true });

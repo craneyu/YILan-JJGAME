@@ -185,54 +185,75 @@ code:
 ### Requirement: Admin can export creative embu results
 
 The admin SHALL be able to export results for creative events. Two export formats SHALL be supported:
-- **Excel (.xlsx)**: Per-category sheet with rank, team name, members, technicalTotal, artisticTotal, grandTotal, penaltyDeduction, finalScore, penalty type notes
-- **PDF**: Per-category printable format with all teams ranked, chief judge signature area, A4 landscape orientation
+- **Excel (.xlsx)**: Per-category sheet with rank, team name, members, technicalTotal, artisticTotal, grandTotal, penaltyDeduction, finalScore, and a dedicated "扣分原因" column. The "扣分原因" column SHALL display comma-separated deduction entries (e.g., "超時 -1.0、使用道具 -1.0") when `penaltyDeduction > 0`, and SHALL be empty when there are no deductions.
+- **PDF**: Per-category printable format with all teams ranked, chief judge signature area, A4 landscape orientation. When a team has `penaltyDeduction > 0`, the deduction cell SHALL display the amount followed by the deduction reasons in parentheses (e.g., `-2.0 (超時, 使用道具)`).
+
+Abstained teams (where `isAbstained === true`) SHALL appear in the export with a "棄權" note in the rank column and a dash (`—`) in all score columns.
 
 #### Scenario: Admin exports Excel for creative event
 
 - **WHEN** the admin clicks the Excel export button for a creative event category
-- **THEN** the system SHALL download an `.xlsx` file with the category's ranked results including all score fields
+- **THEN** the system SHALL download an `.xlsx` file with the category's ranked results including all score fields and a "扣分原因" column
+
+#### Scenario: Excel export includes deduction reasons for penalized teams
+
+- **WHEN** a team in the exported category has `penaltyDeduction > 0` with violation types recorded in `CreativePenalty`
+- **THEN** the "扣分原因" cell for that team's row SHALL contain a text description of each violation type and its deduction amount (e.g., "超時 -1.0、使用道具 -1.0")
+
+#### Scenario: Excel export shows empty deduction reason for clean teams
+
+- **WHEN** a team has no violations (`penaltyDeduction === 0`)
+- **THEN** the "扣分原因" cell SHALL be empty
 
 #### Scenario: Admin exports PDF for creative event
 
 - **WHEN** the admin clicks the PDF export button for a creative event category
 - **THEN** the system SHALL download an A4 landscape PDF with ranked teams and a signature area
 
+#### Scenario: PDF export shows deduction reason inline
+
+- **WHEN** a team has `penaltyDeduction > 0` in the PDF export
+- **THEN** the deduction amount SHALL be followed by parenthesized reason text (e.g., `-2.0 (超時, 使用道具)`)
+
+#### Scenario: Abstained teams appear in export with special notation
+
+- **WHEN** an abstained team is included in the export
+- **THEN** its rank column SHALL display "棄權" and all score columns SHALL display "—"
+
+
 <!-- @trace
-source: add-creative-embu
-updated: 2026-03-04
+source: add-creative-abstain-export-notes
+updated: 2026-03-05
 code:
+  - frontend/src/app/features/creative-audience/creative-audience.component.html
   - frontend/src/app/features/creative-sequence-judge/creative-sequence-judge.component.ts
-  - backend/src/controllers/creativeTimerController.ts
-  - frontend/src/app/features/admin/admin.component.html
-  - frontend/src/app/core/services/auth.service.ts
-  - backend/src/controllers/eventController.ts
-  - backend/src/models/CreativeGameState.ts
-  - SPEC/SPEC-v2.md
-  - backend/src/routes/creativePenalties.ts
-  - backend/src/routes/creativeFlow.ts
-  - backend/src/models/CreativeScore.ts
+  - frontend/src/app/features/creative-audience/creative-audience.component.ts
+  - backend/src/sockets/index.ts
+  - frontend/src/app/features/sequence-judge/sequence-judge.component.ts
   - backend/src/controllers/creativeFlowController.ts
+  - backend/src/models/CreativeGameState.ts
+  - .github/skills/spectra-debug/SKILL.md
   - frontend/src/app/features/creative-scoring-judge/creative-scoring-judge.component.html
+  - frontend/src/app/features/sequence-judge/sequence-judge.component.html
+  - backend/src/controllers/creativeRankingsController.ts
+  - .github/prompts/spectra-ask.prompt.md
+  - .github/prompts/spectra-propose.prompt.md
+  - .github/skills/spectra-propose/SKILL.md
+  - .github/skills/spectra-ask/SKILL.md
+  - .github/prompts/spectra-debug.prompt.md
+  - backend/src/controllers/flowController.ts
+  - .github/prompts/spectra-audit.prompt.md
+  - .github/skills/spectra-apply/SKILL.md
+  - frontend/src/app/core/services/socket.service.ts
+  - frontend/src/app/features/admin/admin.component.ts
+  - backend/src/routes/creativeFlow.ts
+  - .github/prompts/spectra-archive.prompt.md
+  - backend/src/controllers/eventController.ts
+  - .github/skills/spectra-archive/SKILL.md
+  - .github/skills/spectra-audit/SKILL.md
   - frontend/src/app/features/creative-sequence-judge/creative-sequence-judge.component.html
   - frontend/src/app/features/creative-scoring-judge/creative-scoring-judge.component.ts
-  - backend/src/models/CreativePenalty.ts
-  - frontend/src/app/features/creative-audience/creative-audience.component.ts
-  - backend/src/utils/creativeScoring.ts
-  - backend/src/models/Event.ts
-  - frontend/src/app/features/creative-audience/creative-audience.component.html
-  - backend/src/controllers/creativeRankingsController.ts
-  - backend/src/controllers/creativeScoreController.ts
-  - backend/src/index.ts
-  - backend/src/routes/events.ts
-  - frontend/src/app/app.routes.ts
-  - frontend/src/app/core/services/socket.service.ts
-  - frontend/src/app/features/login/login.component.ts
-  - backend/src/routes/creativeScores.ts
-  - backend/src/controllers/creativePenaltyController.ts
-  - backend/src/sockets/index.ts
-  - frontend/src/app/features/admin/admin.component.ts
-  - frontend/src/app/features/login/login.component.html
+  - .github/prompts/spectra-apply.prompt.md
 -->
 
 ---

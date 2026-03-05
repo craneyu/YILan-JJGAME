@@ -32,6 +32,8 @@ interface CreativeRankingItem {
   grandTotal: number;
   penaltyDeduction: number;
   finalScore: number;
+  penaltyReasons?: string[];
+  isAbstained?: boolean;
 }
 
 interface CategoryCreativeRanking {
@@ -772,29 +774,34 @@ export class AdminComponent implements OnInit {
     const merge = (c1: number, c2: number) =>
       merges.push({ s: { r: rows.length - 1, c: c1 }, e: { r: rows.length - 1, c: c2 } });
 
-    const COL = 6;
+    const COL = 8;
     rows.push([`${event.name} — ${group.label} 創意演武成績`]); merge(0, COL - 1);
     rows.push([`列印日期：${new Date().toLocaleDateString('zh-TW')}`]); merge(0, COL - 1);
     rows.push([]);
-    rows.push(['名次', '隊伍', '隊員', '技術總分', '表演總分', '大總分', '扣分', '最終得分']);
+    rows.push(['名次', '隊伍', '隊員', '技術總分', '表演總分', '大總分', '扣分', '最終得分', '扣分原因']);
 
     for (const item of group.items) {
-      const medalText = item.rank === 1 ? '金牌' : item.rank === 2 ? '銀牌' : item.rank === 3 ? '銅牌' : `第${item.rank}名`;
-      rows.push([
-        medalText,
-        item.name,
-        item.members.join(' / '),
-        item.technicalTotal,
-        item.artisticTotal,
-        item.grandTotal,
-        item.penaltyDeduction > 0 ? `-${item.penaltyDeduction}` : 0,
-        item.finalScore,
-      ]);
+      if (item.isAbstained) {
+        rows.push(['棄權', item.name, item.members.join(' / '), '—', '—', '—', '—', '—', '']);
+      } else {
+        const medalText = item.rank === 1 ? '金牌' : item.rank === 2 ? '銀牌' : item.rank === 3 ? '銅牌' : `第${item.rank}名`;
+        rows.push([
+          medalText,
+          item.name,
+          item.members.join(' / '),
+          item.technicalTotal,
+          item.artisticTotal,
+          item.grandTotal,
+          item.penaltyDeduction > 0 ? `-${item.penaltyDeduction}` : 0,
+          item.finalScore,
+          item.penaltyDeduction > 0 ? (item.penaltyReasons ?? []).join('、') : '',
+        ]);
+      }
     }
 
     const ws = XLSX.utils.aoa_to_sheet(rows);
     ws['!merges'] = merges;
-    ws['!cols'] = [{ wch: 6 }, { wch: 16 }, { wch: 16 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 6 }, { wch: 8 }];
+    ws['!cols'] = [{ wch: 6 }, { wch: 16 }, { wch: 16 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 6 }, { wch: 8 }, { wch: 24 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, group.label);
     XLSX.writeFile(wb, `${event.name}_${group.label}_創意演武成績.xlsx`);
@@ -827,14 +834,21 @@ export class AdminComponent implements OnInit {
               </tr>
             </thead>
             <tbody>
-              ${group.items.map(item => `
+              ${group.items.map(item => item.isAbstained ? `
+                <tr>
+                  <td style="text-align:center;color:#f97316;font-weight:bold">棄權</td>
+                  <td>${item.name}</td><td style="color:#555">${item.members.join(' / ')}</td>
+                  <td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
+                </tr>` : `
                 <tr>
                   <td style="text-align:center;${medalStyle(item.rank)}">${medalText(item.rank)}</td>
                   <td>${item.name}</td><td style="color:#555">${item.members.join(' / ')}</td>
                   <td>${item.technicalTotal.toFixed(1)}</td>
                   <td>${item.artisticTotal.toFixed(1)}</td>
                   <td>${item.grandTotal.toFixed(1)}</td>
-                  <td style="color:#dc2626">${item.penaltyDeduction > 0 ? `-${item.penaltyDeduction.toFixed(1)}` : '—'}</td>
+                  <td style="color:#dc2626">${item.penaltyDeduction > 0
+                    ? `-${item.penaltyDeduction.toFixed(1)} (${(item.penaltyReasons ?? []).join(', ')})`
+                    : '—'}</td>
                   <td style="font-weight:${item.rank <= 3 ? 'bold' : 'normal'}">${item.finalScore.toFixed(1)}</td>
                 </tr>`).join('')}
             </tbody>

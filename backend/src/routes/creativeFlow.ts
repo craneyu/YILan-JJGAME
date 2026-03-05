@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { verifyToken, requireRole } from '../middleware/auth';
-import { openScoring, confirmScores, nextTeam, getCreativeState } from '../controllers/creativeFlowController';
+import { openScoring, confirmScores, nextTeam, getCreativeState, abstainTeam, cancelAbstain } from '../controllers/creativeFlowController';
 import { startTimer, stopTimer, pauseTimer, resumeTimer, resetTimer } from '../controllers/creativeTimerController';
 
 const router = Router();
@@ -13,6 +13,8 @@ router.post('/stop-timer', verifyToken, requireRole('sequence_judge', 'admin'), 
 router.post('/pause-timer', verifyToken, requireRole('sequence_judge', 'admin'), pauseTimer);
 router.post('/resume-timer', verifyToken, requireRole('sequence_judge', 'admin'), resumeTimer);
 router.post('/reset-timer', verifyToken, requireRole('sequence_judge', 'admin'), resetTimer);
+router.post('/abstain', verifyToken, requireRole('sequence_judge', 'admin'), abstainTeam);
+router.post('/abstain-cancel', verifyToken, requireRole('sequence_judge', 'admin'), cancelAbstain);
 router.get('/state/:eventId', verifyToken, requireRole('sequence_judge', 'scoring_judge', 'admin', 'audience'), getCreativeState);
 
 export default router;

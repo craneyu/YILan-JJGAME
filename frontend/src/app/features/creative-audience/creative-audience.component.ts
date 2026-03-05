@@ -6,7 +6,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
 import { faExpand, faCompress, faArrowsRotate, faCheck, faClock, faTriangleExclamation, faGavel } from '@fortawesome/free-solid-svg-icons';
-import { SocketService, CreativePenaltyItem } from '../../core/services/socket.service';
+import { SocketService, CreativePenaltyItem, CreativeTeamAbstainedEvent } from '../../core/services/socket.service';
 import { ApiService } from '../../core/services/api.service';
 
 interface RankEntry {
@@ -108,6 +108,7 @@ export class CreativeAudienceComponent implements OnInit, OnDestroy {
   // 排名
   myRank = signal<{ rank: number; total: number } | null>(null);
 
+  isAbstained = signal(false);
   currentTeamId = signal<string | null>(null);
   currentTeamName = signal<string>('');
   currentMembers = signal<string[]>([]);
@@ -208,6 +209,20 @@ export class CreativeAudienceComponent implements OnInit, OnDestroy {
         }
       })
     );
+
+    this.subs.add(
+      this.socket.creativeTeamAbstained$.subscribe((evt: CreativeTeamAbstainedEvent) => {
+        if (evt.eventId !== this.eventId()) return;
+        this.isAbstained.set(true);
+      })
+    );
+
+    this.subs.add(
+      this.socket.creativeTeamAbstainCancelled$.subscribe((evt: CreativeTeamAbstainedEvent) => {
+        if (evt.eventId !== this.eventId()) return;
+        this.isAbstained.set(false);
+      })
+    );
   }
 
   ngOnDestroy(): void {
@@ -241,6 +256,7 @@ loadState(eventId: string): void {
       status: string;
       timerElapsedMs?: number;
       timerStartedAt?: string;
+      isAbstained?: boolean;
     }
   }>(`/creative/flow/state/${eventId}`).subscribe({
     next: (res) => {
@@ -259,6 +275,8 @@ loadState(eventId: string): void {
         this.currentMembers.set([]);
         this.currentCategory.set('');
       }
+
+      this.isAbstained.set(s.isAbstained ?? false);
 
       // 還原計時器狀態
       if (s.timerElapsedMs !== undefined) this.elapsedMs.set(s.timerElapsedMs);
@@ -314,6 +332,7 @@ loadState(eventId: string): void {
     this.currentTeamName.set('');
     this.currentMembers.set([]);
     this.currentCategory.set('');
+    this.isAbstained.set(false);
   }
 
   toggleFullscreen(): void {

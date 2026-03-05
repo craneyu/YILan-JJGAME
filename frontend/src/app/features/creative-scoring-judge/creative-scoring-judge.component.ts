@@ -6,7 +6,7 @@ import { faHourglassHalf, faCheckCircle, faCheck, faRightFromBracket, faExpand, 
 import Swal from 'sweetalert2';
 import { AuthService } from '../../core/services/auth.service';
 import { ApiService } from '../../core/services/api.service';
-import { SocketService } from '../../core/services/socket.service';
+import { SocketService, CreativeTeamAbstainedEvent } from '../../core/services/socket.service';
 import { Router } from '@angular/router';
 
 type JudgeState = 'waiting' | 'scoring' | 'submitted';
@@ -30,6 +30,7 @@ export class CreativeScoringJudgeComponent implements OnInit, OnDestroy {
   private router = inject(Router);
 
   state = signal<JudgeState>('waiting');
+  isAbstained = signal(false);
   currentTeamId = signal<string | null>(null);
   currentTeamName = signal<string>('');
   currentMembers = signal<string[]>([]);
@@ -143,6 +144,21 @@ export class CreativeScoringJudgeComponent implements OnInit, OnDestroy {
         }
 
         this.state.set('waiting');
+        this.isAbstained.set(false);
+      })
+    );
+
+    this.subs.add(
+      this.socket.creativeTeamAbstained$.subscribe((evt: CreativeTeamAbstainedEvent) => {
+        if (evt.eventId !== eventId) return;
+        this.isAbstained.set(true);
+      })
+    );
+
+    this.subs.add(
+      this.socket.creativeTeamAbstainCancelled$.subscribe((evt: CreativeTeamAbstainedEvent) => {
+        if (evt.eventId !== eventId) return;
+        this.isAbstained.set(false);
       })
     );
   }
@@ -177,18 +193,21 @@ export class CreativeScoringJudgeComponent implements OnInit, OnDestroy {
       currentTeamName?: string;
       currentMembers?: string[];
       currentCategory?: string;
+      isAbstained?: boolean;
     } }>(`/creative/flow/state/${eventId}`)
       .subscribe({
         next: (res) => {
           const data = res.data;
           if (!data) return;
-          
+
           if (data.currentTeamId) {
             this.currentTeamId.set(data.currentTeamId);
             this.currentTeamName.set(data.currentTeamName ?? '');
             this.currentMembers.set(data.currentMembers ?? []);
             this.currentCategory.set(data.currentCategory ?? '');
           }
+
+          this.isAbstained.set(data.isAbstained ?? false);
 
           // 只有 scoring_open 才開放評分介面，計時狀態只顯示隊伍資訊
           if (data.status === 'scoring_open') {

@@ -107,6 +107,11 @@ export interface CreativeTeamChangedEvent {
   nextTeamId: string | null;
 }
 
+export interface CreativeTeamAbstainedEvent {
+  eventId: string;
+  teamId: string;
+}
+
 export interface TimerStartedEvent {
   eventId: string;
   timerStartedAt: string;
@@ -198,6 +203,14 @@ export class SocketService {
 
   get creativeTeamChanged$(): Observable<CreativeTeamChangedEvent> {
     return fromEvent<CreativeTeamChangedEvent>(this.socket, 'creative:team-changed');
+  }
+
+  get creativeTeamAbstained$(): Observable<CreativeTeamAbstainedEvent> {
+    return fromEvent<CreativeTeamAbstainedEvent>(this.socket, 'creative:team-abstained');
+  }
+
+  get creativeTeamAbstainCancelled$(): Observable<CreativeTeamAbstainedEvent> {
+    return fromEvent<CreativeTeamAbstainedEvent>(this.socket, 'creative:team-abstain-cancelled');
   }
 
   get timerStarted$(): Observable<TimerStartedEvent> {

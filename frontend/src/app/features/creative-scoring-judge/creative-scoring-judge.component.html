@@ -46,11 +46,18 @@
             }
           </div>
         }
-        <div class="glass-card p-8 text-center">
-          <fa-icon [icon]="faHourglassHalf" class="text-blue-400 text-5xl mb-4"></fa-icon>
-          <h2 class="text-white text-xl font-semibold mb-2">等待賽序裁判開放評分</h2>
-          <p class="text-white/50 text-sm">請等待賽序裁判按下「開放評分」</p>
-        </div>
+        @if (isAbstained()) {
+          <div class="glass-card p-8 text-center border border-orange-400/40 bg-orange-500/10">
+            <p class="text-orange-300 text-4xl font-black mb-2">棄 權</p>
+            <p class="text-orange-200/70 text-sm">此隊伍已設定棄權，無需評分</p>
+          </div>
+        } @else {
+          <div class="glass-card p-8 text-center">
+            <fa-icon [icon]="faHourglassHalf" class="text-blue-400 text-5xl mb-4"></fa-icon>
+            <h2 class="text-white text-xl font-semibold mb-2">等待賽序裁判開放評分</h2>
+            <p class="text-white/50 text-sm">請等待賽序裁判按下「開放評分」</p>
+          </div>
+        }
       </div>
     }
 
@@ -187,16 +194,24 @@
           </div>
         }
 
-        <!-- 確認送出 -->
-        <button
-          class="w-full py-4 rounded-2xl text-white font-bold text-lg transition-all"
-          [class]="canSubmit()
-            ? 'bg-green-500/80 hover:bg-green-500 active:scale-98 shadow-lg'
-            : 'bg-white/10 text-white/30 cursor-not-allowed'"
-          [disabled]="!canSubmit()"
-          (click)="submitScores()">
-          @if (loading()) { 送出中... } @else { 確認送出 }
-        </button>
+        @if (isAbstained()) {
+          <!-- 棄權通知（覆蓋送出按鈕） -->
+          <div class="w-full py-4 rounded-2xl text-center border border-orange-400/40 bg-orange-500/10">
+            <p class="text-orange-300 font-bold text-lg">棄 權</p>
+            <p class="text-orange-200/60 text-xs mt-1">此隊伍已設定棄權，無需評分</p>
+          </div>
+        } @else {
+          <!-- 確認送出 -->
+          <button
+            class="w-full py-4 rounded-2xl text-white font-bold text-lg transition-all"
+            [class]="canSubmit()
+              ? 'bg-green-500/80 hover:bg-green-500 active:scale-98 shadow-lg'
+              : 'bg-white/10 text-white/30 cursor-not-allowed'"
+            [disabled]="!canSubmit()"
+            (click)="submitScores()">
+            @if (loading()) { 送出中... } @else { 確認送出 }
+          </button>
+        }
 
       </div>
     }
