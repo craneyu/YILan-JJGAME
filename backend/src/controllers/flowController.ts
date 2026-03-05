@@ -58,10 +58,10 @@ export async function nextGroup(req: Request, res: Response): Promise<void> {
     }
   }
 
-  // 取得賽事組別排序，依「組別優先、場次次之」排列隊伍清單
+  // 取得賽事組別排序，依「組別優先、場次次之」排列隊伍清單（排除 Show 隊伍）
   const event = await Event.findById(eventId).lean();
   const categoryOrder = event?.categoryOrder ?? ['female', 'male', 'mixed'];
-  const allTeams = await Team.find({ eventId }).lean();
+  const allTeams = await Team.find({ eventId, competitionType: { $ne: 'Show' } }).lean();
   const sortedTeams = sortTeams(allTeams, categoryOrder);
 
   const currentTeam = sortedTeams.find((t) => String(t._id) === String(gameState.currentTeamId));

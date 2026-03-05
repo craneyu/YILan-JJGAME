@@ -42,8 +42,55 @@
     </div>
   } @else {
 
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-4" style="height: calc(100vh - 120px)">
-    <!-- 左側：賽事資訊 + 系列進度 -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4" style="height: calc(100vh - 120px)">
+    <!-- 最左側：隊伍總列表（唯讀）-->
+    <div class="glass-card p-4 overflow-y-auto">
+      <h2 class="text-white/50 text-xs uppercase tracking-wider mb-3">參賽隊伍</h2>
+      @if (groupedTeams().length === 0) {
+        <p class="text-white/40 text-sm text-center py-4">尚無隊伍資料</p>
+      } @else {
+        <div class="space-y-3">
+          @for (group of groupedTeams(); track group.category) {
+            <div>
+              <p class="text-white/60 text-xs font-semibold uppercase tracking-wider mb-1 px-1">
+                {{ group.label }}（{{ group.teams.length }} 隊）
+              </p>
+              <div class="space-y-1">
+                @for (team of group.teams; track team._id) {
+                  <button
+                    class="w-full text-left px-3 py-2 rounded-xl border transition-all"
+                    [class]="currentTeam()?._id === team._id
+                      ? 'bg-blue-500/30 border-blue-400/60'
+                      : completedTeamIds().has(team._id)
+                        ? 'bg-green-500/10 border-green-500/20 hover:bg-green-500/15'
+                        : 'bg-white/5 border-white/10 hover:bg-white/10'"
+                    [disabled]="actionOpen()"
+                    (click)="selectTeam(team)">
+                    <div class="flex items-start gap-2">
+                      <span class="text-white/40 text-xs font-mono min-w-[1.25rem] pt-0.5">{{ team.order }}.</span>
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2">
+                          <p class="font-medium text-sm truncate"
+                            [class]="currentTeam()?._id === team._id ? 'text-white' : completedTeamIds().has(team._id) ? 'text-white/50' : 'text-white/70'">
+                            {{ team.name }}
+                          </p>
+                          @if (completedTeamIds().has(team._id)) {
+                            <span class="text-green-400 text-xs font-semibold shrink-0">✓ 完賽</span>
+                          }
+                        </div>
+                        <p class="text-xs text-white/40 mt-0.5 truncate">{{ team.members.join(' / ') }}</p>
+                      </div>
+                    </div>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- 中間：賽事資訊 + 系列進度 -->
     <div class="glass-card p-5 flex flex-col gap-4 overflow-y-auto">
       <div>
         <h3 class="text-white/50 text-xs uppercase tracking-wider mb-2">當前隊伍</h3>

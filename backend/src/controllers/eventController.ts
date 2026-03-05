@@ -150,7 +150,11 @@ export async function getEventSummary(req: Request, res: Response): Promise<void
     return;
   }
 
-  const allTeams = await Team.find({ eventId });
+  const teamFilter: Record<string, unknown> = { eventId };
+  const qType = req.query['competitionType'];
+  if (qType === 'Show') teamFilter['competitionType'] = 'Show';
+  else teamFilter['competitionType'] = { $ne: 'Show' }; // 預設排除 Show 隊伍
+  const allTeams = await Team.find(teamFilter);
   const teams = sortTeams(allTeams, event.categoryOrder ?? ['female', 'male', 'mixed']);
   const gameState = await GameState.findOne({ eventId });
 

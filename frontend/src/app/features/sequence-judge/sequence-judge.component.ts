@@ -76,6 +76,9 @@ interface SummaryResponse {
   };
 }
 
+const CATEGORY_ORDER: Record<string, number> = { female: 0, male: 1, mixed: 2 };
+const CATEGORY_LABEL: Record<string, string> = { male: '男子組', female: '女子組', mixed: '混合組' };
+
 @Component({
   selector: 'app-sequence-judge',
   standalone: true,
@@ -107,6 +110,7 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
   vrScoreValues = signal<{ throwVariety: number; groundVariety: number } | null>(null);
   actionProgress = signal<ActionProgress[]>([]);
   teamAbstained = signal(false);
+  completedTeamIds = signal<Set<string>>(new Set());
 
   // 各裁判個別 PART 分數（當前評分動作或最近完成動作）
   judgeScores = signal<JudgeScoreEntry[]>([]);
@@ -135,6 +139,24 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
   // 可換組：VR已送出 或 棄權
   canNextGroup = computed(() => this.vrSubmitted() || this.teamAbstained());
   isEventComplete = computed(() => this.gameStatus() === 'event_complete');
+
+  groupedTeams = computed(() => {
+    const sorted = [...this.teams()].sort((a, b) => {
+      const catDiff = (CATEGORY_ORDER[a.category] ?? 99) - (CATEGORY_ORDER[b.category] ?? 99);
+      if (catDiff !== 0) return catDiff;
+      return (a.order ?? 0) - (b.order ?? 0);
+    });
+    const groups: { category: string; label: string; teams: TeamInfo[] }[] = [];
+    for (const team of sorted) {
+      const last = groups[groups.length - 1];
+      if (!last || last.category !== team.category) {
+        groups.push({ category: team.category, label: CATEGORY_LABEL[team.category] ?? team.category, teams: [team] });
+      } else {
+        last.teams.push(team);
+      }
+    }
+    return groups;
+  });
 
   faCheckCircle = faCheckCircle;
   faHourglassHalf = faHourglassHalf;
@@ -223,7 +245,30 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
       // 換組（同輪或跨輪均觸發）
       this.socket.groupChanged$.subscribe((e) => {
         if (e.eventId !== this.eventId()) return;
+        const prevTeam = this.currentTeam();
+        const prevRound = this.currentRound();
         const nextTeam = this.teams().find((t) => t._id === e.nextTeamId);
+
+        // round 3 結束後更新完賽標記
+        if (prevTeam && prevRound === 3) {
+          if (!nextTeam || nextTeam.category !== prevTeam.category) {
+            // 切換至不同組別（或賽事結束）：前組別全員完賽
+            const prevCatTeams = this.teams().filter(t => t.category === prevTeam.category);
+            this.completedTeamIds.update(ids => {
+              const next = new Set(ids);
+              prevCatTeams.forEach(t => next.add(t._id));
+              return next;
+            });
+          } else {
+            // 仍在同組別：只有剛離開的那一隊完賽
+            this.completedTeamIds.update(ids => {
+              const next = new Set(ids);
+              next.add(prevTeam._id);
+              return next;
+            });
+          }
+        }
+
         if (nextTeam) {
           this.currentTeam.set(nextTeam);
           // groupIndex 從 teams 陣列位置計算（1-indexed）
@@ -290,6 +335,32 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
 
       this.currentRound.set(gameState.currentRound);
       this.gameStatus.set(gameState.status);
+
+      // 計算已完賽隊伍
+      if (gameState.status === 'event_complete') {
+        this.completedTeamIds.set(new Set(teams.map(t => t._id)));
+      } else if (gameState.currentTeamId) {
+        const catOrder: string[] = [];
+        const seen = new Set<string>();
+        for (const t of teams) {
+          if (!seen.has(t.category)) { seen.add(t.category); catOrder.push(t.category); }
+        }
+        const currentCat = teams.find(t => t._id === gameState.currentTeamId)?.category;
+        const currentCatIdx = currentCat ? catOrder.indexOf(currentCat) : -1;
+        const completedIds = new Set<string>();
+        // 早期類別全員完賽
+        for (const t of teams) {
+          const idx = catOrder.indexOf(t.category);
+          if (idx >= 0 && idx < currentCatIdx) completedIds.add(t._id);
+        }
+        // round 3 時，同類別中排在當前隊伍之前的隊伍也已完賽
+        if (gameState.currentRound === 3 && currentCat) {
+          const sameCatTeams = teams.filter(t => t.category === currentCat);
+          const currentIdx = sameCatTeams.findIndex(t => t._id === gameState.currentTeamId);
+          for (let i = 0; i < currentIdx; i++) completedIds.add(sameCatTeams[i]._id);
+        }
+        this.completedTeamIds.set(completedIds);
+      }
 
       // 還原棄權狀態
       if (gameState.currentTeamAbstained) {
@@ -381,6 +452,22 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
         status: 'pending' as const,
       }))
     );
+  }
+
+  // ── 手動選取隊伍 ──────────────────────────────────────────────
+  selectTeam(team: TeamInfo): void {
+    if (this.actionOpen()) return; // 評分進行中不允許切換
+    this.currentTeam.set(team);
+    this.groupIndex.set(this.teams().findIndex((t) => t._id === team._id) + 1);
+    this.initActionProgress(team, this.currentRound());
+    this.currentActionNo.set(null);
+    this.actionOpen.set(false);
+    this.vrSubmitted.set(false);
+    this.vrScoreValues.set(null);
+    this.teamAbstained.set(false);
+    this.judgeStatuses.set([1, 2, 3, 4, 5].map((n) => ({ judgeNo: n, submitted: false })));
+    this.judgeScores.set([]);
+    this.scoreDisplayActionNo.set(null);
   }
 
   // ── 開放評分 ─────────────────────────────────────────────────
