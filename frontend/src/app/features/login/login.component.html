@@ -1,36 +1,46 @@
 <div class="min-h-screen flex items-center justify-center p-4">
   <div class="w-full max-w-md">
-
     <!-- 標題 -->
     <div class="text-center mb-8">
       <h1 class="text-3xl font-bold text-white mb-2">柔術競賽演武計分平台</h1>
       <p class="text-white/60">
-        @if (loginStep() === 'select-type') { 請選擇競賽項目 }
-        @else if (loginStep() === 'select-event') { 請選擇要加入的賽事 }
-        @else { 請選擇身份登入 }
+        @if (loginStep() === "select-type") {
+          請選擇競賽項目
+        } @else if (loginStep() === "select-event") {
+          請選擇要加入的賽事
+        } @else {
+          請選擇身份登入
+        }
       </p>
     </div>
 
     <!-- ── 步驟一：登入 ── -->
-    @if (loginStep() === 'login') {
-
+    @if (loginStep() === "login") {
       <!-- 觀眾 / 選手入口 -->
       <div class="glass-card p-6 mb-4">
         <div class="flex items-center gap-3 mb-4">
           <fa-icon [icon]="faEye" class="text-blue-400 text-xl"></fa-icon>
           <h2 class="text-white font-semibold text-lg">觀眾 / 選手</h2>
         </div>
-        <p class="text-white/60 text-sm mb-4">無需登入，選擇賽事後即可觀看即時計分</p>
+        <p class="text-white/60 text-sm mb-4">
+          無需登入，選擇賽事後即可觀看即時計分
+        </p>
         <div class="flex gap-2">
           <select
             [(ngModel)]="selectedEventId"
             class="flex-1 bg-white/10 text-white border border-white/30 rounded-lg px-3 py-2 outline-none focus:border-blue-400">
             <option value="" class="bg-slate-800">請選擇賽事</option>
             @for (event of allOpenEvents(); track event._id) {
-              <option [value]="event._id" class="bg-slate-800">{{ event.name }}</option>
+              <option [value]="event._id" class="bg-slate-800">
+                {{ event.name }}
+              </option>
             }
           </select>
-          <button class="primary-btn" (click)="loginAsAudience(selectedEventId)">進入</button>
+          <button
+            class="primary-btn"
+            (click)="loginAsAudience(selectedEventId)">
+            進入
+          </button>
         </div>
       </div>
 
@@ -44,14 +54,20 @@
         <div class="space-y-3">
           <div>
             <label class="text-white/70 text-sm block mb-1">帳號</label>
-            <input type="text" [(ngModel)]="username" placeholder="請輸入帳號"
+            <input
+              type="text"
+              [(ngModel)]="username"
+              placeholder="請輸入帳號"
               (keyup.enter)="onLogin()"
               class="w-full bg-white/10 text-white border border-white/30 rounded-lg px-3 py-2 outline-none focus:border-blue-400 placeholder:text-white/30" />
           </div>
 
           <div>
             <label class="text-white/70 text-sm block mb-1">密碼</label>
-            <input type="password" [(ngModel)]="password" placeholder="請輸入密碼"
+            <input
+              type="password"
+              [(ngModel)]="password"
+              placeholder="請輸入密碼"
               (keyup.enter)="onLogin()"
               class="w-full bg-white/10 text-white border border-white/30 rounded-lg px-3 py-2 outline-none focus:border-blue-400 placeholder:text-white/30" />
           </div>
@@ -62,45 +78,68 @@
             (click)="onLogin()"
             [disabled]="loading()">
             <fa-icon [icon]="faLock" class="text-sm"></fa-icon>
-            {{ loading() ? '登入中...' : '登入' }}
+            {{ loading() ? "登入中..." : "登入" }}
           </button>
         </div>
 
         <div class="mt-4 pt-4 border-t border-white/10 space-y-1">
-          <p class="text-white/40 text-xs text-center">預設帳號：admin / judge1~5 / vr / seq</p>
-          <p class="text-white/40 text-xs text-center">密碼：admin123 / judge123 / vr123 / seq123</p>
+          <p class="text-white/40 text-xs text-center">
+            預設帳號：admin / judge1~5 / vr / seq / match1
+          </p>
+          <p class="text-white/40 text-xs text-center">
+            密碼：admin123 / judge123 / vr123 / seq123 / match1
+          </p>
         </div>
       </div>
     }
 
     <!-- ── 步驟二：選擇賽事 ── -->
-    @if (loginStep() === 'select-event') {
+    @if (loginStep() === "select-event") {
       <div class="glass-card p-6">
         <div class="flex items-center gap-3 mb-2">
-          <fa-icon [icon]="faCalendarCheck" class="text-blue-400 text-xl"></fa-icon>
+          <fa-icon
+            [icon]="faCalendarCheck"
+            class="text-blue-400 text-xl"></fa-icon>
           <h2 class="text-white font-semibold text-lg">選擇賽事</h2>
         </div>
-        <p class="text-white/60 text-sm mb-4">您的帳號尚未指定賽事，請選擇本次要加入的競賽</p>
+        <p class="text-white/60 text-sm mb-4">
+          您的帳號尚未指定賽事，請選擇本次要加入的競賽
+        </p>
 
         @if (openEvents().length === 0) {
           <div class="text-center py-6">
             <p class="text-white/40">目前沒有可用的賽事</p>
-            <p class="text-white/30 text-xs mt-1">請聯絡管理員建立賽事後再嘗試</p>
+            <p class="text-white/30 text-xs mt-1">
+              請聯絡管理員建立賽事後再嘗試
+            </p>
           </div>
         } @else {
           <div class="space-y-3">
             @for (event of openEvents(); track event._id) {
-              <label class="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all"
-                [class]="joinEventId === event._id
-                  ? 'bg-blue-500/30 border border-blue-400/50'
-                  : 'bg-white/5 border border-white/10 hover:bg-white/10'">
-                <input type="radio" name="eventSelect" [value]="event._id"
-                  [(ngModel)]="joinEventId" class="accent-blue-500" />
+              <label
+                class="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all"
+                [class]="
+                  joinEventId === event._id
+                    ? 'bg-blue-500/30 border border-blue-400/50'
+                    : 'bg-white/5 border border-white/10 hover:bg-white/10'
+                ">
+                <input
+                  type="radio"
+                  name="eventSelect"
+                  [value]="event._id"
+                  [(ngModel)]="joinEventId"
+                  class="accent-blue-500" />
                 <div class="flex-1">
                   <p class="text-white font-medium">{{ event.name }}</p>
                   <p class="text-white/40 text-xs">
-                    {{ event.date ? (event.date | date:'yyyy/MM/dd') : '' }}
-                    {{ event.status === 'active' ? '・進行中' : event.status === 'pending' ? '・準備中' : '' }}
+                    {{ event.date ? (event.date | date: "yyyy/MM/dd") : "" }}
+                    {{
+                      event.status === "active"
+                        ? "・進行中"
+                        : event.status === "pending"
+                          ? "・準備中"
+                          : ""
+                    }}
                   </p>
                 </div>
               </label>
@@ -113,7 +152,7 @@
             [disabled]="loading() || !joinEventId"
             (click)="confirmSelectEvent()">
             <fa-icon [icon]="faCalendarCheck"></fa-icon>
-            {{ loading() ? '處理中...' : '確認加入賽事' }}
+            {{ loading() ? "處理中..." : "確認加入賽事" }}
           </button>
         }
 
@@ -124,43 +163,55 @@
     }
 
     <!-- ── 步驟三：選擇競賽類型（登入後，多類型時顯示）── -->
-    @if (loginStep() === 'select-type') {
-
+    @if (loginStep() === "select-type") {
       <div class="space-y-4">
-
         @for (type of availableTypes(); track type) {
-          @if (type === 'Duo') {
+          @if (type === "Duo") {
             <button
               class="w-full glass-card p-6 text-left transition-all cursor-pointer border-2 border-transparent hover:bg-white/20 hover:border-blue-400/50"
               (click)="selectCompetitionType('kata')">
               <div class="flex items-center gap-4">
-                <div class="w-14 h-14 rounded-xl bg-blue-500/30 flex items-center justify-center flex-shrink-0">
-                  <fa-icon [icon]="faUsers" class="text-blue-400 text-3xl"></fa-icon>
+                <div
+                  class="w-14 h-14 rounded-xl bg-blue-500/30 flex items-center justify-center flex-shrink-0">
+                  <fa-icon
+                    [icon]="faUsers"
+                    class="text-blue-400 text-3xl"></fa-icon>
                 </div>
                 <div>
                   <div class="flex items-center gap-2 mb-1">
                     <h2 class="text-white font-bold text-xl">雙人演武</h2>
-                    <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-500/30 text-blue-300 border border-blue-400/40">Duo</span>
+                    <span
+                      class="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-500/30 text-blue-300 border border-blue-400/40"
+                      >Duo</span
+                    >
                   </div>
                   <p class="text-white/60 text-sm">傳統柔術型，5 位裁判評分</p>
                 </div>
               </div>
             </button>
           }
-          @if (type === 'Show') {
+          @if (type === "Show") {
             <button
               class="w-full glass-card p-6 text-left transition-all cursor-pointer border-2 border-transparent hover:bg-white/20 hover:border-purple-400/50"
               (click)="selectCompetitionType('creative')">
               <div class="flex items-center gap-4">
-                <div class="w-14 h-14 rounded-xl bg-purple-500/30 flex items-center justify-center flex-shrink-0">
-                  <fa-icon [icon]="faStar" class="text-purple-400 text-3xl"></fa-icon>
+                <div
+                  class="w-14 h-14 rounded-xl bg-purple-500/30 flex items-center justify-center flex-shrink-0">
+                  <fa-icon
+                    [icon]="faStar"
+                    class="text-purple-400 text-3xl"></fa-icon>
                 </div>
                 <div>
                   <div class="flex items-center gap-2 mb-1">
                     <h2 class="text-white font-bold text-xl">創意演武</h2>
-                    <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-500/30 text-purple-300 border border-purple-400/40">Show</span>
+                    <span
+                      class="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-500/30 text-purple-300 border border-purple-400/40"
+                      >Show</span
+                    >
                   </div>
-                  <p class="text-white/60 text-sm">創意表演型，技術分＋表演分，計時計罰</p>
+                  <p class="text-white/60 text-sm">
+                    創意表演型，技術分＋表演分，計時計罰
+                  </p>
                 </div>
               </div>
             </button>
@@ -170,9 +221,7 @@
         <button class="w-full glass-btn text-sm" (click)="backToLogin()">
           ← 重新登入
         </button>
-
       </div>
     }
-
   </div>
 </div>

@@ -15,6 +15,6 @@ router.post('/resume-timer', verifyToken, requireRole('sequence_judge', 'admin')
 router.post('/reset-timer', verifyToken, requireRole('sequence_judge', 'admin'), resetTimer);
 router.post('/abstain', verifyToken, requireRole('sequence_judge', 'admin'), abstainTeam);
 router.post('/abstain-cancel', verifyToken, requireRole('sequence_judge', 'admin'), cancelAbstain);
-router.get('/state/:eventId', verifyToken, requireRole('sequence_judge', 'scoring_judge', 'admin', 'audience'), getCreativeState);
+router.get('/state/:eventId', getCreativeState);
 
 export default router;

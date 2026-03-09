@@ -1,0 +1,142 @@
+<div class="h-screen bg-gray-950 text-white flex flex-col select-none relative overflow-hidden">
+
+  <!-- 全螢幕按鈕 -->
+  <div class="absolute top-3 right-3 z-10">
+    <button
+      class="glass-btn px-3 py-2 rounded-xl opacity-30 hover:opacity-80 transition-opacity"
+      (click)="toggleFullscreen()">
+      <fa-icon [icon]="isFullscreen() ? faCompress : faExpand" />
+    </button>
+  </div>
+
+  <!-- 等待畫面 -->
+  @if (!activeMatch()) {
+    <div class="flex-1 flex items-center justify-center">
+      <div class="text-center">
+        <div class="text-6xl mb-6">🥋</div>
+        <h1 class="text-3xl font-bold text-white/50 mb-2">柔術競賽計分板</h1>
+        <p class="text-white/30">等待下一場比賽...</p>
+      </div>
+    </div>
+  }
+
+  <!-- 計分板（滿版） -->
+  @if (activeMatch(); as match) {
+    <div class="flex-1 flex flex-col min-h-0 px-4 md:px-6 pt-3 pb-2 gap-2">
+
+      <!-- 場次資訊列 -->
+      <div class="text-center shrink-0">
+        <div class="text-white font-black text-2xl md:text-3xl lg:text-4xl tracking-wide leading-tight">
+          {{ match.category === 'male' ? '男子組' : match.category === 'female' ? '女子組' : '混合組' }}
+          {{ match.weightClass }}
+        </div>
+        <div class="text-white/40 text-xs md:text-sm tracking-widest uppercase mt-0.5">
+          R{{ match.round }}-{{ match.matchNo }}
+        </div>
+      </div>
+
+      <!-- 勝方橫幅 -->
+      @if (matchResult()) {
+        <div class="text-center shrink-0 animate-bounce">
+          <span class="text-3xl md:text-4xl font-black text-yellow-300">{{ winnerLabel() }}</span>
+        </div>
+      }
+
+      <!-- 紅方列 -->
+      <div
+        class="flex-1 flex items-center gap-4 md:gap-6 rounded-2xl bg-white/5 px-4 md:px-6 py-3 min-h-0 transition-opacity"
+        [class.opacity-30]="matchResult() && matchResult()!.winner !== 'red'">
+
+        <!-- 左：姓名 + 傷停計時（同行） -->
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-4 md:gap-6 flex-wrap">
+            <span class="text-3xl md:text-4xl lg:text-5xl font-black text-white leading-tight truncate">
+              {{ match.redPlayer.name }}
+            </span>
+            @if (redInjuryActive()) {
+              <span class="flex items-center gap-2 text-3xl md:text-4xl lg:text-5xl font-black text-amber-400 shrink-0 leading-tight">
+                <fa-icon [icon]="faKitMedical" />
+                {{ displayRedInjuryTimer() }}
+              </span>
+            }
+          </div>
+          <div class="text-white/60 text-base md:text-xl lg:text-2xl font-semibold mt-1 truncate">
+            {{ match.redPlayer.teamName }}
+          </div>
+        </div>
+
+        <!-- 中：優勢 / 警告 -->
+        <div class="flex gap-4 md:gap-8 shrink-0">
+          <div class="text-center">
+            <div class="text-white/40 text-xs mb-1">優勢</div>
+            <div class="text-white text-3xl md:text-4xl lg:text-5xl font-black">{{ redAdvantage() }}</div>
+          </div>
+          <div class="text-center">
+            <div class="text-white/40 text-xs mb-1">警告</div>
+            <div class="text-white text-3xl md:text-4xl lg:text-5xl font-black">{{ redWarnings() }}</div>
+          </div>
+        </div>
+
+        <!-- 右：大分數方塊（紅） -->
+        <div class="bg-red-700 rounded-2xl w-28 h-20 md:w-36 md:h-28 lg:w-44 lg:h-32 flex items-center justify-center shrink-0">
+          <span class="text-6xl md:text-7xl lg:text-8xl font-black text-white leading-none">{{ redScore() }}</span>
+        </div>
+      </div>
+
+      <!-- 藍方列 -->
+      <div
+        class="flex-1 flex items-center gap-4 md:gap-6 rounded-2xl bg-white/5 px-4 md:px-6 py-3 min-h-0 transition-opacity"
+        [class.opacity-30]="matchResult() && matchResult()!.winner !== 'blue'">
+
+        <!-- 左：姓名 + 傷停計時（同行） -->
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-4 md:gap-6 flex-wrap">
+            <span class="text-3xl md:text-4xl lg:text-5xl font-black text-white leading-tight truncate">
+              {{ match.bluePlayer.name }}
+            </span>
+            @if (blueInjuryActive()) {
+              <span class="flex items-center gap-2 text-3xl md:text-4xl lg:text-5xl font-black text-amber-400 shrink-0 leading-tight">
+                <fa-icon [icon]="faKitMedical" />
+                {{ displayBlueInjuryTimer() }}
+              </span>
+            }
+          </div>
+          <div class="text-white/60 text-base md:text-xl lg:text-2xl font-semibold mt-1 truncate">
+            {{ match.bluePlayer.teamName }}
+          </div>
+        </div>
+
+        <!-- 中：優勢 / 警告 -->
+        <div class="flex gap-4 md:gap-8 shrink-0">
+          <div class="text-center">
+            <div class="text-white/40 text-xs mb-1">優勢</div>
+            <div class="text-white text-3xl md:text-4xl lg:text-5xl font-black">{{ blueAdvantage() }}</div>
+          </div>
+          <div class="text-center">
+            <div class="text-white/40 text-xs mb-1">警告</div>
+            <div class="text-white text-3xl md:text-4xl lg:text-5xl font-black">{{ blueWarnings() }}</div>
+          </div>
+        </div>
+
+        <!-- 右：大分數方塊（藍） -->
+        <div class="bg-blue-700 rounded-2xl w-28 h-20 md:w-36 md:h-28 lg:w-44 lg:h-32 flex items-center justify-center shrink-0">
+          <span class="text-6xl md:text-7xl lg:text-8xl font-black text-white leading-none">{{ blueScore() }}</span>
+        </div>
+      </div>
+
+      <!-- 計時器列 -->
+      <div class="shrink-0 flex justify-end items-center px-2 py-1 gap-4 md:gap-6">
+        @if (timerPaused() && timerRemaining() > 0 && !matchResult()) {
+          <div class="text-6xl md:text-7xl lg:text-8xl font-mono font-bold text-yellow-400">⏸</div>
+        }
+        <div
+          class="text-7xl md:text-8xl lg:text-9xl font-mono font-bold tracking-widest"
+          [class.text-red-400]="timerRemaining() <= 30 && !timerPaused()"
+          [class.text-white/40]="timerRemaining() > 30 || timerPaused()">
+          {{ displayTimer() }}
+        </div>
+      </div>
+
+    </div>
+  }
+</div>
