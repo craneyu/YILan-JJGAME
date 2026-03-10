@@ -66,6 +66,43 @@ export async function resetScoreLogs(
   res.json({ success: true });
 }
 
+export async function getScoreSummary(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const matchId = req.query["matchId"] as string;
+  if (!matchId) {
+    res.status(400).json({ success: false, error: "請提供 matchId" });
+    return;
+  }
+
+  const logs = await MatchScoreLog.find({ matchId })
+    .sort({ timestamp: 1 })
+    .lean();
+
+  let rs = 0, bs = 0, ra = 0, ba = 0, rw = 0, bw = 0;
+  for (const e of logs) {
+    if (e.side === "red") {
+      if (e.type === "score")     rs = Math.max(0, rs + e.value);
+      if (e.type === "advantage") ra = Math.max(0, ra + e.value);
+      if (e.type === "warning")   rw = Math.max(0, rw + e.value);
+    } else {
+      if (e.type === "score")     bs = Math.max(0, bs + e.value);
+      if (e.type === "advantage") ba = Math.max(0, ba + e.value);
+      if (e.type === "warning")   bw = Math.max(0, bw + e.value);
+    }
+  }
+
+  res.json({
+    success: true,
+    data: {
+      scores:     { red: rs, blue: bs },
+      advantages: { red: ra, blue: ba },
+      warnings:   { red: rw, blue: bw },
+    },
+  });
+}
+
 export async function getScoreLogs(req: Request, res: Response): Promise<void> {
   const matchId = req.query["matchId"] as string;
   if (!matchId) {

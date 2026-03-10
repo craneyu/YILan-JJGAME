@@ -271,6 +271,30 @@ export class MatchAudienceComponent implements OnInit, OnDestroy {
           this.activeMatch.set(inProgress);
           this.matchResult.set(null);
           this.resetScores();
+          if (inProgress) this.restoreScores(inProgress._id);
+        },
+        error: () => {},
+      });
+  }
+
+  private restoreScores(matchId: string): void {
+    this.api
+      .get<{
+        success: boolean;
+        data: {
+          scores: { red: number; blue: number };
+          advantages: { red: number; blue: number };
+          warnings: { red: number; blue: number };
+        };
+      }>(`/match-scores/summary?matchId=${matchId}`)
+      .subscribe({
+        next: (res) => {
+          this.redScore.set(res.data.scores.red);
+          this.blueScore.set(res.data.scores.blue);
+          this.redAdvantage.set(res.data.advantages.red);
+          this.blueAdvantage.set(res.data.advantages.blue);
+          this.redWarnings.set(res.data.warnings.red);
+          this.blueWarnings.set(res.data.warnings.blue);
         },
         error: () => {},
       });
