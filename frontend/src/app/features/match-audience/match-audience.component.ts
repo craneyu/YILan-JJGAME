@@ -176,6 +176,15 @@ export class MatchAudienceComponent implements OnInit, OnDestroy {
     );
 
     this.subs.add(
+      this.socket.matchScoresReset$.subscribe((e: { matchId: string }) => {
+        const m = this.activeMatch();
+        if (!m || m._id !== e.matchId) return;
+        this.resetScores();
+        this.matchResult.set(null);
+      }),
+    );
+
+    this.subs.add(
       this.socket.injuryStarted$.subscribe((e: InjuryStartedEvent) => {
         const m = this.activeMatch();
         if (!m || m._id !== e.matchId) return;

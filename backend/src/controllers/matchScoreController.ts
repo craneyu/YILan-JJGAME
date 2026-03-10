@@ -61,6 +61,7 @@ export async function resetScoreLogs(
     warnings: { red: 0, blue: 0 },
   };
   broadcast.matchScoreUpdated(match.eventId.toString(), { matchId, ...zeros });
+  broadcast.matchScoresReset(match.eventId.toString(), { matchId });
 
   res.json({ success: true });
 }

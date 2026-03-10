@@ -440,7 +440,12 @@
             <p class="text-white/60 text-sm mb-3">
               {{ submissionPending() ? '確認勝負' : '裁判判決' }}
             </p>
-            <div class="flex gap-4 justify-center">
+            <div class="flex gap-4 justify-center flex-wrap">
+              <button
+                class="bg-red-900/60 hover:bg-red-900/80 active:scale-95 px-6 py-3 rounded-xl font-bold transition-all duration-100 border border-white/20"
+                (click)="addForfeit('red')">
+                <fa-icon [icon]="faFlag" class="mr-2" />紅方棄權
+              </button>
               <button
                 class="bg-red-600/80 hover:bg-red-600 active:scale-95 px-8 py-3 rounded-xl font-bold transition-all duration-100"
                 (click)="confirmJudgeDecision('red')">
@@ -453,10 +458,15 @@
                 <fa-icon [icon]="faGavel" class="mr-2" />
                 藍方勝
               </button>
+              <button
+                class="bg-blue-900/60 hover:bg-blue-900/80 active:scale-95 px-6 py-3 rounded-xl font-bold transition-all duration-100 border border-white/20"
+                (click)="addForfeit('blue')">
+                <fa-icon [icon]="faFlag" class="mr-2" />藍方棄權
+              </button>
             </div>
           } @else {
             <p class="text-white/50 text-sm mb-1">
-              {{ dqPending() ? (dqPending() === 'red' ? '🔴 紅方 DQ' : '🔵 藍方 DQ') : submissionPending() ? '🥋 降伏勝' : '已宣告勝方' }}
+              {{ forfeitPending() ? (forfeitPending() === 'red' ? '紅方棄權' : '藍方棄權') : dqPending() ? (dqPending() === 'red' ? '🔴 紅方 DQ' : '🔵 藍方 DQ') : submissionPending() ? '🥋 降伏勝' : '已宣告勝方' }}
             </p>
             <p class="font-black text-xl mb-4"
                [class.text-red-300]="judgeWinner() === 'red'"

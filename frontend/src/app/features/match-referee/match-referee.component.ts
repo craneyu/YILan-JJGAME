@@ -25,6 +25,7 @@ import {
   faExpand,
   faCompress,
   faRightFromBracket,
+  faFlag,
 } from "@fortawesome/free-solid-svg-icons";
 
 import { ApiService } from "../../core/services/api.service";
@@ -38,8 +39,8 @@ import {
 } from "../../core/models/match.model";
 
 // ── 警告累積規則常數 ──
-const WARNING_ADVANTAGE_THRESHOLD = 3; // 3 次警告對方得優勢
-const WARNING_DQ_THRESHOLD = 4; // 4 次警告對方直接勝利
+const WARNING_ADVANTAGE_THRESHOLD = 2; // 第 2 次警告對方得優勢
+const WARNING_DQ_THRESHOLD = 4; // 第 4 次警告提示裁判，由裁判手動結束
 
 const CATEGORY_LABEL: Record<MatchCategory, string> = {
   male: "男子組",
@@ -85,6 +86,7 @@ export class MatchRefereeComponent implements OnInit, OnDestroy {
   faExpand = faExpand;
   faCompress = faCompress;
   faRightFromBracket = faRightFromBracket;
+  faFlag = faFlag;
 
   // ── 視圖狀態 ──
   view = signal<"list" | "scoring">("list");
@@ -106,14 +108,14 @@ export class MatchRefereeComponent implements OnInit, OnDestroy {
   redWarnings = signal(0);
   blueWarnings = signal(0);
 
-  // 警告累計加算的優勢（從警告次數自動計算）
+  // 警告累計加算的優勢（第2次起每多1次警告對方多1優勢）
   redBonusAdvantage = computed(() => {
     const w = this.redWarnings();
-    return w >= WARNING_ADVANTAGE_THRESHOLD ? 1 : 0;
+    return w >= WARNING_ADVANTAGE_THRESHOLD ? w - (WARNING_ADVANTAGE_THRESHOLD - 1) : 0;
   });
   blueBonusAdvantage = computed(() => {
     const w = this.blueWarnings();
-    return w >= WARNING_ADVANTAGE_THRESHOLD ? 1 : 0;
+    return w >= WARNING_ADVANTAGE_THRESHOLD ? w - (WARNING_ADVANTAGE_THRESHOLD - 1) : 0;
   });
 
   redTotalAdvantage = computed(
@@ -142,6 +144,9 @@ export class MatchRefereeComponent implements OnInit, OnDestroy {
 
   // ── DQ 待確認（記錄被 DQ 的一方，等待最終結束）──
   dqPending = signal<'red' | 'blue' | null>(null);
+
+  // ── 棄權待確認（記錄棄權的一方）──
+  forfeitPending = signal<'red' | 'blue' | null>(null);
 
   // ── 裁判判決（宣告勝方，尚未正式結束）──
   judgeWinner = signal<'red' | 'blue' | null>(null);
@@ -376,6 +381,32 @@ export class MatchRefereeComponent implements OnInit, OnDestroy {
     this.applyScore(side, "advantage", -1);
   }
 
+  addForfeit(loser: "red" | "blue"): void {
+    const match = this.activeMatch();
+    if (!match) return;
+    const loserLabel = loser === "red" ? "紅方" : "藍方";
+    const winner: "red" | "blue" = loser === "red" ? "blue" : "red";
+    const winnerLabel = winner === "red" ? "紅方" : "藍方";
+    Swal.fire({
+      icon: "warning",
+      title: `${loserLabel} 棄權`,
+      text: `確認此判決？系統將宣告${winnerLabel}勝，請再按「結束比賽」完成場次。`,
+      showCancelButton: true,
+      confirmButtonText: "確認",
+      cancelButtonText: "取消",
+      background: "#1e293b",
+      color: "#fff",
+      confirmButtonColor: "#f59e0b",
+      cancelButtonColor: "#6b7280",
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+      this.forfeitPending.set(loser);
+      this.judgeWinner.set(winner);
+      this.pauseTimer();
+      this.socket.emitMatchWinnerPreview(this.eventId(), match._id, winner);
+    });
+  }
+
   addStalling(side: "red" | "blue"): void {
     this.addWarning(side);
   }
@@ -440,33 +471,47 @@ export class MatchRefereeComponent implements OnInit, OnDestroy {
     const next = currentWarnings + 1;
 
     if (next >= WARNING_DQ_THRESHOLD) {
-      // 第 4 次警告 → DQ 確認
+      // 第 4 次警告 → 確認後記錄，流程同降伏勝（等裁判手動結束比賽）
+      const loserLabel = side === "red" ? "紅方" : "藍方";
+      const winner: "red" | "blue" = side === "red" ? "blue" : "red";
+      const winnerLabel = winner === "red" ? "紅方" : "藍方";
+      const match = this.activeMatch();
+      if (!match) return;
       Swal.fire({
         icon: "warning",
-        title: `第 ${WARNING_DQ_THRESHOLD} 次警告`,
-        text: `${side === "red" ? "紅方" : "藍方"}累計 ${WARNING_DQ_THRESHOLD} 次警告，對方直接勝利。確認此判決？`,
+        title: `${loserLabel} 第 ${WARNING_DQ_THRESHOLD} 次警告`,
+        text: `${loserLabel}累計 ${WARNING_DQ_THRESHOLD} 次警告，${winnerLabel} DQ 勝。確認此判決？系統將宣告勝方，請再按「結束比賽」完成場次。`,
         showCancelButton: true,
-        confirmButtonText: "確認 DQ",
+        confirmButtonText: "確認",
         cancelButtonText: "取消",
         background: "#1e293b",
         color: "#fff",
         confirmButtonColor: "#ef4444",
         cancelButtonColor: "#6b7280",
       }).then((result) => {
-        if (result.isConfirmed) {
-          this.applyWarning(side);
-          const winner: "red" | "blue" = side === "red" ? "blue" : "red";
-          this.endMatch(winner, "dq");
-        }
+        if (!result.isConfirmed) return;
+        this.applyWarning(side);
+        this.dqPending.set(winner);
+        this.judgeWinner.set(winner);
+        this.pauseTimer();
+        this.socket.emitMatchScoreUpdated(
+          this.eventId(),
+          match._id,
+          { red: this.redScore(), blue: this.blueScore() },
+          { red: this.redTotalAdvantage(), blue: this.blueTotalAdvantage() },
+          { red: this.redWarnings(), blue: this.blueWarnings() },
+        );
+        this.socket.emitMatchWinnerPreview(this.eventId(), match._id, winner);
       });
       return;
     }
 
-    if (next === WARNING_ADVANTAGE_THRESHOLD) {
+    if (next >= WARNING_ADVANTAGE_THRESHOLD) {
+      const bonus = next - (WARNING_ADVANTAGE_THRESHOLD - 1);
       Swal.fire({
         icon: "info",
-        title: `累計 ${WARNING_ADVANTAGE_THRESHOLD} 次警告`,
-        text: `對方自動獲得 1 分優勢`,
+        title: `累計 ${next} 次警告`,
+        text: `對方優勢 +1（共累計 ${bonus} 分優勢）`,
         toast: true,
         position: "top-end",
         showConfirmButton: false,
@@ -481,10 +526,10 @@ export class MatchRefereeComponent implements OnInit, OnDestroy {
     const current = side === "red" ? this.redWarnings() : this.blueWarnings();
     if (current <= 0) return;
 
-    const prevHadAdvantage = current >= WARNING_ADVANTAGE_THRESHOLD;
-    const nextHasAdvantage = current - 1 >= WARNING_ADVANTAGE_THRESHOLD;
+    const prevBonus = current >= WARNING_ADVANTAGE_THRESHOLD ? current - (WARNING_ADVANTAGE_THRESHOLD - 1) : 0;
+    const nextBonus = (current - 1) >= WARNING_ADVANTAGE_THRESHOLD ? (current - 1) - (WARNING_ADVANTAGE_THRESHOLD - 1) : 0;
 
-    if (prevHadAdvantage && !nextHasAdvantage) {
+    if (prevBonus > nextBonus) {
       Swal.fire({
         icon: "warning",
         title: "撤銷警告",
@@ -530,22 +575,19 @@ export class MatchRefereeComponent implements OnInit, OnDestroy {
   }
 
   private recalcFromLogs(): void {
-    let rs = 0,
-      bs = 0,
-      ra = 0,
-      ba = 0;
+    let rs = 0, bs = 0, ra = 0, ba = 0;
     for (const e of this.redScoreLog()) {
-      if (e.type === "score") rs += e.value;
-      if (e.type === "advantage") ra += e.value;
+      if (e.type === "score") rs = Math.max(0, rs + e.value);
+      if (e.type === "advantage") ra = Math.max(0, ra + e.value);
     }
     for (const e of this.blueScoreLog()) {
-      if (e.type === "score" && e.value !== 99) bs += e.value;
-      if (e.type === "advantage") ba += e.value;
+      if (e.type === "score" && e.value !== 99) bs = Math.max(0, bs + e.value);
+      if (e.type === "advantage") ba = Math.max(0, ba + e.value);
     }
-    this.redScore.set(Math.max(0, rs));
-    this.blueScore.set(Math.max(0, bs));
-    this.redAdvantage.set(Math.max(0, ra));
-    this.blueAdvantage.set(Math.max(0, ba));
+    this.redScore.set(rs);
+    this.blueScore.set(bs);
+    this.redAdvantage.set(ra);
+    this.blueAdvantage.set(ba);
   }
 
   // ──────────────────────────────────────────────────────────
@@ -679,6 +721,7 @@ export class MatchRefereeComponent implements OnInit, OnDestroy {
     this.judgeWinner.set(null);
     this.dqPending.set(null);
     this.submissionPending.set(null);
+    this.forfeitPending.set(null);
   }
 
   finalizeMatch(): void {
@@ -686,6 +729,7 @@ export class MatchRefereeComponent implements OnInit, OnDestroy {
     if (!winner) return;
     const method = this.dqPending() !== null ? "dq"
       : this.submissionPending() !== null ? "submission"
+      : this.forfeitPending() !== null ? "forfeit"
       : "judge";
     this.endMatch(winner, method);
   }
@@ -696,9 +740,10 @@ export class MatchRefereeComponent implements OnInit, OnDestroy {
     const match = this.activeMatch();
     if (!match) return;
 
-    const resolvedMethod: "judge" | "submission" | "dq" =
+    const resolvedMethod: "judge" | "submission" | "dq" | "forfeit" =
       this.dqPending() !== null ? "dq"
       : this.submissionPending() !== null ? "submission"
+      : this.forfeitPending() !== null ? "forfeit"
       : "judge";
 
     this.api
@@ -715,6 +760,7 @@ export class MatchRefereeComponent implements OnInit, OnDestroy {
           this.judgeWinner.set(null);
           this.submissionPending.set(null);
           this.dqPending.set(null);
+          this.forfeitPending.set(null);
           this.view.set("list");
           this.activeMatch.set(null);
         },
@@ -733,12 +779,12 @@ export class MatchRefereeComponent implements OnInit, OnDestroy {
 
   private endMatch(
     winner: "red" | "blue",
-    method: "judge" | "submission" | "dq",
+    method: "judge" | "submission" | "dq" | "forfeit",
   ): void {
     const match = this.activeMatch();
     if (!match) return;
 
-    const resolvedMethod: "judge" | "submission" | "dq" =
+    const resolvedMethod: "judge" | "submission" | "dq" | "forfeit" =
       method === "judge" && this.submissionPending() !== null ? "submission" : method;
 
     this.pauseTimer();
@@ -757,15 +803,20 @@ export class MatchRefereeComponent implements OnInit, OnDestroy {
           this.socket.emitMatchEnded(eid, match._id, winner, resolvedMethod);
           this.submissionPending.set(null);
           this.dqPending.set(null);
+          this.forfeitPending.set(null);
           this.judgeWinner.set(null);
           this.matches.update((ms) =>
             ms.map((m) => (m._id === res.data._id ? res.data : m)),
           );
 
+          const methodLabel = resolvedMethod === "judge" ? "裁判判決"
+            : resolvedMethod === "submission" ? "降伏勝"
+            : resolvedMethod === "forfeit" ? "棄權"
+            : "取消資格";
           Swal.fire({
             icon: "success",
             title: `場次結束 — ${winner === "red" ? "紅方" : "藍方"}勝`,
-            text: `判決方式：${resolvedMethod === "judge" ? "裁判判決" : resolvedMethod === "submission" ? "降伏勝" : "取消資格"}`,
+            text: `判決方式：${methodLabel}`,
             background: "#1e293b",
             color: "#fff",
             confirmButtonColor: "#3b82f6",
@@ -815,6 +866,7 @@ export class MatchRefereeComponent implements OnInit, OnDestroy {
     this.clearBlueInjuryInterval();
     this.submissionPending.set(null);
     this.dqPending.set(null);
+    this.forfeitPending.set(null);
     this.judgeWinner.set(null);
   }
 
@@ -847,7 +899,20 @@ export class MatchRefereeComponent implements OnInit, OnDestroy {
           this.blueWarnings.set(0);
           this.submissionPending.set(null);
           this.dqPending.set(null);
+          this.forfeitPending.set(null);
           this.judgeWinner.set(null);
+          const injuryLimit = this.activeMatch()?.matchType === 'contact' ? 180 : 120;
+          this.clearRedInjuryInterval();
+          this.clearBlueInjuryInterval();
+          this.redInjuryActive.set(false);
+          this.redInjuryVisible.set(false);
+          this.redInjuryRemaining.set(injuryLimit);
+          this.blueInjuryActive.set(false);
+          this.blueInjuryVisible.set(false);
+          this.blueInjuryRemaining.set(injuryLimit);
+          this.clearTimerInterval();
+          this.timerRunning.set(false);
+          this.timerRemaining.set(this.timerTotal());
         },
         error: () => {
           Swal.fire({

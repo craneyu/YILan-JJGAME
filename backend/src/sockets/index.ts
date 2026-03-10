@@ -203,4 +203,7 @@ export const broadcast = {
   matchEnded(eventId: string, data: object) {
     getIO().to(eventId).emit("match:ended", data);
   },
+  matchScoresReset(eventId: string, data: object) {
+    getIO().to(eventId).emit("match:scores-reset", data);
+  },
 };

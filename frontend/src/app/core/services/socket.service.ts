@@ -380,6 +380,10 @@ export class SocketService {
     this.socket.emit("match:emit-winner-preview-cancel", { eventId, matchId });
   }
 
+  get matchScoresReset$(): Observable<{ matchId: string }> {
+    return fromEvent<{ matchId: string }>(this.socket, "match:scores-reset");
+  }
+
   // ── 傷停事件 ──
   get injuryStarted$(): Observable<InjuryStartedEvent> {
     return fromEvent<InjuryStartedEvent>(this.socket, "injury:started");
