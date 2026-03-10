@@ -243,7 +243,7 @@
         <div
           class="text-7xl md:text-8xl lg:text-9xl font-mono font-bold tracking-widest"
           [class.text-red-400]="timerRemaining() <= 30 && !timerPaused()"
-          [class.text-white/40]="timerRemaining() > 30 || timerPaused()">
+          [class.text-white]="timerRemaining() > 30 || timerPaused()">
           {{ displayTimer() }}
         </div>
       </div>
