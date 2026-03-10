@@ -22,11 +22,14 @@ import {
   faTrashAlt,
   faRightFromBracket,
 } from "@fortawesome/free-solid-svg-icons";
+import { firstValueFrom } from "rxjs";
 import { AuthService } from "../../../core/services/auth.service";
 import Swal from "sweetalert2";
 import * as XLSX from "xlsx";
 import { ApiService } from "../../../core/services/api.service";
-import { Match, MatchType } from "../../../core/models/match.model";
+import { Match } from "../../../core/models/match.model";
+
+const SWAL_DARK = { background: "#1e293b", color: "#fff" } as const;
 
 interface EventItem {
   _id: string;
@@ -85,6 +88,7 @@ export class MatchManagementComponent implements OnInit {
   matches = signal<Match[]>([]);
   loading = signal(false);
   importLoading = signal(false);
+  isDragOver = signal(false);
   editState = signal<EditState | null>(null);
 
   typeLabel = computed(() => TYPE_LABEL[this.matchType()] ?? this.matchType());
@@ -247,12 +251,91 @@ export class MatchManagementComponent implements OnInit {
     XLSX.writeFile(wb, `${this.typeLabel()}賽程匯入範本.xlsx`);
   }
 
-  importFile(event: Event): void {
-    const file = (event.target as HTMLInputElement).files?.[0];
-    const ev = this.selectedEvent();
-    if (!file || !ev) return;
-    this.importLoading.set(true);
+  // ── 拖曳事件 ──────────────────────────────
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragOver.set(true);
+  }
 
+  onDragLeave(event: DragEvent): void {
+    event.stopPropagation();
+    this.isDragOver.set(false);
+  }
+
+  onDrop(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragOver.set(false);
+    const file = event.dataTransfer?.files?.[0];
+    if (file) void this.handleFile(file);
+  }
+
+  onFileInputChange(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    (event.target as HTMLInputElement).value = "";
+    if (file) void this.handleFile(file);
+  }
+
+  // ── 匯入主流程 ────────────────────────────
+  private async handleFile(file: File): Promise<void> {
+    const ev = this.selectedEvent();
+    if (!ev || this.importLoading()) return;
+
+    // 永遠詢問，避免因 signal 尚未載入而跳過對話框
+    const answer = await Swal.fire({
+      title: `匯入${this.typeLabel()}賽程`,
+      text: "是否清空現有項目資料及成績後再匯入？",
+      icon: "question",
+      showDenyButton: true,
+      showCancelButton: true,
+      confirmButtonText: "是，清空後匯入",
+      denyButtonText: "否，保留並補入新資料",
+      cancelButtonText: "取消",
+      confirmButtonColor: "#ef4444",
+      denyButtonColor: "#3b82f6",
+      ...SWAL_DARK,
+    });
+
+    if (answer.isDismissed) return;
+
+    this.importLoading.set(true);
+    let existingOrders: number[] = [];
+
+    if (answer.isConfirmed) {
+      // 清空現有資料
+      try {
+        await firstValueFrom(
+          this.api.delete<{ success: boolean; deleted: number }>(
+            `/events/${ev._id}/matches?matchType=${this.matchType()}`,
+          ),
+        );
+        this.matches.set([]);
+      } catch {
+        this.importLoading.set(false);
+        Swal.fire({ icon: "error", title: "清空失敗，匯入已取消", ...SWAL_DARK, confirmButtonColor: "#3b82f6" });
+        return;
+      }
+    } else {
+      // 保留現有：向 API 取得最新場次序號，確保不依賴可能過時的 signal
+      try {
+        const res = await firstValueFrom(
+          this.api.get<{ success: boolean; data: Match[] }>(
+            `/events/${ev._id}/matches?matchType=${this.matchType()}`,
+          ),
+        );
+        existingOrders = res.data.map((m) => m.scheduledOrder);
+        this.matches.set(res.data);
+      } catch {
+        existingOrders = this.matches().map((m) => m.scheduledOrder);
+      }
+    }
+
+    this.parseAndImport(file, ev, existingOrders);
+  }
+
+  private parseAndImport(file: File, ev: EventItem, existingOrders: number[]): void {
+    const existingSet = new Set(existingOrders);
     const TYPE_MAP: Record<string, string> = { "ne-waza": "ne-waza", fighting: "fighting", contact: "contact" };
     const CAT_MAP: Record<string, string> = { male: "male", female: "female", mixed: "mixed", 男: "male", 女: "female", 混合: "mixed" };
 
@@ -265,7 +348,7 @@ export class MatchManagementComponent implements OnInit {
         const rows: Array<Record<string, string>> = XLSX.utils.sheet_to_json(ws, { defval: "" });
 
         const currentType = this.matchType();
-        const matches = rows.map((row, i) => ({
+        const allMatches = rows.map((row, i) => ({
           matchType: TYPE_MAP[String(row["項目"] ?? row["matchType"] ?? "").toLowerCase().trim()] ?? currentType,
           category: CAT_MAP[String(row["組別"] ?? row["category"] ?? "").toLowerCase().trim()] ?? "male",
           weightClass: String(row["量級"] ?? row["weightClass"] ?? "").trim(),
@@ -277,27 +360,41 @@ export class MatchManagementComponent implements OnInit {
           isBye: false,
         }));
 
+        const skipped = allMatches.filter((m) => existingSet.has(m.scheduledOrder));
+        const toImport = allMatches.filter((m) => !existingSet.has(m.scheduledOrder));
+
+        if (toImport.length === 0) {
+          this.importLoading.set(false);
+          Swal.fire({
+            icon: "info",
+            title: "無新增資料",
+            text: `所有 ${skipped.length} 筆場次序號均已存在，沒有可匯入的新資料。`,
+            ...SWAL_DARK,
+            confirmButtonColor: "#3b82f6",
+          });
+          return;
+        }
+
         this.api
-          .post<{ success: boolean; count: number; error?: string }>(`/events/${ev._id}/matches/bulk`, matches)
+          .post<{ success: boolean; count: number; error?: string }>(`/events/${ev._id}/matches/bulk`, toImport)
           .subscribe({
             next: (res) => {
               this.importLoading.set(false);
-              (event.target as HTMLInputElement).value = "";
               if (res.success) {
-                Swal.fire({ icon: "success", title: `成功匯入 ${res.count} 筆賽程`, toast: true, position: "top-end", showConfirmButton: false, timer: 2500 });
+                let title = `成功匯入 ${res.count} 筆賽程`;
+                if (skipped.length > 0) title += `，略過 ${skipped.length} 筆重複場次`;
+                Swal.fire({ icon: "success", title, toast: true, position: "top-end", showConfirmButton: false, timer: 3000 });
                 this.loadMatches(ev._id);
               }
             },
             error: (err) => {
               this.importLoading.set(false);
-              (event.target as HTMLInputElement).value = "";
-              Swal.fire({ icon: "error", title: "匯入失敗", text: err.error?.error ?? "請確認格式正確", background: "#1e293b", color: "#fff", confirmButtonColor: "#3b82f6" });
+              Swal.fire({ icon: "error", title: "匯入失敗", text: err.error?.error ?? "請確認格式正確", ...SWAL_DARK, confirmButtonColor: "#3b82f6" });
             },
           });
       } catch {
         this.importLoading.set(false);
-        (event.target as HTMLInputElement).value = "";
-        Swal.fire({ icon: "error", title: "檔案解析失敗", text: "請確認為 XLSX 或 CSV 格式", background: "#1e293b", color: "#fff", confirmButtonColor: "#3b82f6" });
+        Swal.fire({ icon: "error", title: "檔案解析失敗", text: "請確認為 XLSX 或 CSV 格式", ...SWAL_DARK, confirmButtonColor: "#3b82f6" });
       }
     };
     reader.readAsArrayBuffer(file);

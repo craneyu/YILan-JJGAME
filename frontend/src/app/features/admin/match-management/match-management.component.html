@@ -17,8 +17,8 @@
       </button>
     </div>
 
-    <!-- 隱藏的 file input，移出 @if 確保永遠在 DOM 中 -->
-    <input #fileInput type="file" accept=".xlsx,.csv" class="hidden" (change)="importFile($event)" />
+    <!-- 隱藏的 file input，永遠在 DOM 中 -->
+    <input #fileInput type="file" accept=".xlsx,.csv" class="hidden" (change)="onFileInputChange($event)" />
 
     <!-- 賽事選擇 + 操作列 -->
     <div class="glass-card p-4 mb-4 flex flex-wrap gap-3 items-center">
@@ -36,15 +36,6 @@
         <button class="glass-btn text-sm flex items-center gap-1.5" (click)="downloadTemplate()">
           <fa-icon [icon]="faDownload" class="text-xs"></fa-icon>
           下載範本
-        </button>
-
-        <button
-          class="primary-btn text-sm flex items-center gap-1.5"
-          [class.opacity-50]="importLoading()"
-          [disabled]="importLoading()"
-          (click)="fileInput.click()">
-          <fa-icon [icon]="faFileArrowUp" class="text-xs"></fa-icon>
-          {{ importLoading() ? '匯入中...' : '匯入賽程' }}
         </button>
 
         @if (matches().length > 0) {
@@ -65,6 +56,33 @@
       </div>
     }
 
+    <!-- 拖曳匯入區域 -->
+    @if (selectedEventId() && !loading()) {
+      <div
+        class="glass-card mb-4 p-6 border-2 border-dashed transition-all duration-200 cursor-pointer select-none"
+        [class.border-blue-400]="isDragOver()"
+        [class.bg-blue-500/10]="isDragOver()"
+        [class.border-white/20]="!isDragOver()"
+        [class.opacity-60]="importLoading()"
+        (dragover)="onDragOver($event)"
+        (dragleave)="onDragLeave($event)"
+        (drop)="onDrop($event)"
+        (click)="!importLoading() && fileInput.click()">
+        <div class="flex flex-col items-center gap-2 pointer-events-none">
+          @if (importLoading()) {
+            <div class="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+            <p class="text-white/60 text-sm">匯入中，請稍候…</p>
+          } @else {
+            <fa-icon [icon]="faFileArrowUp" class="text-3xl" [class.text-blue-400]="isDragOver()" [class.text-white/40]="!isDragOver()"></fa-icon>
+            <p class="text-white/70 text-sm font-medium">
+              {{ isDragOver() ? '放開以匯入' : '拖曳 .xlsx / .csv 檔案至此' }}
+            </p>
+            <p class="text-white/30 text-xs">或點此開啟檔案選擇器</p>
+          }
+        </div>
+      </div>
+    }
+
     <!-- 載入中 -->
     @if (selectedEventId() && loading()) {
       <div class="glass-card p-8 text-center">
@@ -72,10 +90,10 @@
       </div>
     }
 
-    <!-- 無資料 -->
+    <!-- 無資料提示 -->
     @if (selectedEventId() && !loading() && matches().length === 0) {
-      <div class="glass-card p-8 text-center">
-        <p class="text-white/40">尚無賽程資料，請先匯入</p>
+      <div class="glass-card p-4 text-center">
+        <p class="text-white/30 text-xs">尚無賽程資料</p>
       </div>
     }
 

@@ -71,7 +71,10 @@ export async function bulkCreateMatches(
     return;
   }
 
-  // 檢查 scheduledOrder 重複（包含現有資料庫中的）
+  // 取得本批次的 matchType（允許每筆各自帶，取第一筆為主）
+  const batchMatchType = rows[0]?.["matchType"] as string | undefined;
+
+  // 檢查 scheduledOrder 重複（僅限同 matchType）
   const incomingOrders = rows.map((r) => Number(r["scheduledOrder"]));
   const duplicatesInPayload = incomingOrders.filter(
     (o, i) => incomingOrders.indexOf(o) !== i,
@@ -84,10 +87,13 @@ export async function bulkCreateMatches(
     return;
   }
 
-  const existing = await Match.find({
+  const existingFilter: Record<string, unknown> = {
     eventId,
     scheduledOrder: { $in: incomingOrders },
-  }).lean();
+  };
+  if (batchMatchType) existingFilter["matchType"] = batchMatchType;
+
+  const existing = await Match.find(existingFilter).lean();
   if (existing.length > 0) {
     const conflicted = existing.map((m) => m.scheduledOrder);
     res.status(409).json({
