@@ -14,7 +14,6 @@ import { FaIconComponent } from "@fortawesome/angular-fontawesome";
 import {
   faExpand,
   faCompress,
-  faKitMedical,
 } from "@fortawesome/free-solid-svg-icons";
 
 import {
@@ -35,6 +34,7 @@ import { Match } from "../../core/models/match.model";
   imports: [CommonModule, FaIconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./match-audience.component.html",
+  styleUrl: "./match-audience.component.css",
 })
 export class MatchAudienceComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
@@ -43,7 +43,6 @@ export class MatchAudienceComponent implements OnInit, OnDestroy {
 
   faExpand = faExpand;
   faCompress = faCompress;
-  faKitMedical = faKitMedical;
 
   eventId = signal("");
   activeMatch = signal<Match | null>(null);
@@ -66,8 +65,10 @@ export class MatchAudienceComponent implements OnInit, OnDestroy {
 
   // 傷停計時（各側）
   redInjuryActive = signal(false);
+  redInjuryVisible = signal(false);
   redInjuryRemaining = signal(120);
   blueInjuryActive = signal(false);
+  blueInjuryVisible = signal(false);
   blueInjuryRemaining = signal(120);
   private redInjuryInterval: ReturnType<typeof setInterval> | null = null;
   private blueInjuryInterval: ReturnType<typeof setInterval> | null = null;
@@ -101,7 +102,7 @@ export class MatchAudienceComponent implements OnInit, OnDestroy {
 
   private subs = new Subscription();
 
-  matchType = signal<string>('ne-waza');
+  matchType = signal<string>("ne-waza");
 
   ngOnInit(): void {
     this.route.queryParams.subscribe((params) => {
@@ -154,20 +155,24 @@ export class MatchAudienceComponent implements OnInit, OnDestroy {
     );
 
     this.subs.add(
-      this.socket.matchWinnerPreview$.subscribe((e: MatchWinnerPreviewEvent) => {
-        const m = this.activeMatch();
-        if (!m || m._id !== e.matchId) return;
-        this.timerPaused.set(true);
-        this.matchResult.set({ winner: e.winner, method: "judge" });
-      }),
+      this.socket.matchWinnerPreview$.subscribe(
+        (e: MatchWinnerPreviewEvent) => {
+          const m = this.activeMatch();
+          if (!m || m._id !== e.matchId) return;
+          this.timerPaused.set(true);
+          this.matchResult.set({ winner: e.winner, method: "judge" });
+        },
+      ),
     );
 
     this.subs.add(
-      this.socket.matchWinnerPreviewCancelled$.subscribe((e: { matchId: string }) => {
-        const m = this.activeMatch();
-        if (!m || m._id !== e.matchId) return;
-        this.matchResult.set(null);
-      }),
+      this.socket.matchWinnerPreviewCancelled$.subscribe(
+        (e: { matchId: string }) => {
+          const m = this.activeMatch();
+          if (!m || m._id !== e.matchId) return;
+          this.matchResult.set(null);
+        },
+      ),
     );
 
     this.subs.add(
@@ -178,22 +183,28 @@ export class MatchAudienceComponent implements OnInit, OnDestroy {
         if (e.side === "red") {
           this.clearRedInjuryInterval();
           this.redInjuryActive.set(true);
+          this.redInjuryVisible.set(true);
           this.redInjuryRemaining.set(duration);
           this.redInjuryInterval = setInterval(() => {
-            this.redInjuryRemaining.update((v) => {
-              if (v <= 1) { this.clearRedInjuryInterval(); return 0; }
-              return v - 1;
-            });
+            const newVal = Math.max(0, this.redInjuryRemaining() - 1);
+            this.redInjuryRemaining.set(newVal);
+            if (newVal <= 0) {
+              this.clearRedInjuryInterval();
+              this.redInjuryActive.set(false);
+            }
           }, 1000);
         } else {
           this.clearBlueInjuryInterval();
           this.blueInjuryActive.set(true);
+          this.blueInjuryVisible.set(true);
           this.blueInjuryRemaining.set(duration);
           this.blueInjuryInterval = setInterval(() => {
-            this.blueInjuryRemaining.update((v) => {
-              if (v <= 1) { this.clearBlueInjuryInterval(); return 0; }
-              return v - 1;
-            });
+            const newVal = Math.max(0, this.blueInjuryRemaining() - 1);
+            this.blueInjuryRemaining.set(newVal);
+            if (newVal <= 0) {
+              this.clearBlueInjuryInterval();
+              this.blueInjuryActive.set(false);
+            }
           }, 1000);
         }
       }),
@@ -206,9 +217,11 @@ export class MatchAudienceComponent implements OnInit, OnDestroy {
         if (e.side === "red") {
           this.clearRedInjuryInterval();
           this.redInjuryActive.set(false);
+          // visible 保留，讓選手/觀眾看到剩餘時間
         } else {
           this.clearBlueInjuryInterval();
           this.blueInjuryActive.set(false);
+          // visible 保留，讓選手/觀眾看到剩餘時間
         }
       }),
     );
@@ -266,7 +279,9 @@ export class MatchAudienceComponent implements OnInit, OnDestroy {
     this.clearRedInjuryInterval();
     this.clearBlueInjuryInterval();
     this.redInjuryActive.set(false);
+    this.redInjuryVisible.set(false);
     this.blueInjuryActive.set(false);
+    this.blueInjuryVisible.set(false);
   }
 
   toggleFullscreen(): void {

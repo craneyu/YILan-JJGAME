@@ -25,7 +25,6 @@ import {
   faExpand,
   faCompress,
   faRightFromBracket,
-  faKitMedical,
 } from "@fortawesome/free-solid-svg-icons";
 
 import { ApiService } from "../../core/services/api.service";
@@ -86,7 +85,6 @@ export class MatchRefereeComponent implements OnInit, OnDestroy {
   faExpand = faExpand;
   faCompress = faCompress;
   faRightFromBracket = faRightFromBracket;
-  faKitMedical = faKitMedical;
 
   // ── 視圖狀態 ──
   view = signal<"list" | "scoring">("list");
@@ -131,8 +129,10 @@ export class MatchRefereeComponent implements OnInit, OnDestroy {
 
   // ── 傷停計時（紅/藍各自） ──
   redInjuryActive = signal(false);
+  redInjuryVisible = signal(false);
   redInjuryRemaining = signal(120);
   blueInjuryActive = signal(false);
+  blueInjuryVisible = signal(false);
   blueInjuryRemaining = signal(120);
   private redInjuryInterval: ReturnType<typeof setInterval> | null = null;
   private blueInjuryInterval: ReturnType<typeof setInterval> | null = null;
@@ -434,39 +434,6 @@ export class MatchRefereeComponent implements OnInit, OnDestroy {
     this.emitScoreUpdated(match._id);
   }
 
-  undoLast(side: "red" | "blue"): void {
-    const match = this.activeMatch();
-    if (!match) return;
-
-    const log = side === "red" ? this.redScoreLog() : this.blueScoreLog();
-    if (log.length === 0) {
-      Swal.fire({
-        icon: "info",
-        title: "無可撤銷的記錄",
-        toast: true,
-        position: "top-end",
-        showConfirmButton: false,
-        timer: 1500,
-      });
-      return;
-    }
-
-    if (side === "red") this.redScoreLog.update((l) => l.slice(0, -1));
-    else this.blueScoreLog.update((l) => l.slice(0, -1));
-
-    this.recalcFromLogs();
-
-    this.api
-      .post("/match-scores", {
-        matchId: match._id,
-        side,
-        type: "undo",
-        value: -1,
-      })
-      .subscribe();
-    this.emitScoreUpdated(match._id);
-  }
-
   addWarning(side: "red" | "blue"): void {
     const currentWarnings =
       side === "red" ? this.redWarnings() : this.blueWarnings();
@@ -586,35 +553,48 @@ export class MatchRefereeComponent implements OnInit, OnDestroy {
   // ──────────────────────────────────────────────────────────
 
   startInjuryTimeout(side: "red" | "blue"): void {
+    if (side === "red" && this.redInjuryRemaining() <= 0) return;
+    if (side === "blue" && this.blueInjuryRemaining() <= 0) return;
     this.pauseTimer();
     const match = this.activeMatch();
     if (side === "red") {
       this.redInjuryActive.set(true);
-      this.redInjuryRemaining.set(120);
+      this.redInjuryVisible.set(true);
       this.redInjuryInterval = setInterval(() => {
-        this.redInjuryRemaining.update((v) => {
-          if (v <= 1) {
-            this.clearRedInjuryInterval();
-            return 0;
+        const newVal = Math.max(0, this.redInjuryRemaining() - 1);
+        this.redInjuryRemaining.set(newVal);
+        if (newVal <= 0) {
+          this.clearRedInjuryInterval();
+          this.redInjuryActive.set(false);
+          if (match) {
+            this.socket.emitInjuryEnded(this.eventId(), match._id, 'red');
           }
-          return v - 1;
-        });
+          if (!this.blueInjuryActive()) this.startTimer();
+        }
       }, 1000);
     } else {
       this.blueInjuryActive.set(true);
-      this.blueInjuryRemaining.set(120);
+      this.blueInjuryVisible.set(true);
       this.blueInjuryInterval = setInterval(() => {
-        this.blueInjuryRemaining.update((v) => {
-          if (v <= 1) {
-            this.clearBlueInjuryInterval();
-            return 0;
+        const newVal = Math.max(0, this.blueInjuryRemaining() - 1);
+        this.blueInjuryRemaining.set(newVal);
+        if (newVal <= 0) {
+          this.clearBlueInjuryInterval();
+          this.blueInjuryActive.set(false);
+          if (match) {
+            this.socket.emitInjuryEnded(this.eventId(), match._id, 'blue');
           }
-          return v - 1;
-        });
+          if (!this.redInjuryActive()) this.startTimer();
+        }
       }, 1000);
     }
     if (match) {
-      this.socket.emitInjuryStarted(this.eventId(), match._id, side, 120);
+      this.socket.emitInjuryStarted(
+        this.eventId(),
+        match._id,
+        side,
+        side === 'red' ? this.redInjuryRemaining() : this.blueInjuryRemaining(),
+      );
     }
   }
 
@@ -824,10 +804,13 @@ export class MatchRefereeComponent implements OnInit, OnDestroy {
     this.timerTotal.set(360);
     this.timerRunning.set(false);
     this.clearTimerInterval();
+    const injuryLimit = this.activeMatch()?.matchType === 'contact' ? 180 : 120;
     this.redInjuryActive.set(false);
-    this.redInjuryRemaining.set(120);
+    this.redInjuryVisible.set(false);
+    this.redInjuryRemaining.set(injuryLimit);
     this.blueInjuryActive.set(false);
-    this.blueInjuryRemaining.set(120);
+    this.blueInjuryVisible.set(false);
+    this.blueInjuryRemaining.set(injuryLimit);
     this.clearRedInjuryInterval();
     this.clearBlueInjuryInterval();
     this.submissionPending.set(null);

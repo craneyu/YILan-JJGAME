@@ -49,3 +49,21 @@ When no injury timeout is active for a side, no indicator SHALL be shown.
 
 - **WHEN** an `injury:ended` event is received
 - **THEN** the countdown indicator for the corresponding side SHALL be removed
+
+## Requirements
+
+
+<!-- @trace
+source: match-ui-v5
+updated: 2026-03-10
+code:
+  - SPEC/SPEC-v5.md
+  - frontend/src/app/features/match-audience/match-audience.component.html
+  - frontend/src/app/features/match-referee/match-referee.component.ts
+  - frontend/src/app/features/match-audience/match-audience.component.ts
+  - .github/skills/spectra-propose/SKILL.md
+  - frontend/src/app/features/match-referee/match-referee.component.html
+  - .github/prompts/spectra-apply.prompt.md
+  - .github/skills/spectra-apply/SKILL.md
+  - .github/prompts/spectra-propose.prompt.md
+-->

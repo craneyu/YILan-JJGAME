@@ -206,7 +206,7 @@
         <!-- 主計分區：紅 / 藍 雙欄 -->
         <div class="grid grid-cols-2 gap-4 mb-4">
           <!-- 紅方 -->
-          <div class="glass-card rounded-2xl p-4">
+          <div class="backdrop-blur-md border border-white/30 shadow-xl rounded-2xl p-4 bg-red-400/20">
             <div class="text-center mb-3">
               <div class="text-red-300 font-bold text-lg">
                 🔴 {{ match.redPlayer.name }}
@@ -226,8 +226,10 @@
               </div>
             </div>
 
+            <!-- 按鈕群組（w-fit 限制右側不超出上方5按鈕寬度） -->
+            <div class="pl-12 w-fit">
             <!-- 正向行：+2 +3 +4 +A優勢 +P警告 STALLING -->
-            <div class="flex flex-wrap gap-1.5 mb-2 pl-12">
+            <div class="flex flex-wrap gap-1.5 mb-2">
               <button
                 class="bg-green-600/70 hover:bg-green-500 active:scale-95 px-3 py-2 rounded-xl font-bold transition-all duration-100 shadow-sm min-w-[3.5rem] h-12"
                 (click)="addScore('red', 2)">+2</button>
@@ -245,7 +247,8 @@
               </button>
               <button
                 class="bg-green-700/70 hover:bg-green-600 active:scale-95 px-3 py-2 rounded-xl text-sm font-semibold transition-all duration-100 flex flex-col items-center leading-tight shadow-sm min-w-[3.5rem] h-12"
-                (click)="addWarning('red')">
+                (click)="addWarning('red')"
+                [disabled]="redWarnings() >= 4">
                 <span class="font-bold">+P</span>
                 <span class="text-xs text-green-200/80">警告</span>
               </button>
@@ -258,7 +261,7 @@
             </div>
 
             <!-- 負向行：-2 -3 -4 -A優勢 -P警告 -->
-            <div class="flex flex-wrap gap-1.5 mb-2 pl-12">
+            <div class="flex flex-wrap gap-1.5 mb-2">
               <button
                 class="bg-red-700/60 hover:bg-red-600 active:scale-95 px-3 py-2 rounded-xl font-bold transition-all duration-100 shadow-sm min-w-[3.5rem] h-12"
                 (click)="addScore('red', -2)">-2</button>
@@ -282,27 +285,28 @@
               </button>
             </div>
 
-            <!-- 底部操作列：降伏勝 → DQ → 傷停 → 取消上一筆 -->
-            <div class="flex flex-wrap gap-2 mt-2 pl-12">
+            <!-- 底部操作列：降伏勝 → DQ → 傷停 -->
+            <div class="flex gap-2 mt-2">
               <button
-                class="bg-green-700/80 hover:bg-green-600 active:scale-95 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-100 shadow-sm"
+                class="flex-1 bg-green-700/80 hover:bg-green-600 active:scale-95 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-100 shadow-sm"
                 (click)="addSubmission('red')">
                 降伏勝
               </button>
               <button
-                class="bg-red-900/60 hover:bg-red-900 active:scale-95 px-4 py-2 rounded-xl text-sm font-bold text-red-300 transition-all duration-100"
+                class="flex-1 bg-red-900/60 hover:bg-red-900 active:scale-95 px-4 py-2 rounded-xl text-sm font-bold text-red-300 transition-all duration-100"
                 (click)="confirmDQ('red')">
                 DQ
               </button>
               @if (!redInjuryActive()) {
                 <button
-                  class="glass-btn px-4 py-2 rounded-xl text-sm text-amber-300 flex items-center gap-1.5"
-                  (click)="startInjuryTimeout('red')">
-                  <fa-icon [icon]="faKitMedical" class="text-xs" />
+                  class="flex-1 glass-btn px-4 py-2 rounded-xl text-sm text-amber-300 flex items-center justify-center gap-1.5"
+                  (click)="startInjuryTimeout('red')"
+                  [disabled]="redInjuryRemaining() <= 0">
+                  <div class="w-5 h-5 bg-white rounded-sm shrink-0 p-0.5"><div class="w-full h-full bg-red-600" style="clip-path:polygon(33% 0%,67% 0%,67% 33%,100% 33%,100% 67%,67% 67%,67% 100%,33% 100%,33% 67%,0% 67%,0% 33%,33% 33%)"></div></div>
                   傷停
                 </button>
               } @else {
-                <div class="flex items-center gap-2 rounded-xl px-3 py-1 border border-amber-500/50 bg-amber-500/10">
+                <div class="flex-1 flex items-center justify-center gap-2 rounded-xl px-3 py-1 border border-amber-500/50 bg-amber-500/10">
                   <span class="text-amber-300 text-xs font-bold">⚠ {{ displayRedInjuryTimer() }}</span>
                   <button
                     class="primary-btn px-2 py-0.5 rounded-lg text-xs"
@@ -311,18 +315,12 @@
                   </button>
                 </div>
               }
-              <button
-                class="glass-btn px-4 py-2 rounded-xl text-sm text-amber-300 flex items-center gap-1.5"
-                (click)="undoLast('red')"
-                [disabled]="redScoreLog().length === 0">
-                <fa-icon [icon]="faRotateLeft" class="text-xs" />
-                取消
-              </button>
             </div>
+            </div><!-- /w-fit wrapper -->
           </div>
 
           <!-- 藍方 -->
-          <div class="glass-card rounded-2xl p-4">
+          <div class="backdrop-blur-md border border-white/30 shadow-xl rounded-2xl p-4 bg-blue-400/20">
             <div class="text-center mb-3">
               <div class="text-blue-300 font-bold text-lg">
                 🔵 {{ match.bluePlayer.name }}
@@ -342,8 +340,10 @@
               </div>
             </div>
 
+            <!-- 按鈕群組（w-fit 限制右側不超出上方5按鈕寬度） -->
+            <div class="pl-12 w-fit">
             <!-- 正向行：+2 +3 +4 +A優勢 +P警告 STALLING -->
-            <div class="flex flex-wrap gap-1.5 mb-2 pl-12">
+            <div class="flex flex-wrap gap-1.5 mb-2">
               <button
                 class="bg-green-600/70 hover:bg-green-500 active:scale-95 px-3 py-2 rounded-xl font-bold transition-all duration-100 shadow-sm min-w-[3.5rem] h-12"
                 (click)="addScore('blue', 2)">+2</button>
@@ -361,7 +361,8 @@
               </button>
               <button
                 class="bg-green-700/70 hover:bg-green-600 active:scale-95 px-3 py-2 rounded-xl text-sm font-semibold transition-all duration-100 flex flex-col items-center leading-tight shadow-sm min-w-[3.5rem] h-12"
-                (click)="addWarning('blue')">
+                (click)="addWarning('blue')"
+                [disabled]="blueWarnings() >= 4">
                 <span class="font-bold">+P</span>
                 <span class="text-xs text-green-200/80">警告</span>
               </button>
@@ -374,7 +375,7 @@
             </div>
 
             <!-- 負向行：-2 -3 -4 -A優勢 -P警告 -->
-            <div class="flex flex-wrap gap-1.5 mb-2 pl-12">
+            <div class="flex flex-wrap gap-1.5 mb-2">
               <button
                 class="bg-red-700/60 hover:bg-red-600 active:scale-95 px-3 py-2 rounded-xl font-bold transition-all duration-100 shadow-sm min-w-[3.5rem] h-12"
                 (click)="addScore('blue', -2)">-2</button>
@@ -398,27 +399,28 @@
               </button>
             </div>
 
-            <!-- 底部操作列：降伏勝 → DQ → 傷停 → 取消上一筆 -->
-            <div class="flex flex-wrap gap-2 mt-2 pl-12">
+            <!-- 底部操作列：降伏勝 → DQ → 傷停 -->
+            <div class="flex gap-2 mt-2">
               <button
-                class="bg-green-700/80 hover:bg-green-600 active:scale-95 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-100 shadow-sm"
+                class="flex-1 bg-green-700/80 hover:bg-green-600 active:scale-95 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-100 shadow-sm"
                 (click)="addSubmission('blue')">
                 降伏勝
               </button>
               <button
-                class="bg-blue-900/60 hover:bg-blue-900 active:scale-95 px-4 py-2 rounded-xl text-sm font-bold text-blue-300 transition-all duration-100"
+                class="flex-1 bg-blue-900/60 hover:bg-blue-900 active:scale-95 px-4 py-2 rounded-xl text-sm font-bold text-blue-300 transition-all duration-100"
                 (click)="confirmDQ('blue')">
                 DQ
               </button>
               @if (!blueInjuryActive()) {
                 <button
-                  class="glass-btn px-4 py-2 rounded-xl text-sm text-amber-300 flex items-center gap-1.5"
-                  (click)="startInjuryTimeout('blue')">
-                  <fa-icon [icon]="faKitMedical" class="text-xs" />
+                  class="flex-1 glass-btn px-4 py-2 rounded-xl text-sm text-amber-300 flex items-center justify-center gap-1.5"
+                  (click)="startInjuryTimeout('blue')"
+                  [disabled]="blueInjuryRemaining() <= 0">
+                  <div class="w-5 h-5 bg-white rounded-sm shrink-0 p-0.5"><div class="w-full h-full bg-red-600" style="clip-path:polygon(33% 0%,67% 0%,67% 33%,100% 33%,100% 67%,67% 67%,67% 100%,33% 100%,33% 67%,0% 67%,0% 33%,33% 33%)"></div></div>
                   傷停
                 </button>
               } @else {
-                <div class="flex items-center gap-2 rounded-xl px-3 py-1 border border-amber-500/50 bg-amber-500/10">
+                <div class="flex-1 flex items-center justify-center gap-2 rounded-xl px-3 py-1 border border-amber-500/50 bg-amber-500/10">
                   <span class="text-amber-300 text-xs font-bold">⚠ {{ displayBlueInjuryTimer() }}</span>
                   <button
                     class="primary-btn px-2 py-0.5 rounded-lg text-xs"
@@ -427,14 +429,8 @@
                   </button>
                 </div>
               }
-              <button
-                class="glass-btn px-4 py-2 rounded-xl text-sm text-amber-300 flex items-center gap-1.5"
-                (click)="undoLast('blue')"
-                [disabled]="blueScoreLog().length === 0">
-                <fa-icon [icon]="faRotateLeft" class="text-xs" />
-                取消
-              </button>
             </div>
+            </div><!-- /w-fit wrapper -->
           </div>
         </div>
 
