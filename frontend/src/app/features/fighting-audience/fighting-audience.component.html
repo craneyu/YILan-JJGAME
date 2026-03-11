@@ -67,50 +67,73 @@
         class="flex-1 flex items-center gap-4 md:gap-6 lg:gap-8 xl:gap-10 rounded-2xl bg-white/5 border border-red-400/40 shadow-lg shadow-red-900/20 px-4 md:px-6 lg:px-8 xl:px-10 py-3 xl:py-4 min-h-0 transition-opacity"
         [class.opacity-30]="matchResult() && matchResult()!.winner !== 'red'">
 
-        <!-- 左：姓名 -->
+        <!-- 左：姓名 + 傷停/OSAE KOMI -->
         <div class="flex-1 min-w-0">
-          <span class="text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-black text-white leading-tight truncate block">
-            {{ match.redPlayer.name }}
-          </span>
+          <div class="flex items-center gap-3 flex-wrap">
+            <span class="text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-black text-white leading-tight truncate">
+              {{ match.redPlayer.name }}
+            </span>
+            @if (redInjuryActive()) {
+              <span class="flex flex-col items-center font-black text-amber-400 shrink-0 bg-amber-500/10 border border-amber-400/50 rounded-xl px-3 py-1 injury-pulse leading-tight">
+                <span class="text-2xl md:text-3xl">{{ displayRedInjury() }}</span>
+                <span class="flex items-center gap-1 text-sm md:text-base tracking-widest">
+                  <div class="w-4 h-4 md:w-5 md:h-5 bg-white rounded shrink-0 p-0.5">
+                    <div class="w-full h-full bg-red-600" style="clip-path: polygon(33% 0%,67% 0%,67% 33%,100% 33%,100% 67%,67% 67%,67% 100%,33% 100%,33% 67%,0% 67%,0% 33%,33% 33%)"></div>
+                  </div>
+                  傷停
+                </span>
+              </span>
+            }
+            @if (redOsaeKomiActive()) {
+              <span class="flex flex-col items-center font-black text-yellow-300 shrink-0 bg-yellow-500/15 border border-yellow-400/50 rounded-xl px-3 py-1 animate-pulse leading-tight">
+                <span class="text-2xl md:text-3xl">{{ displayRedOsaeKomi() }}</span>
+                <span class="text-sm md:text-base tracking-widest">OSAE KOMI</span>
+              </span>
+            }
+          </div>
           <div class="text-white/60 text-base md:text-xl lg:text-2xl xl:text-3xl 2xl:text-4xl font-semibold mt-1 truncate">
             {{ match.redPlayer.teamName }}
           </div>
         </div>
 
-        <!-- 中：SHIDO/CHUI badges + PART scores -->
-        <div class="flex flex-col gap-2 shrink-0">
-          <div class="flex gap-2 flex-wrap">
-            @if (redShido() >= 1) {
-              <span class="text-lg md:text-2xl lg:text-3xl xl:text-4xl font-black px-3 py-1 rounded-xl bg-yellow-500/40 text-yellow-200">
-                SHIDO ×{{ redShido() }}
-              </span>
-            }
-            @if (chuiBadgeRed()) {
-              <span class="text-lg md:text-2xl lg:text-3xl xl:text-4xl font-black px-3 py-1 rounded-xl bg-orange-500/60 text-orange-100">
-                CHUI
-              </span>
-            }
+        <!-- 中：WAZA-ARI + SHIDO -->
+        <div class="flex flex-col items-center justify-center gap-2 shrink-0">
+          <div class="flex flex-col items-center">
+            <div class="text-white/50 text-xs md:text-sm lg:text-base xl:text-lg font-semibold tracking-widest">WAZA-ARI</div>
+            <div class="text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-black text-white leading-tight">{{ redWazaAri() }}</div>
           </div>
+          <div class="flex flex-col items-center">
+            <div class="text-white/50 text-xs md:text-sm lg:text-base xl:text-lg font-semibold tracking-widest">SHIDO</div>
+            <div class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-black leading-tight"
+                 [class.text-yellow-300]="redShido() > 0"
+                 [class.text-white/50]="redShido() === 0">{{ redShido() }}</div>
+          </div>
+          @if (chuiBadgeRed()) {
+            <span class="text-sm md:text-base font-black px-2 py-0.5 rounded-lg bg-orange-500/60 text-orange-100 animate-pulse">CHUI</span>
+          }
+        </div>
+
+        <!-- 中右：P1/P2/P3 IPPON 格 -->
+        <div class="flex flex-col justify-center gap-2 shrink-0">
           <div class="flex gap-2">
             @for (p of [0, 1, 2]; track p) {
-              <div class="flex flex-col items-center bg-white/5 rounded-xl px-3 py-1">
-                <div class="text-white/40 text-xs md:text-sm">P{{ p + 1 }}</div>
-                <div class="text-xl md:text-2xl lg:text-3xl xl:text-4xl font-black"
-                     [class.text-yellow-300]="redParts()[p] > 0"
-                     [class.text-white]="redParts()[p] === 0">{{ redParts()[p] }}</div>
-                @if (redParts()[p] > 0) {
-                  <div class="text-yellow-400 text-[10px] md:text-xs font-bold">IPPON</div>
-                }
+              <div class="flex flex-col items-center rounded-xl border px-3 md:px-4 py-1 md:py-2"
+                   [class.bg-yellow-500/20]="redParts()[p] > 0" [class.border-yellow-400/60]="redParts()[p] > 0"
+                   [class.bg-white/5]="redParts()[p] === 0" [class.border-white/15]="redParts()[p] === 0">
+                <div class="text-xs md:text-sm font-bold"
+                     [class.text-yellow-400]="redParts()[p] > 0" [class.text-white/40]="redParts()[p] === 0">P{{ p + 1 }}</div>
+                <div class="text-lg md:text-2xl lg:text-3xl font-black"
+                     [class.text-yellow-300]="redParts()[p] > 0" [class.text-white/40]="redParts()[p] === 0">{{ redParts()[p] }}</div>
               </div>
             }
           </div>
         </div>
 
-        <!-- 右：WAZA-ARI 大分數 -->
+        <!-- 右：總計分 大分數 -->
         <div class="flex flex-col items-center shrink-0">
-          <div class="text-white/50 text-base md:text-xl lg:text-2xl xl:text-3xl 2xl:text-4xl mb-1">WAZA-ARI</div>
+          <div class="text-white/50 text-base md:text-xl lg:text-2xl xl:text-3xl 2xl:text-4xl mb-1">總計分</div>
           <div class="bg-red-700 rounded-2xl w-28 h-20 md:w-36 md:h-28 lg:w-44 lg:h-32 xl:w-56 xl:h-40 2xl:w-64 2xl:h-48 flex items-center justify-center">
-            <span class="text-6xl md:text-7xl lg:text-8xl xl:text-9xl 2xl:text-[10rem] font-black text-white leading-none">{{ redWazaAri() }}</span>
+            <span class="text-6xl md:text-7xl lg:text-8xl xl:text-9xl 2xl:text-[10rem] font-black text-white leading-none">{{ redTotalScore() }}</span>
           </div>
         </div>
       </div>
@@ -120,50 +143,73 @@
         class="flex-1 flex items-center gap-4 md:gap-6 lg:gap-8 xl:gap-10 rounded-2xl bg-white/5 border border-blue-400/40 shadow-lg shadow-blue-900/20 px-4 md:px-6 lg:px-8 xl:px-10 py-3 xl:py-4 min-h-0 transition-opacity"
         [class.opacity-30]="matchResult() && matchResult()!.winner !== 'blue'">
 
-        <!-- 左：姓名 -->
+        <!-- 左：姓名 + 傷停/OSAE KOMI -->
         <div class="flex-1 min-w-0">
-          <span class="text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-black text-white leading-tight truncate block">
-            {{ match.bluePlayer.name }}
-          </span>
+          <div class="flex items-center gap-3 flex-wrap">
+            <span class="text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-black text-white leading-tight truncate">
+              {{ match.bluePlayer.name }}
+            </span>
+            @if (blueInjuryActive()) {
+              <span class="flex flex-col items-center font-black text-amber-400 shrink-0 bg-amber-500/10 border border-amber-400/50 rounded-xl px-3 py-1 injury-pulse leading-tight">
+                <span class="text-2xl md:text-3xl">{{ displayBlueInjury() }}</span>
+                <span class="flex items-center gap-1 text-sm md:text-base tracking-widest">
+                  <div class="w-4 h-4 md:w-5 md:h-5 bg-white rounded shrink-0 p-0.5">
+                    <div class="w-full h-full bg-red-600" style="clip-path: polygon(33% 0%,67% 0%,67% 33%,100% 33%,100% 67%,67% 67%,67% 100%,33% 100%,33% 67%,0% 67%,0% 33%,33% 33%)"></div>
+                  </div>
+                  傷停
+                </span>
+              </span>
+            }
+            @if (blueOsaeKomiActive()) {
+              <span class="flex flex-col items-center font-black text-yellow-300 shrink-0 bg-yellow-500/15 border border-yellow-400/50 rounded-xl px-3 py-1 animate-pulse leading-tight">
+                <span class="text-2xl md:text-3xl">{{ displayBlueOsaeKomi() }}</span>
+                <span class="text-sm md:text-base tracking-widest">OSAE KOMI</span>
+              </span>
+            }
+          </div>
           <div class="text-white/60 text-base md:text-xl lg:text-2xl xl:text-3xl 2xl:text-4xl font-semibold mt-1 truncate">
             {{ match.bluePlayer.teamName }}
           </div>
         </div>
 
-        <!-- 中：SHIDO/CHUI badges + PART scores -->
-        <div class="flex flex-col gap-2 shrink-0">
-          <div class="flex gap-2 flex-wrap">
-            @if (blueShido() >= 1) {
-              <span class="text-lg md:text-2xl lg:text-3xl xl:text-4xl font-black px-3 py-1 rounded-xl bg-yellow-500/40 text-yellow-200">
-                SHIDO ×{{ blueShido() }}
-              </span>
-            }
-            @if (chuiBadgeBlue()) {
-              <span class="text-lg md:text-2xl lg:text-3xl xl:text-4xl font-black px-3 py-1 rounded-xl bg-orange-500/60 text-orange-100">
-                CHUI
-              </span>
-            }
+        <!-- 中：WAZA-ARI + SHIDO -->
+        <div class="flex flex-col items-center justify-center gap-2 shrink-0">
+          <div class="flex flex-col items-center">
+            <div class="text-white/50 text-xs md:text-sm lg:text-base xl:text-lg font-semibold tracking-widest">WAZA-ARI</div>
+            <div class="text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-black text-white leading-tight">{{ blueWazaAri() }}</div>
           </div>
+          <div class="flex flex-col items-center">
+            <div class="text-white/50 text-xs md:text-sm lg:text-base xl:text-lg font-semibold tracking-widest">SHIDO</div>
+            <div class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-black leading-tight"
+                 [class.text-yellow-300]="blueShido() > 0"
+                 [class.text-white/50]="blueShido() === 0">{{ blueShido() }}</div>
+          </div>
+          @if (chuiBadgeBlue()) {
+            <span class="text-sm md:text-base font-black px-2 py-0.5 rounded-lg bg-orange-500/60 text-orange-100 animate-pulse">CHUI</span>
+          }
+        </div>
+
+        <!-- 中右：P1/P2/P3 IPPON 格 -->
+        <div class="flex flex-col justify-center gap-2 shrink-0">
           <div class="flex gap-2">
             @for (p of [0, 1, 2]; track p) {
-              <div class="flex flex-col items-center bg-white/5 rounded-xl px-3 py-1">
-                <div class="text-white/40 text-xs md:text-sm">P{{ p + 1 }}</div>
-                <div class="text-xl md:text-2xl lg:text-3xl xl:text-4xl font-black"
-                     [class.text-yellow-300]="blueParts()[p] > 0"
-                     [class.text-white]="blueParts()[p] === 0">{{ blueParts()[p] }}</div>
-                @if (blueParts()[p] > 0) {
-                  <div class="text-yellow-400 text-[10px] md:text-xs font-bold">IPPON</div>
-                }
+              <div class="flex flex-col items-center rounded-xl border px-3 md:px-4 py-1 md:py-2"
+                   [class.bg-yellow-500/20]="blueParts()[p] > 0" [class.border-yellow-400/60]="blueParts()[p] > 0"
+                   [class.bg-white/5]="blueParts()[p] === 0" [class.border-white/15]="blueParts()[p] === 0">
+                <div class="text-xs md:text-sm font-bold"
+                     [class.text-yellow-400]="blueParts()[p] > 0" [class.text-white/40]="blueParts()[p] === 0">P{{ p + 1 }}</div>
+                <div class="text-lg md:text-2xl lg:text-3xl font-black"
+                     [class.text-yellow-300]="blueParts()[p] > 0" [class.text-white/40]="blueParts()[p] === 0">{{ blueParts()[p] }}</div>
               </div>
             }
           </div>
         </div>
 
-        <!-- 右：WAZA-ARI 大分數 -->
+        <!-- 右：總計分 大分數 -->
         <div class="flex flex-col items-center shrink-0">
-          <div class="text-white/50 text-base md:text-xl lg:text-2xl xl:text-3xl 2xl:text-4xl mb-1">WAZA-ARI</div>
+          <div class="text-white/50 text-base md:text-xl lg:text-2xl xl:text-3xl 2xl:text-4xl mb-1">總計分</div>
           <div class="bg-blue-700 rounded-2xl w-28 h-20 md:w-36 md:h-28 lg:w-44 lg:h-32 xl:w-56 xl:h-40 2xl:w-64 2xl:h-48 flex items-center justify-center">
-            <span class="text-6xl md:text-7xl lg:text-8xl xl:text-9xl 2xl:text-[10rem] font-black text-white leading-none">{{ blueWazaAri() }}</span>
+            <span class="text-6xl md:text-7xl lg:text-8xl xl:text-9xl 2xl:text-[10rem] font-black text-white leading-none">{{ blueTotalScore() }}</span>
           </div>
         </div>
       </div>
