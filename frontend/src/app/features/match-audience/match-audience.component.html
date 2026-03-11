@@ -20,6 +20,18 @@
     </div>
   }
 
+  <!-- ── FULL IPPON 覆蓋層 (7.1) ── -->
+  @if (fullIpponOverlay()) {
+    <div class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center">
+      <div class="text-center animate-pulse">
+        <div class="text-yellow-300 font-black leading-none" style="font-size: clamp(4rem, 15vw, 12rem);">
+          FULL IPPON
+        </div>
+        <div class="text-white/60 text-2xl md:text-3xl mt-4">等待裁判確認</div>
+      </div>
+    </div>
+  }
+
   <!-- 計分板（滿版） -->
   @if (activeMatch(); as match) {
     <div class="flex-1 flex flex-col min-h-0 px-4 md:px-6 lg:px-8 xl:px-10 pt-3 pb-2 gap-2 xl:gap-3">
@@ -83,45 +95,79 @@
           </div>
         </div>
 
-        <!-- 中：警告 / 優勢 -->
-        <div class="flex gap-4 md:gap-6 lg:gap-8 xl:gap-10 shrink-0 items-stretch">
-          <!-- 警告 -->
-          <div class="flex flex-col text-center">
-            <div class="text-white/40 text-xl md:text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl mb-2">警告</div>
-            <div class="flex-1 flex items-center justify-center">
-              <div class="grid grid-cols-2 gap-1 md:gap-1.5 lg:gap-2 xl:gap-2.5">
-                @for (i of [0, 1, 2, 3]; track i) {
-                  <div
-                    class="w-5 h-5 md:w-7 md:h-7 lg:w-9 lg:h-9 xl:w-11 xl:h-11 2xl:w-14 2xl:h-14 rounded-sm"
-                    [class.bg-yellow-400]="i < redWarnings()"
-                    [class.bg-white/20]="i >= redWarnings()"></div>
-                }
-              </div>
+        <!-- 中：對打 SHIDO/CHUI badges + PART scores (7.2, 7.3) / Ne-Waza 警告優勢 -->
+        @if (isFightingMatch()) {
+          <div class="flex flex-col gap-2 shrink-0">
+            <!-- SHIDO / CHUI badges (7.2) -->
+            <div class="flex gap-2 flex-wrap">
+              @if (redShido() >= 1) {
+                <span class="text-lg md:text-2xl lg:text-3xl xl:text-4xl font-black px-3 py-1 rounded-xl bg-yellow-500/40 text-yellow-200">
+                  SHIDO ×{{ redShido() }}
+                </span>
+              }
+              @if (chuiBadgeRed()) {
+                <span class="text-lg md:text-2xl lg:text-3xl xl:text-4xl font-black px-3 py-1 rounded-xl bg-orange-500/60 text-orange-100">
+                  CHUI
+                </span>
+              }
+            </div>
+            <!-- PART scores row (7.3) -->
+            <div class="flex gap-2">
+              @for (p of [0, 1, 2]; track p) {
+                <div class="flex flex-col items-center bg-white/5 rounded-xl px-3 py-1">
+                  <div class="text-white/40 text-xs md:text-sm">P{{ p + 1 }}</div>
+                  <div class="text-xl md:text-2xl lg:text-3xl xl:text-4xl font-black"
+                       [class.text-yellow-300]="redParts()[p] > 0"
+                       [class.text-white]="redParts()[p] === 0">{{ redParts()[p] }}</div>
+                  @if (redParts()[p] > 0) {
+                    <div class="text-yellow-400 text-[10px] md:text-xs font-bold">IPPON</div>
+                  }
+                </div>
+              }
             </div>
           </div>
-          <!-- 優勢 -->
-          <div class="flex flex-col text-center">
-            <div class="text-xl md:text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl mb-2"
-                 [class.text-blue-200]="redAdvantage() > 0"
-                 [class.text-white/40]="redAdvantage() === 0">優勢</div>
-            <div class="flex-1 flex items-center justify-center">
-              <div class="text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-black"
+        } @else {
+          <div class="flex gap-4 md:gap-6 lg:gap-8 xl:gap-10 shrink-0 items-stretch">
+            <!-- 警告 -->
+            <div class="flex flex-col text-center">
+              <div class="text-white/40 text-xl md:text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl mb-2">警告</div>
+              <div class="flex-1 flex items-center justify-center">
+                <div class="grid grid-cols-2 gap-1 md:gap-1.5 lg:gap-2 xl:gap-2.5">
+                  @for (i of [0, 1, 2, 3]; track i) {
+                    <div
+                      class="w-5 h-5 md:w-7 md:h-7 lg:w-9 lg:h-9 xl:w-11 xl:h-11 2xl:w-14 2xl:h-14 rounded-sm"
+                      [class.bg-yellow-400]="i < redWarnings()"
+                      [class.bg-white/20]="i >= redWarnings()"></div>
+                  }
+                </div>
+              </div>
+            </div>
+            <!-- 優勢 -->
+            <div class="flex flex-col text-center">
+              <div class="text-xl md:text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl mb-2"
                    [class.text-blue-200]="redAdvantage() > 0"
-                   [class.text-white]="redAdvantage() === 0">
-                {{ redAdvantage() }}
+                   [class.text-white/40]="redAdvantage() === 0">優勢</div>
+              <div class="flex-1 flex items-center justify-center">
+                <div class="text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-black"
+                     [class.text-blue-200]="redAdvantage() > 0"
+                     [class.text-white]="redAdvantage() === 0">
+                  {{ redAdvantage() }}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        }
 
         <!-- 右：大分數方塊（紅） -->
         <div class="flex flex-col items-center shrink-0">
-          <div class="text-white/50 text-base md:text-xl lg:text-2xl xl:text-3xl 2xl:text-4xl mb-1">得分</div>
+          <div class="text-white/50 text-base md:text-xl lg:text-2xl xl:text-3xl 2xl:text-4xl mb-1">
+            {{ isFightingMatch() ? 'WAZA-ARI' : '得分' }}
+          </div>
           <div
             class="bg-red-700 rounded-2xl w-28 h-20 md:w-36 md:h-28 lg:w-44 lg:h-32 xl:w-56 xl:h-40 2xl:w-64 2xl:h-48 flex items-center justify-center">
             <span
               class="text-6xl md:text-7xl lg:text-8xl xl:text-9xl 2xl:text-[10rem] font-black text-white leading-none"
-              >{{ redScore() }}</span>
+              >{{ isFightingMatch() ? redWazaAri() : redScore() }}</span>
           </div>
         </div>
       </div>
@@ -157,45 +203,77 @@
           </div>
         </div>
 
-        <!-- 中：警告 / 優勢 -->
-        <div class="flex gap-4 md:gap-6 lg:gap-8 xl:gap-10 shrink-0 items-stretch">
-          <!-- 警告 -->
-          <div class="flex flex-col text-center">
-            <div class="text-white/40 text-xl md:text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl mb-2">警告</div>
-            <div class="flex-1 flex items-center justify-center">
-              <div class="grid grid-cols-2 gap-1 md:gap-1.5 lg:gap-2 xl:gap-2.5">
-                @for (i of [0, 1, 2, 3]; track i) {
-                  <div
-                    class="w-5 h-5 md:w-7 md:h-7 lg:w-9 lg:h-9 xl:w-11 xl:h-11 2xl:w-14 2xl:h-14 rounded-sm"
-                    [class.bg-yellow-400]="i < blueWarnings()"
-                    [class.bg-white/20]="i >= blueWarnings()"></div>
-                }
-              </div>
+        <!-- 中：對打 SHIDO/CHUI badges + PART scores (7.2, 7.3) / Ne-Waza 警告優勢 -->
+        @if (isFightingMatch()) {
+          <div class="flex flex-col gap-2 shrink-0">
+            <div class="flex gap-2 flex-wrap">
+              @if (blueShido() >= 1) {
+                <span class="text-lg md:text-2xl lg:text-3xl xl:text-4xl font-black px-3 py-1 rounded-xl bg-yellow-500/40 text-yellow-200">
+                  SHIDO ×{{ blueShido() }}
+                </span>
+              }
+              @if (chuiBadgeBlue()) {
+                <span class="text-lg md:text-2xl lg:text-3xl xl:text-4xl font-black px-3 py-1 rounded-xl bg-orange-500/60 text-orange-100">
+                  CHUI
+                </span>
+              }
+            </div>
+            <div class="flex gap-2">
+              @for (p of [0, 1, 2]; track p) {
+                <div class="flex flex-col items-center bg-white/5 rounded-xl px-3 py-1">
+                  <div class="text-white/40 text-xs md:text-sm">P{{ p + 1 }}</div>
+                  <div class="text-xl md:text-2xl lg:text-3xl xl:text-4xl font-black"
+                       [class.text-yellow-300]="blueParts()[p] > 0"
+                       [class.text-white]="blueParts()[p] === 0">{{ blueParts()[p] }}</div>
+                  @if (blueParts()[p] > 0) {
+                    <div class="text-yellow-400 text-[10px] md:text-xs font-bold">IPPON</div>
+                  }
+                </div>
+              }
             </div>
           </div>
-          <!-- 優勢 -->
-          <div class="flex flex-col text-center">
-            <div class="text-xl md:text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl mb-2"
-                 [class.text-blue-200]="blueAdvantage() > 0"
-                 [class.text-white/40]="blueAdvantage() === 0">優勢</div>
-            <div class="flex-1 flex items-center justify-center">
-              <div class="text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-black"
+        } @else {
+          <div class="flex gap-4 md:gap-6 lg:gap-8 xl:gap-10 shrink-0 items-stretch">
+            <!-- 警告 -->
+            <div class="flex flex-col text-center">
+              <div class="text-white/40 text-xl md:text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl mb-2">警告</div>
+              <div class="flex-1 flex items-center justify-center">
+                <div class="grid grid-cols-2 gap-1 md:gap-1.5 lg:gap-2 xl:gap-2.5">
+                  @for (i of [0, 1, 2, 3]; track i) {
+                    <div
+                      class="w-5 h-5 md:w-7 md:h-7 lg:w-9 lg:h-9 xl:w-11 xl:h-11 2xl:w-14 2xl:h-14 rounded-sm"
+                      [class.bg-yellow-400]="i < blueWarnings()"
+                      [class.bg-white/20]="i >= blueWarnings()"></div>
+                  }
+                </div>
+              </div>
+            </div>
+            <!-- 優勢 -->
+            <div class="flex flex-col text-center">
+              <div class="text-xl md:text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl mb-2"
                    [class.text-blue-200]="blueAdvantage() > 0"
-                   [class.text-white]="blueAdvantage() === 0">
-                {{ blueAdvantage() }}
+                   [class.text-white/40]="blueAdvantage() === 0">優勢</div>
+              <div class="flex-1 flex items-center justify-center">
+                <div class="text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-black"
+                     [class.text-blue-200]="blueAdvantage() > 0"
+                     [class.text-white]="blueAdvantage() === 0">
+                  {{ blueAdvantage() }}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        }
 
         <!-- 右：大分數方塊（藍） -->
         <div class="flex flex-col items-center shrink-0">
-          <div class="text-white/50 text-base md:text-xl lg:text-2xl xl:text-3xl 2xl:text-4xl mb-1">得分</div>
+          <div class="text-white/50 text-base md:text-xl lg:text-2xl xl:text-3xl 2xl:text-4xl mb-1">
+            {{ isFightingMatch() ? 'WAZA-ARI' : '得分' }}
+          </div>
           <div
             class="bg-blue-700 rounded-2xl w-28 h-20 md:w-36 md:h-28 lg:w-44 lg:h-32 xl:w-56 xl:h-40 2xl:w-64 2xl:h-48 flex items-center justify-center">
             <span
               class="text-6xl md:text-7xl lg:text-8xl xl:text-9xl 2xl:text-[10rem] font-black text-white leading-none"
-              >{{ blueScore() }}</span>
+              >{{ isFightingMatch() ? blueWazaAri() : blueScore() }}</span>
           </div>
         </div>
       </div>

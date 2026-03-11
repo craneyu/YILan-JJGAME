@@ -3,7 +3,9 @@ import Match, { MatchStatus } from "../models/Match";
 
 const VALID_TRANSITIONS: Record<MatchStatus, MatchStatus[]> = {
   pending: ["in-progress"],
-  "in-progress": ["completed"],
+  "in-progress": ["full-ippon-pending", "shido-dq-pending", "completed"],
+  "full-ippon-pending": ["completed"],
+  "shido-dq-pending": ["completed"],
   completed: [],
 };
 

@@ -206,4 +206,16 @@ export const broadcast = {
   matchScoresReset(eventId: string, data: object) {
     getIO().to(eventId).emit("match:scores-reset", data);
   },
+  matchFoulUpdated(eventId: string, data: object) {
+    getIO().to(eventId).emit("match:foul-updated", data);
+  },
+  matchFullIppon(eventId: string, data: object) {
+    getIO().to(eventId).emit("match:full-ippon", data);
+  },
+  matchShidoDq(eventId: string, data: object) {
+    getIO().to(eventId).emit("match:shido-dq", data);
+  },
+  matchTimerAdjusted(eventId: string, data: object) {
+    getIO().to(eventId).emit("match:timer-adjusted", data);
+  },
 };

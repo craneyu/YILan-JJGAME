@@ -3,11 +3,319 @@ import MatchScoreLog from "../models/MatchScoreLog";
 import Match from "../models/Match";
 import { broadcast } from "../sockets/index";
 
+// ─── helper ─────────────────────────────────────────────────────────────────
 
-export async function createScoreLog(
-  req: Request,
-  res: Response,
-): Promise<void> {
+function isFinished(status: string) {
+  return status === "completed";
+}
+
+function isPendingOrActive(status: string) {
+  return ["pending", "in-progress", "full-ippon-pending", "shido-dq-pending"].includes(status);
+}
+
+// ─── PART 計分 ───────────────────────────────────────────────────────────────
+
+/**
+ * POST /api/v1/match-scores/part
+ * body: { matchId, side, partIndex: 1|2|3|null, delta: number }
+ *   partIndex = null → ALL PARTS（直接加減總分，不計入 PART，IPPON 不變）
+ */
+export async function partScore(req: Request, res: Response): Promise<void> {
+  const { matchId, side, partIndex, delta } = req.body as {
+    matchId: string;
+    side: "red" | "blue";
+    partIndex: 1 | 2 | 3 | null;
+    delta: number;
+  };
+
+  if (!matchId || !side || delta === undefined) {
+    res.status(400).json({ success: false, error: "缺少必填欄位" });
+    return;
+  }
+  if (!["red", "blue"].includes(side)) {
+    res.status(400).json({ success: false, error: "side 須為 red 或 blue" });
+    return;
+  }
+
+  const match = await Match.findById(matchId);
+  if (!match) { res.status(404).json({ success: false, error: "找不到場次" }); return; }
+  if (isFinished(match.status)) {
+    res.status(409).json({ success: false, error: "場次已結束，不可新增得分記錄" });
+    return;
+  }
+
+  const isRed = side === "red";
+  const ipponKey = isRed ? "redIppons" : "blueIppons";
+
+  // 防負數檢查
+  if (delta < 0) {
+    if (partIndex === 1) {
+      if ((isRed ? match.redPart1Score : match.bluePart1Score) + delta < 0) {
+        res.status(400).json({ success: false, error: "PART 1 分數不可低於 0" }); return;
+      }
+    } else if (partIndex === 2) {
+      if ((isRed ? match.redPart2Score : match.bluePart2Score) + delta < 0) {
+        res.status(400).json({ success: false, error: "PART 2 分數不可低於 0" }); return;
+      }
+    } else if (partIndex === 3) {
+      if ((isRed ? match.redPart3Score : match.bluePart3Score) + delta < 0) {
+        res.status(400).json({ success: false, error: "PART 3 分數不可低於 0" }); return;
+      }
+    }
+    const wazaCurrent = isRed ? match.redWazaAri : match.blueWazaAri;
+    if (wazaCurrent + delta < 0) {
+      res.status(400).json({ success: false, error: "WAZA-ARI 計數不可低於 0" }); return;
+    }
+  }
+
+  // 更新 PART 分數
+  if (partIndex === 1) {
+    if (isRed) match.redPart1Score = Math.max(0, match.redPart1Score + delta);
+    else match.bluePart1Score = Math.max(0, match.bluePart1Score + delta);
+  } else if (partIndex === 2) {
+    if (isRed) match.redPart2Score = Math.max(0, match.redPart2Score + delta);
+    else match.bluePart2Score = Math.max(0, match.bluePart2Score + delta);
+  } else if (partIndex === 3) {
+    if (isRed) match.redPart3Score = Math.max(0, match.redPart3Score + delta);
+    else match.bluePart3Score = Math.max(0, match.bluePart3Score + delta);
+  }
+
+  // 更新 WAZA-ARI
+  if (isRed) match.redWazaAri = Math.max(0, match.redWazaAri + delta);
+  else match.blueWazaAri = Math.max(0, match.blueWazaAri + delta);
+
+  // 更新 IPPON 計數（只有 PART 操作才影響）
+  if (partIndex !== null) {
+    const pKey = `p${partIndex}` as "p1" | "p2" | "p3";
+    const ippons = { ...match[ipponKey] };
+    ippons[pKey] = Math.max(0, ippons[pKey] + (delta > 0 ? 1 : -1));
+    match[ipponKey] = ippons;
+  }
+
+  // 確認是否達成 FULL IPPON
+  const ippons = match[ipponKey];
+  const fullIppon = ippons.p1 >= 1 && ippons.p2 >= 1 && ippons.p3 >= 1;
+  let triggerFullIppon = false;
+
+  if (fullIppon && !["full-ippon-pending", "shido-dq-pending", "completed"].includes(match.status)) {
+    match.status = "full-ippon-pending";
+    if (isRed) { match.redWazaAri = 50; match.blueWazaAri = 0; }
+    else { match.blueWazaAri = 50; match.redWazaAri = 0; }
+    triggerFullIppon = true;
+  }
+
+  await match.save();
+
+  // 寫入 log
+  const logEntry = await MatchScoreLog.create({
+    matchId,
+    side,
+    type: partIndex !== null ? "part-score" : "all-parts-score",
+    value: delta,
+    partIndex: partIndex ?? null,
+    ipponsSnapshot: { ...match[ipponKey] },
+  });
+
+  const eventId = match.eventId.toString();
+
+  // 廣播即時分數
+  broadcast.matchFoulUpdated(eventId, {
+    matchId,
+    redWazaAri: match.redWazaAri,
+    blueWazaAri: match.blueWazaAri,
+    redShido: match.redShido,
+    blueShido: match.blueShido,
+    redPart1Score: match.redPart1Score,
+    redPart2Score: match.redPart2Score,
+    redPart3Score: match.redPart3Score,
+    bluePart1Score: match.bluePart1Score,
+    bluePart2Score: match.bluePart2Score,
+    bluePart3Score: match.bluePart3Score,
+    redIppons: match.redIppons,
+    blueIppons: match.blueIppons,
+  });
+
+  if (triggerFullIppon) {
+    broadcast.matchFullIppon(eventId, {
+      matchId,
+      suggestedWinner: side,
+    });
+  }
+
+  res.status(201).json({ success: true, data: logEntry });
+}
+
+// ─── 犯規（SHIDO / CHUI）────────────────────────────────────────────────────
+
+/**
+ * POST /api/v1/match-scores/foul
+ * body: { matchId, side, foulType: 'shido'|'chui', delta: 1|-1 }
+ */
+export async function foulAction(req: Request, res: Response): Promise<void> {
+  const { matchId, side, foulType, delta } = req.body as {
+    matchId: string;
+    side: "red" | "blue";
+    foulType: "shido" | "chui";
+    delta: 1 | -1;
+  };
+
+  if (!matchId || !side || !foulType || delta === undefined) {
+    res.status(400).json({ success: false, error: "缺少必填欄位" });
+    return;
+  }
+
+  const match = await Match.findById(matchId);
+  if (!match) { res.status(404).json({ success: false, error: "找不到場次" }); return; }
+  if (isFinished(match.status)) {
+    res.status(409).json({ success: false, error: "場次已結束" });
+    return;
+  }
+
+  const shidoUnits = foulType === "chui" ? 3 : 1;
+  const shidoKey = `${side}Shido` as "redShido" | "blueShido";
+  const oppSide = side === "red" ? "blue" : "red";
+  const oppWazaKey = `${oppSide}WazaAri` as "redWazaAri" | "blueWazaAri";
+
+  // 防負數：減分時確保不低於 0
+  if (delta < 0) {
+    if (match[shidoKey] < shidoUnits) {
+      res.status(400).json({
+        success: false,
+        error: `${foulType.toUpperCase()} 計次不足，無法減扣`,
+      });
+      return;
+    }
+    if (match[oppWazaKey] < shidoUnits) {
+      res.status(400).json({
+        success: false,
+        error: "對手 WAZA-ARI 不足，無法回算",
+      });
+      return;
+    }
+  }
+
+  // 更新 SHIDO 計次
+  match[shidoKey] = Math.max(0, match[shidoKey] + shidoUnits * delta);
+
+  // 更新對手 WAZA-ARI
+  match[oppWazaKey] = Math.max(0, match[oppWazaKey] + shidoUnits * delta);
+
+  // 檢查 SHIDO DQ
+  let triggerShidoDq = false;
+  if (match[shidoKey] >= 6 && !["full-ippon-pending", "shido-dq-pending", "completed"].includes(match.status)) {
+    match.status = "shido-dq-pending";
+    triggerShidoDq = true;
+  }
+
+  await match.save();
+
+  // 寫入 log
+  await MatchScoreLog.create({
+    matchId,
+    side,
+    type: "foul",
+    value: shidoUnits * delta,
+    partIndex: null,
+    ipponsSnapshot: { ...match[`${side}Ippons` as "redIppons" | "blueIppons"] },
+  });
+
+  const eventId = match.eventId.toString();
+
+  broadcast.matchFoulUpdated(eventId, {
+    matchId,
+    redWazaAri: match.redWazaAri,
+    blueWazaAri: match.blueWazaAri,
+    redShido: match.redShido,
+    blueShido: match.blueShido,
+    chuiEvent: foulType === "chui" && delta > 0 ? side : null,
+  });
+
+  if (triggerShidoDq) {
+    broadcast.matchShidoDq(eventId, {
+      matchId,
+      suggestedDisqualified: side,
+      suggestedWinner: oppSide,
+      shidoCount: match[shidoKey],
+    });
+  }
+
+  res.json({ success: true, data: { shido: match[shidoKey], oppWazaAri: match[oppWazaKey] } });
+}
+
+// ─── 計時器設定 ──────────────────────────────────────────────────────────────
+
+/**
+ * PATCH /api/v1/match-scores/duration
+ * body: { matchId, duration: number (seconds) }
+ */
+export async function setDuration(req: Request, res: Response): Promise<void> {
+  const { matchId, duration } = req.body as { matchId: string; duration: number };
+
+  if (!matchId || duration === undefined || duration <= 0) {
+    res.status(400).json({ success: false, error: "無效的 duration" });
+    return;
+  }
+
+  const match = await Match.findById(matchId);
+  if (!match) { res.status(404).json({ success: false, error: "找不到場次" }); return; }
+  if (isFinished(match.status)) {
+    res.status(409).json({ success: false, error: "場次已結束" });
+    return;
+  }
+
+  match.matchDuration = duration;
+  if (match.status === "pending") match.status = "in-progress";
+  await match.save();
+
+  res.json({ success: true, data: { matchDuration: match.matchDuration } });
+}
+
+// ─── 計時器微調 ──────────────────────────────────────────────────────────────
+
+/**
+ * PATCH /api/v1/match-scores/timer-adjust
+ * body: { matchId, side, remainingBefore, remainingAfter }
+ */
+export async function timerAdjust(req: Request, res: Response): Promise<void> {
+  const { matchId, remainingBefore, remainingAfter } = req.body as {
+    matchId: string;
+    remainingBefore: number;
+    remainingAfter: number;
+  };
+
+  if (!matchId || remainingBefore === undefined || remainingAfter === undefined) {
+    res.status(400).json({ success: false, error: "缺少必填欄位" });
+    return;
+  }
+
+  const match = await Match.findById(matchId);
+  if (!match) { res.status(404).json({ success: false, error: "找不到場次" }); return; }
+  if (!isPendingOrActive(match.status)) {
+    res.status(409).json({ success: false, error: "場次狀態不允許調整計時" });
+    return;
+  }
+
+  // 寫入 log（timer-adjust log）
+  const log = await MatchScoreLog.create({
+    matchId,
+    side: "red", // timer adjust 不分邊，以 red 作占位
+    type: "timer-adjust",
+    value: remainingAfter - remainingBefore,
+    partIndex: null,
+    ipponsSnapshot: { p1: 0, p2: 0, p3: 0 },
+    remainingBefore,
+    remainingAfter,
+  });
+
+  const eventId = match.eventId.toString();
+  broadcast.matchTimerAdjusted(eventId, { matchId, remainingBefore, remainingAfter });
+
+  res.json({ success: true, data: log });
+}
+
+// ─── 既有功能（保留相容性）──────────────────────────────────────────────────
+
+export async function createScoreLog(req: Request, res: Response): Promise<void> {
   const { matchId, side, type, value } = req.body;
 
   if (!matchId || !side || !type || value === undefined) {
@@ -16,27 +324,17 @@ export async function createScoreLog(
   }
 
   const match = await Match.findById(matchId);
-  if (!match) {
-    res.status(404).json({ success: false, error: "找不到場次" });
-    return;
-  }
-  if (match.status === "completed") {
-    res
-      .status(409)
-      .json({ success: false, error: "場次已結束，不可新增得分記錄" });
+  if (!match) { res.status(404).json({ success: false, error: "找不到場次" }); return; }
+  if (isFinished(match.status)) {
+    res.status(409).json({ success: false, error: "場次已結束，不可新增得分記錄" });
     return;
   }
 
   const log = await MatchScoreLog.create({ matchId, side, type, value });
-
-  // 廣播由前端 socket emit 負責，後端只負責持久化
   res.status(201).json({ success: true, data: log });
 }
 
-export async function resetScoreLogs(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export async function resetScoreLogs(req: Request, res: Response): Promise<void> {
   const { matchId } = req.body;
   if (!matchId) {
     res.status(400).json({ success: false, error: "請提供 matchId" });
@@ -44,11 +342,8 @@ export async function resetScoreLogs(
   }
 
   const match = await Match.findById(matchId);
-  if (!match) {
-    res.status(404).json({ success: false, error: "找不到場次" });
-    return;
-  }
-  if (match.status === "completed") {
+  if (!match) { res.status(404).json({ success: false, error: "找不到場次" }); return; }
+  if (isFinished(match.status)) {
     res.status(409).json({ success: false, error: "場次已結束，不可歸零" });
     return;
   }
@@ -66,19 +361,14 @@ export async function resetScoreLogs(
   res.json({ success: true });
 }
 
-export async function getScoreSummary(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export async function getScoreSummary(req: Request, res: Response): Promise<void> {
   const matchId = req.query["matchId"] as string;
   if (!matchId) {
     res.status(400).json({ success: false, error: "請提供 matchId" });
     return;
   }
 
-  const logs = await MatchScoreLog.find({ matchId })
-    .sort({ timestamp: 1 })
-    .lean();
+  const logs = await MatchScoreLog.find({ matchId }).sort({ timestamp: 1 }).lean();
 
   let rs = 0, bs = 0, ra = 0, ba = 0, rw = 0, bw = 0;
   for (const e of logs) {
@@ -110,8 +400,6 @@ export async function getScoreLogs(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  const logs = await MatchScoreLog.find({ matchId })
-    .sort({ timestamp: 1 })
-    .lean();
+  const logs = await MatchScoreLog.find({ matchId }).sort({ timestamp: 1 }).lean();
   res.json({ success: true, data: logs });
 }

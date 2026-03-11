@@ -154,6 +154,36 @@ export interface InjuryEndedEvent {
   side: "red" | "blue";
 }
 
+// ── 對打計分事件 ──
+export interface MatchFoulUpdatedEvent {
+  matchId: string;
+  redWazaAri: number;
+  blueWazaAri: number;
+  redShido: number;
+  blueShido: number;
+  redPart1Score?: number;
+  redPart2Score?: number;
+  redPart3Score?: number;
+  bluePart1Score?: number;
+  bluePart2Score?: number;
+  bluePart3Score?: number;
+  redIppons?: { p1: number; p2: number; p3: number };
+  blueIppons?: { p1: number; p2: number; p3: number };
+  chuiEvent?: "red" | "blue" | null;
+}
+
+export interface MatchFullIpponEvent {
+  matchId: string;
+  suggestedWinner: "red" | "blue";
+}
+
+export interface MatchShidoDqEvent {
+  matchId: string;
+  suggestedDisqualified: "red" | "blue";
+  suggestedWinner: "red" | "blue";
+  shidoCount: number;
+}
+
 // ── 柔術場次事件 ──
 export interface MatchScoreUpdatedEvent {
   matchId: string;
@@ -382,6 +412,18 @@ export class SocketService {
 
   get matchScoresReset$(): Observable<{ matchId: string }> {
     return fromEvent<{ matchId: string }>(this.socket, "match:scores-reset");
+  }
+
+  get matchFoulUpdated$(): Observable<MatchFoulUpdatedEvent> {
+    return fromEvent<MatchFoulUpdatedEvent>(this.socket, "match:foul-updated");
+  }
+
+  get matchFullIppon$(): Observable<MatchFullIpponEvent> {
+    return fromEvent<MatchFullIpponEvent>(this.socket, "match:full-ippon");
+  }
+
+  get matchShidoDq$(): Observable<MatchShidoDqEvent> {
+    return fromEvent<MatchShidoDqEvent>(this.socket, "match:shido-dq");
   }
 
   // ── 傷停事件 ──
