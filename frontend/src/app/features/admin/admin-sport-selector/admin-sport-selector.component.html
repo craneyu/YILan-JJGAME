@@ -1,0 +1,79 @@
+<div class="min-h-screen flex flex-col items-center justify-center p-6">
+  <div class="w-full max-w-2xl">
+    <div class="flex items-start justify-between mb-10">
+      <div class="text-center flex-1">
+        <h1 class="text-3xl font-bold text-white mb-2">管理員後台</h1>
+        <p class="text-white/60">請選擇運動項目</p>
+      </div>
+      <button class="glass-btn px-3 py-2 text-sm flex items-center gap-1.5 text-red-400 border-red-400/30 hover:bg-red-500/20 flex-shrink-0" (click)="logout()">
+        <fa-icon [icon]="faRightFromBracket" class="text-xs"></fa-icon>
+        登出
+      </button>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <!-- 演武 -->
+      <button
+        class="glass-card p-6 text-left transition-all cursor-pointer border-2 border-transparent hover:bg-white/20 hover:border-blue-400/50 col-span-2"
+        (click)="go('/admin/kata')">
+        <div class="flex items-center gap-4">
+          <div class="w-14 h-14 rounded-xl bg-blue-500/30 flex items-center justify-center flex-shrink-0">
+            <fa-icon [icon]="faUsers" class="text-blue-400 text-2xl"></fa-icon>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <h2 class="text-white font-bold text-xl">演武</h2>
+              <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-500/30 text-blue-300 border border-blue-400/40">Duo + Show</span>
+            </div>
+            <p class="text-white/60 text-sm">雙人演武 & 創意演武管理、隊伍匯入、排名匯出</p>
+          </div>
+        </div>
+      </button>
+
+      <!-- 寢技 -->
+      <button
+        class="glass-card p-6 text-left transition-all cursor-pointer border-2 border-transparent hover:bg-white/20 hover:border-green-400/50"
+        (click)="go('/admin/matches/ne-waza')">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-xl bg-green-500/30 flex items-center justify-center flex-shrink-0">
+            <fa-icon [icon]="faShield" class="text-green-400 text-xl"></fa-icon>
+          </div>
+          <div>
+            <h2 class="text-white font-bold text-lg mb-0.5">寢技</h2>
+            <p class="text-white/50 text-xs">Ne-Waza · 6分鐘</p>
+          </div>
+        </div>
+      </button>
+
+      <!-- 對打 -->
+      <button
+        class="glass-card p-6 text-left transition-all cursor-pointer border-2 border-transparent hover:bg-white/20 hover:border-yellow-400/50"
+        (click)="go('/admin/matches/fighting')">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-xl bg-yellow-500/30 flex items-center justify-center flex-shrink-0">
+            <fa-icon [icon]="faBolt" class="text-yellow-400 text-xl"></fa-icon>
+          </div>
+          <div>
+            <h2 class="text-white font-bold text-lg mb-0.5">對打</h2>
+            <p class="text-white/50 text-xs">Fighting · 3分鐘</p>
+          </div>
+        </div>
+      </button>
+
+      <!-- 格鬥 -->
+      <button
+        class="glass-card p-6 text-left transition-all cursor-pointer border-2 border-transparent hover:bg-white/20 hover:border-red-400/50 col-span-2"
+        (click)="go('/admin/matches/contact')">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-xl bg-red-500/30 flex items-center justify-center flex-shrink-0">
+            <fa-icon [icon]="faDragon" class="text-red-400 text-xl"></fa-icon>
+          </div>
+          <div>
+            <h2 class="text-white font-bold text-lg mb-0.5">格鬥</h2>
+            <p class="text-white/50 text-xs">Contact · 預賽2分鐘 / 決賽3分鐘</p>
+          </div>
+        </div>
+      </button>
+    </div>
+  </div>
+</div>

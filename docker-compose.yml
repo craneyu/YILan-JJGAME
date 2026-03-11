@@ -15,7 +15,7 @@ services:
       - "3000:3000"
     environment:
       - MONGO_URI=mongodb://mongo:27017/jju
-      - JWT_SECRET=jju_secret_change_in_production
+      - JWT_SECRET=jju_dev_secret_key
       - PORT=3000
       - NODE_ENV=production
     depends_on:

@@ -1,11 +1,12 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Document, Schema } from "mongoose";
 
 export type UserRole =
-  | 'scoring_judge'
-  | 'vr_judge'
-  | 'sequence_judge'
-  | 'admin'
-  | 'audience';
+  | "scoring_judge"
+  | "vr_judge"
+  | "sequence_judge"
+  | "admin"
+  | "audience"
+  | "match_referee";
 
 export interface IUser extends Document {
   username: string;
@@ -20,11 +21,18 @@ const UserSchema = new Schema<IUser>({
   passwordHash: { type: String, required: true },
   role: {
     type: String,
-    enum: ['scoring_judge', 'vr_judge', 'sequence_judge', 'admin', 'audience'],
+    enum: [
+      "scoring_judge",
+      "vr_judge",
+      "sequence_judge",
+      "admin",
+      "audience",
+      "match_referee",
+    ],
     required: true,
   },
   judgeNo: { type: Number, min: 1, max: 5 },
-  eventId: { type: Schema.Types.ObjectId, ref: 'Event' },
+  eventId: { type: Schema.Types.ObjectId, ref: "Event" },
 });
 
-export default mongoose.model<IUser>('User', UserSchema);
+export default mongoose.model<IUser>("User", UserSchema);

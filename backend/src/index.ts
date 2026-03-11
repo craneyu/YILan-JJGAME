@@ -1,22 +1,24 @@
-import 'dotenv/config';
-import express from 'express';
-import { createServer } from 'http';
-import cors from 'cors';
-import mongoose from 'mongoose';
-import { initSocketIO } from './sockets/index';
-import { errorHandler } from './middleware/errorHandler';
-import { seedIfNeeded } from './seeds/initialUsers';
-import authRoutes from './routes/auth';
-import eventRoutes from './routes/events';
-import teamRoutes from './routes/teams';
-import scoreRoutes from './routes/scores';
-import vrScoreRoutes from './routes/vrScores';
-import flowRoutes from './routes/flow';
-import backupRoutes from './routes/backup';
-import wrongAttackRoutes from './routes/wrongAttacks';
-import creativeScoreRoutes from './routes/creativeScores';
-import creativeFlowRoutes from './routes/creativeFlow';
-import creativePenaltyRoutes from './routes/creativePenalties';
+import "dotenv/config";
+import express from "express";
+import { createServer } from "http";
+import cors from "cors";
+import mongoose from "mongoose";
+import { initSocketIO } from "./sockets/index";
+import { errorHandler } from "./middleware/errorHandler";
+import { seedIfNeeded } from "./seeds/initialUsers";
+import authRoutes from "./routes/auth";
+import eventRoutes from "./routes/events";
+import teamRoutes from "./routes/teams";
+import scoreRoutes from "./routes/scores";
+import vrScoreRoutes from "./routes/vrScores";
+import flowRoutes from "./routes/flow";
+import backupRoutes from "./routes/backup";
+import wrongAttackRoutes from "./routes/wrongAttacks";
+import creativeScoreRoutes from "./routes/creativeScores";
+import creativeFlowRoutes from "./routes/creativeFlow";
+import creativePenaltyRoutes from "./routes/creativePenalties";
+import matchRoutes from "./routes/matches";
+import matchScoreRoutes from "./routes/matchScores";
 
 const app = express();
 const httpServer = createServer(app);
@@ -25,46 +27,48 @@ const httpServer = createServer(app);
 initSocketIO(httpServer);
 
 // Middleware
-app.use(cors({ origin: '*' }));
+app.use(cors({ origin: "*" }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
-app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/events', eventRoutes);
-app.use('/api/v1/events/:id/teams', teamRoutes);
-app.use('/api/v1/scores', scoreRoutes);
-app.use('/api/v1/vr-scores', vrScoreRoutes);
-app.use('/api/v1/flow', flowRoutes);
-app.use('/api/v1/backup', backupRoutes);
-app.use('/api/v1/wrong-attacks', wrongAttackRoutes);
-app.use('/api/v1/creative-scores', creativeScoreRoutes);
-app.use('/api/v1/creative/flow', creativeFlowRoutes);
-app.use('/api/v1/creative/penalties', creativePenaltyRoutes);
+app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/events", eventRoutes);
+app.use("/api/v1/events/:id/teams", teamRoutes);
+app.use("/api/v1/scores", scoreRoutes);
+app.use("/api/v1/vr-scores", vrScoreRoutes);
+app.use("/api/v1/flow", flowRoutes);
+app.use("/api/v1/backup", backupRoutes);
+app.use("/api/v1/wrong-attacks", wrongAttackRoutes);
+app.use("/api/v1/creative-scores", creativeScoreRoutes);
+app.use("/api/v1/creative/flow", creativeFlowRoutes);
+app.use("/api/v1/creative/penalties", creativePenaltyRoutes);
+app.use("/api/v1/events", matchRoutes);
+app.use("/api/v1/match-scores", matchScoreRoutes);
 
 // 健康檢查
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+app.get("/health", (_req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
 // 全域錯誤處理
 app.use(errorHandler);
 
 // MongoDB 連線
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/jju';
-const PORT = parseInt(process.env.PORT || '3000', 10);
+const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/jju";
+const PORT = parseInt(process.env.PORT || "3000", 10);
 
 async function bootstrap() {
   try {
     await mongoose.connect(MONGO_URI);
-    console.log('[MongoDB] 已連線');
+    console.log("[MongoDB] 已連線");
     await seedIfNeeded();
 
-    httpServer.listen(PORT, '0.0.0.0', () => {
+    httpServer.listen(PORT, "0.0.0.0", () => {
       console.log(`[Server] 已啟動，監聽 http://0.0.0.0:${PORT}`);
     });
   } catch (err) {
-    console.error('[MongoDB] 連線失敗：', err);
+    console.error("[MongoDB] 連線失敗：", err);
     process.exit(1);
   }
 }

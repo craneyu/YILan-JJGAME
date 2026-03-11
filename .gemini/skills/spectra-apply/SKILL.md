@@ -28,14 +28,6 @@ Implement tasks from an OpenSpec change.
 
    Always announce: "Using change: <name>" and how to override (e.g., `/spectra:apply <other>`).
 
-   After selecting the change, mark it as in-progress:
-
-   ```bash
-   spectra in-progress add "<name>"
-   ```
-
-   This is a silent operation — do not show the output to the user.
-
 2. **Check status to understand the schema**
 
    ```bash
@@ -65,13 +57,27 @@ Implement tasks from an OpenSpec change.
      spectra unpark "<name>"
      ```
 
+     Then mark it as in-progress:
+
+     ```bash
+     spectra in-progress add "<name>"
+     ```
+
+     This is a silent operation — do not show the output to the user.
+
      Then re-run `spectra status --change "<name>" --json` and continue normally.
 
      If there is no AskUserQuestion tool available (non-Claude-Code environment):
      Inform the user that the change is shelved and they need to un-shelve it in Spectra first.
      STOP.
 
-   - **If the change is NOT in the parked list**: proceed normally.
+   - **If the change is NOT in the parked list**: mark it as in-progress and proceed normally.
+
+     ```bash
+     spectra in-progress add "<name>"
+     ```
+
+     This is a silent operation — do not show the output to the user.
 
    Parse the JSON to understand:
    - `schemaName`: The workflow being used (e.g., "spec-driven")
@@ -131,6 +137,11 @@ Implement tasks from an OpenSpec change.
 
    For each pending task:
    - Show which task is being worked on
+   - Re-read the sections of design and spec files that are relevant to this task's scope — do not rely on memory from earlier in the conversation, as context may have been compressed
+   - Before writing code, check:
+     1. **Reuse** — search adjacent modules and shared utilities for existing implementations before writing new code
+     2. **Quality** — derive values from existing state instead of duplicating; use existing types and constants over new literals
+     3. **Efficiency** — parallelize independent async operations; avoid unnecessary awaits; match operation scope to actual need
    - Make the code changes required
    - Keep changes minimal and focused
    - Mark task complete in the tasks file: `- [ ]` → `- [x]`

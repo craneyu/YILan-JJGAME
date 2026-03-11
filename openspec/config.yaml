@@ -163,6 +163,8 @@ context: |
   ./package-docker.sh               — 打包 Docker 映像為可攜式 jju-docker.tar.gz
   cd jju-package && ./start.sh      — 離線部署（載入映像並啟動，保留資料庫資料）
 locale: tw
+tdd: true
+audit: true
 
 rules:
   proposal:
