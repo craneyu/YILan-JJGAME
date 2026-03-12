@@ -53,13 +53,13 @@
 
 ### 3. 對打競技（Fighting）
 
-包含**對打**、**寢技**、**接觸**三種子項目。
+包含**對打**、**寢技**、**格鬥**三種子項目。
 
 | 子項目     | 說明                                                         |
 | ---------- | ------------------------------------------------------------ |
 | 對打       | IPPON / WAZA-ARI 得分，SHIDO 警告累積，CHUI 中度犯規，DQ 失格 |
 | 寢技       | OSAE-KOMI 壓制計時，WAZA-ARI / IPPON 計分，傷停計時         |
-| 接觸       | 接觸計分板，獨立計分邏輯                                     |
+| 格鬥       | 格鬥計分板，獨立計分邏輯                                     |
 
 **裁判功能**：
 - 主裁判（對打/寢技）：即時加/扣分、PART 分計分（+1/+2/+3）、傷停、警告、犯規
@@ -170,6 +170,7 @@ PORT=3000
 | `vr`                | `vr123`    | VR 裁判             |
 | `seq`               | `seq123`   | 賽序裁判            |
 | `audience`          | `audience123` | 觀眾（唯讀）     |
+| `match1`            | `match1`      | 對打裁判         |
 
 ---
 
@@ -189,7 +190,7 @@ PORT=3000
 | `/fighting-audience`      | 對打：觀眾顯示                         |
 | `/ne-waza-referee`        | 寢技：主裁判                           |
 | `/ne-waza-audience`       | 寢技：觀眾顯示                         |
-| `/contact-audience`       | 接觸計分：觀眾顯示                     |
+| `/contact-audience`       | 格鬥計分：觀眾顯示                     |
 | `/admin`                  | 管理員後台（演武項目）                 |
 | `/admin/matches/:type`    | 管理員後台（對打 / 寢技場次管理）      |
 
@@ -215,7 +216,7 @@ YILan-JJGAME/
 │       │   ├── fighting-audience/        # 對打：觀眾
 │       │   ├── ne-waza-referee/          # 寢技：主裁判
 │       │   ├── ne-waza-audience/         # 寢技：觀眾
-│       │   ├── contact-audience/         # 接觸：觀眾
+│       │   ├── contact-audience/         # 格鬥：觀眾
 │       │   ├── match-referee/            # 場次裁判（通用）
 │       │   └── match-audience/           # 場次觀眾（通用）
 │       └── core/
