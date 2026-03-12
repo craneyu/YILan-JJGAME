@@ -61,14 +61,16 @@ export async function partScore(req: Request, res: Response): Promise<void> {
       if ((isRed ? match.redPart3Score : match.bluePart3Score) + delta < 0) {
         res.status(400).json({ success: false, error: "PART 3 分數不可低於 0" }); return;
       }
-    }
-    const wazaCurrent = isRed ? match.redWazaAri : match.blueWazaAri;
-    if (wazaCurrent + delta < 0) {
-      res.status(400).json({ success: false, error: "WAZA-ARI 計數不可低於 0" }); return;
+    } else {
+      // ALL PARTS：檢查 WAZA-ARI 計數不可低於 0
+      const wazaCurrent = isRed ? match.redWazaAri : match.blueWazaAri;
+      if (wazaCurrent + delta < 0) {
+        res.status(400).json({ success: false, error: "WAZA-ARI 計數不可低於 0" }); return;
+      }
     }
   }
 
-  // 更新 PART 分數
+  // 更新 PART 分數（+2/+3 只影響 partScore 和 totalScore，不影響 WAZA-ARI 計數）
   if (partIndex === 1) {
     if (isRed) match.redPart1Score = Math.max(0, match.redPart1Score + delta);
     else match.bluePart1Score = Math.max(0, match.bluePart1Score + delta);
@@ -80,27 +82,35 @@ export async function partScore(req: Request, res: Response): Promise<void> {
     else match.bluePart3Score = Math.max(0, match.bluePart3Score + delta);
   }
 
-  // 更新 WAZA-ARI
-  if (isRed) match.redWazaAri = Math.max(0, match.redWazaAri + delta);
-  else match.blueWazaAri = Math.max(0, match.blueWazaAri + delta);
+  // ALL PARTS（+1/-1）才更新 WAZA-ARI 計數
+  if (partIndex === null) {
+    if (isRed) match.redWazaAri = Math.max(0, match.redWazaAri + delta);
+    else match.blueWazaAri = Math.max(0, match.blueWazaAri + delta);
+  }
 
-  // 更新 IPPON 計數（只有 PART 操作才影響）
+  // 總計分：所有操作皆影響（PART +2/+3 或 ALL PARTS +1/-1）
+  if (isRed) match.redTotalScore = Math.max(0, match.redTotalScore + delta);
+  else match.blueTotalScore = Math.max(0, match.blueTotalScore + delta);
+
+  // 更新 IPPON 計數（只有 PART 操作才影響，每次 +1）
   if (partIndex !== null) {
     const pKey = `p${partIndex}` as "p1" | "p2" | "p3";
-    const ippons = { ...match[ipponKey] };
+    const rawIppons = match[ipponKey] as { p1?: number; p2?: number; p3?: number } | undefined;
+    const ippons = { p1: rawIppons?.p1 ?? 0, p2: rawIppons?.p2 ?? 0, p3: rawIppons?.p3 ?? 0 };
     ippons[pKey] = Math.max(0, ippons[pKey] + (delta > 0 ? 1 : -1));
     match[ipponKey] = ippons;
   }
 
   // 確認是否達成 FULL IPPON
-  const ippons = match[ipponKey];
-  const fullIppon = ippons.p1 >= 1 && ippons.p2 >= 1 && ippons.p3 >= 1;
+  const rawIpponsCheck = match[ipponKey] as { p1?: number; p2?: number; p3?: number } | undefined;
+  const fullIppon = (rawIpponsCheck?.p1 ?? 0) >= 1 && (rawIpponsCheck?.p2 ?? 0) >= 1 && (rawIpponsCheck?.p3 ?? 0) >= 1;
   let triggerFullIppon = false;
 
   if (fullIppon && !["full-ippon-pending", "shido-dq-pending", "completed"].includes(match.status)) {
     match.status = "full-ippon-pending";
-    if (isRed) { match.redWazaAri = 50; match.blueWazaAri = 0; }
-    else { match.blueWazaAri = 50; match.redWazaAri = 0; }
+    // FULL IPPON：總計分強制設為 50，對方總計分歸零
+    if (isRed) { match.redTotalScore = 50; match.blueTotalScore = 0; match.blueWazaAri = 0; }
+    else { match.blueTotalScore = 50; match.redTotalScore = 0; match.redWazaAri = 0; }
     triggerFullIppon = true;
   }
 
@@ -123,6 +133,8 @@ export async function partScore(req: Request, res: Response): Promise<void> {
     matchId,
     redWazaAri: match.redWazaAri,
     blueWazaAri: match.blueWazaAri,
+    redTotalScore: match.redTotalScore,
+    blueTotalScore: match.blueTotalScore,
     redShido: match.redShido,
     blueShido: match.blueShido,
     redPart1Score: match.redPart1Score,
@@ -197,8 +209,12 @@ export async function foulAction(req: Request, res: Response): Promise<void> {
   // 更新 SHIDO 計次
   match[shidoKey] = Math.max(0, match[shidoKey] + shidoUnits * delta);
 
-  // 更新對手 WAZA-ARI
+  // 更新對手 WAZA-ARI 計數
   match[oppWazaKey] = Math.max(0, match[oppWazaKey] + shidoUnits * delta);
+
+  // 更新對手總計分
+  const oppTotalKey = `${oppSide}TotalScore` as "redTotalScore" | "blueTotalScore";
+  match[oppTotalKey] = Math.max(0, match[oppTotalKey] + shidoUnits * delta);
 
   // 檢查 SHIDO DQ
   let triggerShidoDq = false;
@@ -225,6 +241,8 @@ export async function foulAction(req: Request, res: Response): Promise<void> {
     matchId,
     redWazaAri: match.redWazaAri,
     blueWazaAri: match.blueWazaAri,
+    redTotalScore: match.redTotalScore,
+    blueTotalScore: match.blueTotalScore,
     redShido: match.redShido,
     blueShido: match.blueShido,
     chuiEvent: foulType === "chui" && delta > 0 ? side : null,
@@ -350,13 +368,46 @@ export async function resetScoreLogs(req: Request, res: Response): Promise<void>
 
   await MatchScoreLog.deleteMany({ matchId });
 
+  // 重設 Match document 的所有對打計分欄位
+  match.redPart1Score = 0;
+  match.redPart2Score = 0;
+  match.redPart3Score = 0;
+  match.bluePart1Score = 0;
+  match.bluePart2Score = 0;
+  match.bluePart3Score = 0;
+  match.redWazaAri = 0;
+  match.blueWazaAri = 0;
+  match.redTotalScore = 0;
+  match.blueTotalScore = 0;
+  match.redShido = 0;
+  match.blueShido = 0;
+  match.redIppons = { p1: 0, p2: 0, p3: 0 };
+  match.blueIppons = { p1: 0, p2: 0, p3: 0 };
+  if (["full-ippon-pending", "shido-dq-pending"].includes(match.status)) {
+    match.status = "in-progress";
+  }
+  await match.save();
+
+  const eventId = match.eventId.toString();
+
   const zeros = {
     scores: { red: 0, blue: 0 },
     advantages: { red: 0, blue: 0 },
     warnings: { red: 0, blue: 0 },
   };
-  broadcast.matchScoreUpdated(match.eventId.toString(), { matchId, ...zeros });
-  broadcast.matchScoresReset(match.eventId.toString(), { matchId });
+  broadcast.matchScoreUpdated(eventId, { matchId, ...zeros });
+  broadcast.matchScoresReset(eventId, { matchId });
+  // 廣播歸零的計分給觀眾端
+  broadcast.matchFoulUpdated(eventId, {
+    matchId,
+    redWazaAri: 0, blueWazaAri: 0,
+    redTotalScore: 0, blueTotalScore: 0,
+    redShido: 0, blueShido: 0,
+    redPart1Score: 0, redPart2Score: 0, redPart3Score: 0,
+    bluePart1Score: 0, bluePart2Score: 0, bluePart3Score: 0,
+    redIppons: { p1: 0, p2: 0, p3: 0 },
+    blueIppons: { p1: 0, p2: 0, p3: 0 },
+  });
 
   res.json({ success: true });
 }

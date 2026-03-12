@@ -138,10 +138,10 @@ export const appRoutes: Routes = [
       ),
   },
   {
-    path: "match-audience",
+    path: "contact-audience",
     loadComponent: () =>
-      import("./features/match-audience/match-audience.component").then(
-        (m) => m.MatchAudienceComponent,
+      import("./features/contact-audience/contact-audience.component").then(
+        (m) => m.ContactAudienceComponent,
       ),
   },
   { path: "**", redirectTo: "/login" },

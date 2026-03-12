@@ -51,9 +51,12 @@ export interface IMatch extends Document {
   // IPPON counts per PART
   redIppons: IIppons;
   blueIppons: IIppons;
-  // WAZA-ARI counts
+  // WAZA-ARI counts (only counts from ALL PARTS +1 and SHIDO penalties)
   redWazaAri: number;
   blueWazaAri: number;
+  // Total score (PART scores + WAZA-ARI; separate from WAZA-ARI count)
+  redTotalScore: number;
+  blueTotalScore: number;
   // SHIDO counts (CHUI = +3 SHIDO)
   redShido: number;
   blueShido: number;
@@ -126,6 +129,8 @@ const MatchSchema = new Schema<IMatch>(
     blueIppons: { type: IpponsSchema, default: () => ({ p1: 0, p2: 0, p3: 0 }) },
     redWazaAri: { type: Number, default: 0, min: 0 },
     blueWazaAri: { type: Number, default: 0, min: 0 },
+    redTotalScore: { type: Number, default: 0, min: 0 },
+    blueTotalScore: { type: Number, default: 0, min: 0 },
     redShido: { type: Number, default: 0, min: 0 },
     blueShido: { type: Number, default: 0, min: 0 },
     matchDuration: { type: Number, default: 180, min: 0 },

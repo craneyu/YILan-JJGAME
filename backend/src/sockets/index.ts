@@ -123,6 +123,32 @@ export function initSocketIO(
       },
     );
 
+    socket.on(
+      "match:emit-osae-komi-start",
+      (data: {
+        eventId: string;
+        matchId: string;
+        side: string;
+        durationSec?: number;
+      }) => {
+        io.to(data.eventId).emit("osae-komi:started", {
+          matchId: data.matchId,
+          side: data.side,
+          durationSec: data.durationSec,
+        });
+      },
+    );
+
+    socket.on(
+      "match:emit-osae-komi-end",
+      (data: { eventId: string; matchId: string; side: string }) => {
+        io.to(data.eventId).emit("osae-komi:ended", {
+          matchId: data.matchId,
+          side: data.side,
+        });
+      },
+    );
+
     socket.on("disconnect", () => {
       console.log(`[Socket] 用戶端斷線: ${socket.id}`);
     });

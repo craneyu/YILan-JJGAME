@@ -1,0 +1,200 @@
+<div class="h-screen bg-gray-950 text-white flex flex-col select-none relative overflow-hidden">
+
+  <!-- 全螢幕按鈕 -->
+  <div class="absolute top-3 right-3 z-10">
+    <button
+      class="glass-btn px-3 py-2 rounded-xl opacity-30 hover:opacity-80 transition-opacity"
+      (click)="toggleFullscreen()">
+      <fa-icon [icon]="isFullscreen() ? faCompress : faExpand" />
+    </button>
+  </div>
+
+  <!-- 等待畫面 -->
+  @if (!activeMatch()) {
+    <div class="flex-1 flex items-center justify-center">
+      <div class="text-center">
+        <div class="text-6xl xl:text-8xl mb-6">🥋</div>
+        <h1 class="text-3xl xl:text-5xl font-bold text-white/50 mb-2">接觸計分板</h1>
+        <p class="text-white/30 xl:text-2xl">等待下一場比賽...</p>
+      </div>
+    </div>
+  }
+
+  <!-- 計分板（滿版） -->
+  @if (activeMatch(); as match) {
+    <div class="flex-1 flex flex-col min-h-0 px-4 md:px-6 lg:px-8 xl:px-10 pt-3 pb-2 gap-2 xl:gap-3">
+
+      <!-- 場次資訊列 -->
+      <div class="text-center shrink-0">
+        <div class="text-white font-black text-2xl md:text-3xl lg:text-4xl xl:text-5xl 2xl:text-6xl tracking-wide leading-tight">
+          {{
+            match.category === "male"
+              ? "男子組"
+              : match.category === "female"
+                ? "女子組"
+                : "混合組"
+          }}
+          {{ match.weightClass }}
+        </div>
+        <div class="text-white/40 text-xs md:text-sm lg:text-base xl:text-lg 2xl:text-xl tracking-widest uppercase mt-0.5">
+          R{{ match.round }}-{{ match.matchNo }}
+        </div>
+      </div>
+
+      <!-- 勝方橫幅 -->
+      @if (matchResult()) {
+        <div class="text-center shrink-0 animate-bounce">
+          <span class="text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-black text-yellow-300">
+            {{ winnerLabel() }}
+          </span>
+        </div>
+      }
+
+      <!-- 紅方列 -->
+      <div
+        class="flex-1 flex items-center gap-4 md:gap-6 lg:gap-8 xl:gap-10 rounded-2xl bg-white/5 border border-red-400/40 shadow-lg shadow-red-900/20 px-4 md:px-6 lg:px-8 xl:px-10 py-3 xl:py-4 min-h-0 transition-opacity"
+        [class.opacity-30]="matchResult() && matchResult()!.winner !== 'red'">
+
+        <!-- 左：姓名 + 傷停計時 -->
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-3 md:gap-4 lg:gap-6 xl:gap-8 flex-wrap">
+            <span class="text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-black text-white leading-tight truncate">
+              {{ match.redPlayer.name }}
+            </span>
+            @if (redInjuryVisible()) {
+              <span
+                class="flex items-center gap-2 xl:gap-3 text-2xl md:text-3xl lg:text-4xl xl:text-5xl 2xl:text-6xl font-black text-amber-400 shrink-0 leading-tight bg-amber-500/10 border border-amber-400/50 rounded-xl px-3 xl:px-4 py-1 xl:py-2"
+                [class.injury-pulse]="redInjuryActive()">
+                <div class="w-7 h-7 md:w-8 md:h-8 lg:w-10 lg:h-10 xl:w-12 xl:h-12 bg-white rounded shrink-0 p-1">
+                  <div class="w-full h-full bg-red-600" style="clip-path: polygon(33% 0%,67% 0%,67% 33%,100% 33%,100% 67%,67% 67%,67% 100%,33% 100%,33% 67%,0% 67%,0% 33%,33% 33%)"></div>
+                </div>
+                {{ displayRedInjuryTimer() }}
+              </span>
+            }
+          </div>
+          <div class="text-white/60 text-base md:text-xl lg:text-2xl xl:text-3xl 2xl:text-4xl font-semibold mt-1 truncate">
+            {{ match.redPlayer.teamName }}
+          </div>
+        </div>
+
+        <!-- 中：警告 + 優勢 -->
+        <div class="flex gap-4 md:gap-6 lg:gap-8 xl:gap-10 shrink-0 items-stretch">
+          <div class="flex flex-col text-center">
+            <div class="text-white/40 text-xl md:text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl mb-2">警告</div>
+            <div class="flex-1 flex items-center justify-center">
+              <div class="grid grid-cols-2 gap-1 md:gap-1.5 lg:gap-2 xl:gap-2.5">
+                @for (i of [0, 1, 2, 3]; track i) {
+                  <div
+                    class="w-5 h-5 md:w-7 md:h-7 lg:w-9 lg:h-9 xl:w-11 xl:h-11 2xl:w-14 2xl:h-14 rounded-sm"
+                    [class.bg-yellow-400]="i < redWarnings()"
+                    [class.bg-white/20]="i >= redWarnings()"></div>
+                }
+              </div>
+            </div>
+          </div>
+          <div class="flex flex-col text-center">
+            <div class="text-xl md:text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl mb-2"
+                 [class.text-blue-200]="redAdvantage() > 0"
+                 [class.text-white/40]="redAdvantage() === 0">優勢</div>
+            <div class="flex-1 flex items-center justify-center">
+              <div class="text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-black"
+                   [class.text-blue-200]="redAdvantage() > 0"
+                   [class.text-white]="redAdvantage() === 0">
+                {{ redAdvantage() }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右：大分數方塊 -->
+        <div class="flex flex-col items-center shrink-0">
+          <div class="text-white/50 text-base md:text-xl lg:text-2xl xl:text-3xl 2xl:text-4xl mb-1">得分</div>
+          <div class="bg-red-700 rounded-2xl w-28 h-20 md:w-36 md:h-28 lg:w-44 lg:h-32 xl:w-56 xl:h-40 2xl:w-64 2xl:h-48 flex items-center justify-center">
+            <span class="text-6xl md:text-7xl lg:text-8xl xl:text-9xl 2xl:text-[10rem] font-black text-white leading-none">{{ redScore() }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 藍方列 -->
+      <div
+        class="flex-1 flex items-center gap-4 md:gap-6 lg:gap-8 xl:gap-10 rounded-2xl bg-white/5 border border-blue-400/40 shadow-lg shadow-blue-900/20 px-4 md:px-6 lg:px-8 xl:px-10 py-3 xl:py-4 min-h-0 transition-opacity"
+        [class.opacity-30]="matchResult() && matchResult()!.winner !== 'blue'">
+
+        <!-- 左：姓名 + 傷停計時 -->
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-3 md:gap-4 lg:gap-6 xl:gap-8 flex-wrap">
+            <span class="text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-black text-white leading-tight truncate">
+              {{ match.bluePlayer.name }}
+            </span>
+            @if (blueInjuryVisible()) {
+              <span
+                class="flex items-center gap-2 xl:gap-3 text-2xl md:text-3xl lg:text-4xl xl:text-5xl 2xl:text-6xl font-black text-amber-400 shrink-0 leading-tight bg-amber-500/10 border border-amber-400/50 rounded-xl px-3 xl:px-4 py-1 xl:py-2"
+                [class.injury-pulse]="blueInjuryActive()">
+                <div class="w-7 h-7 md:w-8 md:h-8 lg:w-10 lg:h-10 xl:w-12 xl:h-12 bg-white rounded shrink-0 p-1">
+                  <div class="w-full h-full bg-red-600" style="clip-path: polygon(33% 0%,67% 0%,67% 33%,100% 33%,100% 67%,67% 67%,67% 100%,33% 100%,33% 67%,0% 67%,0% 33%,33% 33%)"></div>
+                </div>
+                {{ displayBlueInjuryTimer() }}
+              </span>
+            }
+          </div>
+          <div class="text-white/60 text-base md:text-xl lg:text-2xl xl:text-3xl 2xl:text-4xl font-semibold mt-1 truncate">
+            {{ match.bluePlayer.teamName }}
+          </div>
+        </div>
+
+        <!-- 中：警告 + 優勢 -->
+        <div class="flex gap-4 md:gap-6 lg:gap-8 xl:gap-10 shrink-0 items-stretch">
+          <div class="flex flex-col text-center">
+            <div class="text-white/40 text-xl md:text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl mb-2">警告</div>
+            <div class="flex-1 flex items-center justify-center">
+              <div class="grid grid-cols-2 gap-1 md:gap-1.5 lg:gap-2 xl:gap-2.5">
+                @for (i of [0, 1, 2, 3]; track i) {
+                  <div
+                    class="w-5 h-5 md:w-7 md:h-7 lg:w-9 lg:h-9 xl:w-11 xl:h-11 2xl:w-14 2xl:h-14 rounded-sm"
+                    [class.bg-yellow-400]="i < blueWarnings()"
+                    [class.bg-white/20]="i >= blueWarnings()"></div>
+                }
+              </div>
+            </div>
+          </div>
+          <div class="flex flex-col text-center">
+            <div class="text-xl md:text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl mb-2"
+                 [class.text-blue-200]="blueAdvantage() > 0"
+                 [class.text-white/40]="blueAdvantage() === 0">優勢</div>
+            <div class="flex-1 flex items-center justify-center">
+              <div class="text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-black"
+                   [class.text-blue-200]="blueAdvantage() > 0"
+                   [class.text-white]="blueAdvantage() === 0">
+                {{ blueAdvantage() }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右：大分數方塊 -->
+        <div class="flex flex-col items-center shrink-0">
+          <div class="text-white/50 text-base md:text-xl lg:text-2xl xl:text-3xl 2xl:text-4xl mb-1">得分</div>
+          <div class="bg-blue-700 rounded-2xl w-28 h-20 md:w-36 md:h-28 lg:w-44 lg:h-32 xl:w-56 xl:h-40 2xl:w-64 2xl:h-48 flex items-center justify-center">
+            <span class="text-6xl md:text-7xl lg:text-8xl xl:text-9xl 2xl:text-[10rem] font-black text-white leading-none">{{ blueScore() }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 計時器列 -->
+      <div class="shrink-0 flex justify-end items-center px-2 py-1 gap-4 md:gap-6 xl:gap-8">
+        @if (timerPaused() && timerRemaining() > 0 && !matchResult()) {
+          <div class="text-6xl md:text-7xl lg:text-8xl xl:text-9xl 2xl:text-[8rem] font-mono font-bold text-yellow-400">
+            ⏸
+          </div>
+        }
+        <div
+          class="text-7xl md:text-8xl lg:text-9xl xl:text-[10rem] 2xl:text-[12rem] font-mono font-bold tracking-widest"
+          [class.text-red-400]="timerRemaining() <= 30 && !timerPaused()"
+          [class.text-white]="timerRemaining() > 30 || timerPaused()">
+          {{ displayTimer() }}
+        </div>
+      </div>
+
+    </div>
+  }
+</div>

@@ -154,11 +154,25 @@ export interface InjuryEndedEvent {
   side: "red" | "blue";
 }
 
+// ── OSAE KOMI 事件 ──
+export interface OsaeKomiStartedEvent {
+  matchId: string;
+  side: "red" | "blue";
+  durationSec?: number;
+}
+
+export interface OsaeKomiEndedEvent {
+  matchId: string;
+  side: "red" | "blue";
+}
+
 // ── 對打計分事件 ──
 export interface MatchFoulUpdatedEvent {
   matchId: string;
   redWazaAri: number;
   blueWazaAri: number;
+  redTotalScore?: number;
+  blueTotalScore?: number;
   redShido: number;
   blueShido: number;
   redPart1Score?: number;
@@ -455,5 +469,31 @@ export class SocketService {
     side: "red" | "blue",
   ): void {
     this.socket.emit("match:emit-injury-end", { eventId, matchId, side });
+  }
+
+  // ── OSAE KOMI ──
+  get osaeKomiStarted$(): Observable<OsaeKomiStartedEvent> {
+    return fromEvent<OsaeKomiStartedEvent>(this.socket, "osae-komi:started");
+  }
+
+  get osaeKomiEnded$(): Observable<OsaeKomiEndedEvent> {
+    return fromEvent<OsaeKomiEndedEvent>(this.socket, "osae-komi:ended");
+  }
+
+  emitOsaeKomiStarted(
+    eventId: string,
+    matchId: string,
+    side: "red" | "blue",
+    durationSec?: number,
+  ): void {
+    this.socket.emit("match:emit-osae-komi-start", { eventId, matchId, side, durationSec });
+  }
+
+  emitOsaeKomiEnded(
+    eventId: string,
+    matchId: string,
+    side: "red" | "blue",
+  ): void {
+    this.socket.emit("match:emit-osae-komi-end", { eventId, matchId, side });
   }
 }

@@ -24,6 +24,7 @@ import {
 import { ApiService } from "../../core/services/api.service";
 import { AuthService } from "../../core/services/auth.service";
 import { SocketService } from "../../core/services/socket.service";
+// OsaeKomiStartedEvent, OsaeKomiEndedEvent are available but not directly used here
 import {
   Match,
   MatchCategory,
@@ -85,6 +86,8 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
   blueParts = signal<[number, number, number]>([0, 0, 0]);
   redWazaAri = signal(0);
   blueWazaAri = signal(0);
+  redTotalScore = signal(0);
+  blueTotalScore = signal(0);
   redShido = signal(0);
   blueShido = signal(0);
   fullIpponPending = signal(false);
@@ -95,12 +98,20 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
   private chuiBadgeBlueTimer: ReturnType<typeof setTimeout> | null = null;
 
   // ── OSAE KOMI 計時器 ──
-  redOsaeKomiRemaining = signal(0);
-  blueOsaeKomiRemaining = signal(0);
+  redOsaeKomiRemaining = signal(15);
+  blueOsaeKomiRemaining = signal(15);
   redOsaeKomiActive = signal(false);
   blueOsaeKomiActive = signal(false);
   private redOsaeKomiInterval: ReturnType<typeof setInterval> | null = null;
   private blueOsaeKomiInterval: ReturnType<typeof setInterval> | null = null;
+
+  // ── MEDICAL 計時器 ──
+  redMedicalRemaining = signal(120);
+  blueMedicalRemaining = signal(120);
+  redMedicalActive = signal(false);
+  blueMedicalActive = signal(false);
+  private redMedicalInterval: ReturnType<typeof setInterval> | null = null;
+  private blueMedicalInterval: ReturnType<typeof setInterval> | null = null;
 
   // ── 裁判判決 ──
   judgeWinner = signal<"red" | "blue" | null>(null);
@@ -119,12 +130,30 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
 
   displayRedOsaeKomi = computed(() => {
     const s = this.redOsaeKomiRemaining();
-    return s.toString().padStart(2, "0");
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
   });
 
   displayBlueOsaeKomi = computed(() => {
     const s = this.blueOsaeKomiRemaining();
-    return s.toString().padStart(2, "0");
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
+  });
+
+  displayRedMedical = computed(() => {
+    const s = this.redMedicalRemaining();
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
+  });
+
+  displayBlueMedical = computed(() => {
+    const s = this.blueMedicalRemaining();
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
   });
 
   CATEGORY_LABEL = CATEGORY_LABEL;
@@ -142,24 +171,19 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
     this.subs.add(
       this.socket.matchFoulUpdated$.subscribe((evt) => {
         const match = this.activeMatch();
-        if (!match || evt.matchId !== match._id) return;
+        if (!match || String(evt.matchId) !== String(match._id)) return;
         this.redWazaAri.set(evt.redWazaAri ?? 0);
         this.blueWazaAri.set(evt.blueWazaAri ?? 0);
+        if (evt.redTotalScore !== undefined) this.redTotalScore.set(evt.redTotalScore);
+        if (evt.blueTotalScore !== undefined) this.blueTotalScore.set(evt.blueTotalScore);
         this.redShido.set(evt.redShido ?? 0);
         this.blueShido.set(evt.blueShido ?? 0);
-        if (evt.redPart1Score !== undefined) {
-          this.redParts.set([
-            evt.redPart1Score ?? 0,
-            evt.redPart2Score ?? 0,
-            evt.redPart3Score ?? 0,
-          ]);
+        // 使用 IPPON 計數（每次得分加 1，不論 +2 或 +3）
+        if (evt.redIppons) {
+          this.redParts.set([evt.redIppons.p1 ?? 0, evt.redIppons.p2 ?? 0, evt.redIppons.p3 ?? 0]);
         }
-        if (evt.bluePart1Score !== undefined) {
-          this.blueParts.set([
-            evt.bluePart1Score ?? 0,
-            evt.bluePart2Score ?? 0,
-            evt.bluePart3Score ?? 0,
-          ]);
+        if (evt.blueIppons) {
+          this.blueParts.set([evt.blueIppons.p1 ?? 0, evt.blueIppons.p2 ?? 0, evt.blueIppons.p3 ?? 0]);
         }
         if (evt.chuiEvent === "red") this.showChuiBadge("red");
         if (evt.chuiEvent === "blue") this.showChuiBadge("blue");
@@ -189,6 +213,8 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
     this.clearTimerInterval();
     this.clearRedOsaeKomiInterval();
     this.clearBlueOsaeKomiInterval();
+    this.clearRedMedicalInterval();
+    this.clearBlueMedicalInterval();
     this.subs.unsubscribe();
     if (this.chuiBadgeRedTimer) clearTimeout(this.chuiBadgeRedTimer);
     if (this.chuiBadgeBlueTimer) clearTimeout(this.chuiBadgeBlueTimer);
@@ -261,8 +287,21 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
     };
 
     if (alreadyInProgress) {
-      startScoring(match);
-      this.socket.emitMatchStarted(this.eventId(), match._id);
+      this.api
+        .get<{ success: boolean; data: Match[] }>(
+          `/events/${this.eventId()}/matches?matchType=fighting`,
+        )
+        .subscribe({
+          next: (res) => {
+            const fresh = res.data.find((m) => String(m._id) === String(match._id)) ?? match;
+            startScoring(fresh);
+            this.socket.emitMatchStarted(this.eventId(), fresh._id);
+          },
+          error: () => {
+            startScoring(match);
+            this.socket.emitMatchStarted(this.eventId(), match._id);
+          },
+        });
       return;
     }
 
@@ -293,18 +332,21 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
   }
 
   private restoreFightingState(match: Match): void {
+    // 使用 IPPON 計數恢復 PART 次數（每次得分 +1，不論 +2 或 +3）
     this.redParts.set([
-      match.redPart1Score ?? 0,
-      match.redPart2Score ?? 0,
-      match.redPart3Score ?? 0,
+      match.redIppons?.p1 ?? 0,
+      match.redIppons?.p2 ?? 0,
+      match.redIppons?.p3 ?? 0,
     ]);
     this.blueParts.set([
-      match.bluePart1Score ?? 0,
-      match.bluePart2Score ?? 0,
-      match.bluePart3Score ?? 0,
+      match.blueIppons?.p1 ?? 0,
+      match.blueIppons?.p2 ?? 0,
+      match.blueIppons?.p3 ?? 0,
     ]);
     this.redWazaAri.set(match.redWazaAri ?? 0);
     this.blueWazaAri.set(match.blueWazaAri ?? 0);
+    this.redTotalScore.set(match.redTotalScore ?? 0);
+    this.blueTotalScore.set(match.blueTotalScore ?? 0);
     this.redShido.set(match.redShido ?? 0);
     this.blueShido.set(match.blueShido ?? 0);
 
@@ -448,22 +490,24 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
   // ──────────────────────────────────────────────────────────
 
   toggleOsaeKomi(side: "red" | "blue"): void {
+    const match = this.activeMatch();
     if (side === "red") {
       if (this.redOsaeKomiActive()) {
+        // 停止
         this.clearRedOsaeKomiInterval();
         this.redOsaeKomiActive.set(false);
-        this.redOsaeKomiRemaining.set(0);
-        // restart
-        this.startOsaeKomi("red");
+        this.redOsaeKomiRemaining.set(15);
+        if (match) this.socket.emitOsaeKomiEnded(this.eventId(), match._id, "red");
       } else {
+        // 開始
         this.startOsaeKomi("red");
       }
     } else {
       if (this.blueOsaeKomiActive()) {
         this.clearBlueOsaeKomiInterval();
         this.blueOsaeKomiActive.set(false);
-        this.blueOsaeKomiRemaining.set(0);
-        this.startOsaeKomi("blue");
+        this.blueOsaeKomiRemaining.set(15);
+        if (match) this.socket.emitOsaeKomiEnded(this.eventId(), match._id, "blue");
       } else {
         this.startOsaeKomi("blue");
       }
@@ -472,26 +516,33 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
 
   private startOsaeKomi(side: "red" | "blue"): void {
     const DURATION = 15;
+    const match = this.activeMatch();
     if (side === "red") {
       this.redOsaeKomiRemaining.set(DURATION);
       this.redOsaeKomiActive.set(true);
+      if (match) this.socket.emitOsaeKomiStarted(this.eventId(), match._id, "red", DURATION);
       this.redOsaeKomiInterval = setInterval(() => {
         const newVal = Math.max(0, this.redOsaeKomiRemaining() - 1);
         this.redOsaeKomiRemaining.set(newVal);
         if (newVal <= 0) {
           this.clearRedOsaeKomiInterval();
           this.redOsaeKomiActive.set(false);
+          this.redOsaeKomiRemaining.set(15);
+          if (match) this.socket.emitOsaeKomiEnded(this.eventId(), match._id, "red");
         }
       }, 1000);
     } else {
       this.blueOsaeKomiRemaining.set(DURATION);
       this.blueOsaeKomiActive.set(true);
+      if (match) this.socket.emitOsaeKomiStarted(this.eventId(), match._id, "blue", DURATION);
       this.blueOsaeKomiInterval = setInterval(() => {
         const newVal = Math.max(0, this.blueOsaeKomiRemaining() - 1);
         this.blueOsaeKomiRemaining.set(newVal);
         if (newVal <= 0) {
           this.clearBlueOsaeKomiInterval();
           this.blueOsaeKomiActive.set(false);
+          this.blueOsaeKomiRemaining.set(15);
+          if (match) this.socket.emitOsaeKomiEnded(this.eventId(), match._id, "blue");
         }
       }, 1000);
     }
@@ -512,6 +563,86 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
   }
 
   // ──────────────────────────────────────────────────────────
+  // MEDICAL 計時器
+  // ──────────────────────────────────────────────────────────
+
+  toggleMedical(side: "red" | "blue"): void {
+    const match = this.activeMatch();
+    if (side === "red") {
+      if (this.redMedicalActive()) {
+        // 停止：保留剩餘時間，不重置
+        this.clearRedMedicalInterval();
+        this.redMedicalActive.set(false);
+        if (match) this.socket.emitInjuryEnded(this.eventId(), match._id, "red");
+        if (!this.blueMedicalActive()) this.startTimer();
+      } else {
+        if (this.redMedicalRemaining() <= 0) return;
+        this.startMedical("red");
+      }
+    } else {
+      if (this.blueMedicalActive()) {
+        this.clearBlueMedicalInterval();
+        this.blueMedicalActive.set(false);
+        if (match) this.socket.emitInjuryEnded(this.eventId(), match._id, "blue");
+        if (!this.redMedicalActive()) this.startTimer();
+      } else {
+        if (this.blueMedicalRemaining() <= 0) return;
+        this.startMedical("blue");
+      }
+    }
+  }
+
+  private startMedical(side: "red" | "blue"): void {
+    const match = this.activeMatch();
+    this.pauseTimer();
+    if (side === "red") {
+      this.redMedicalActive.set(true);
+      if (match) {
+        this.socket.emitInjuryStarted(this.eventId(), match._id, "red", this.redMedicalRemaining());
+      }
+      this.redMedicalInterval = setInterval(() => {
+        const newVal = Math.max(0, this.redMedicalRemaining() - 1);
+        this.redMedicalRemaining.set(newVal);
+        if (newVal <= 0) {
+          this.clearRedMedicalInterval();
+          this.redMedicalActive.set(false);
+          if (match) this.socket.emitInjuryEnded(this.eventId(), match._id, "red");
+          if (!this.blueMedicalActive()) this.startTimer();
+        }
+      }, 1000);
+    } else {
+      this.blueMedicalActive.set(true);
+      if (match) {
+        this.socket.emitInjuryStarted(this.eventId(), match._id, "blue", this.blueMedicalRemaining());
+      }
+      this.blueMedicalInterval = setInterval(() => {
+        const newVal = Math.max(0, this.blueMedicalRemaining() - 1);
+        this.blueMedicalRemaining.set(newVal);
+        if (newVal <= 0) {
+          this.clearBlueMedicalInterval();
+          this.blueMedicalActive.set(false);
+          if (match) this.socket.emitInjuryEnded(this.eventId(), match._id, "blue");
+          if (!this.redMedicalActive()) this.startTimer();
+        }
+      }, 1000);
+    }
+  }
+
+  private clearRedMedicalInterval(): void {
+    if (this.redMedicalInterval) {
+      clearInterval(this.redMedicalInterval);
+      this.redMedicalInterval = null;
+    }
+  }
+
+  private clearBlueMedicalInterval(): void {
+    if (this.blueMedicalInterval) {
+      clearInterval(this.blueMedicalInterval);
+      this.blueMedicalInterval = null;
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────
   // 對打計分
   // ──────────────────────────────────────────────────────────
 
@@ -522,6 +653,31 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
   ): void {
     const match = this.activeMatch();
     if (!match) return;
+
+    // Optimistic update（在 Angular zone 內，確保畫面即時反應）
+    if (side === "red") {
+      // 總計分永遠更新
+      this.redTotalScore.update((v) => Math.max(0, v + delta));
+      if (partIndex !== null) {
+        // PART +2/+3：只更新 IPPON 計數，不動 WAZA-ARI
+        const parts = [...this.redParts()] as [number, number, number];
+        parts[partIndex - 1] = Math.max(0, parts[partIndex - 1] + (delta > 0 ? 1 : -1));
+        this.redParts.set(parts);
+      } else {
+        // ALL PARTS +1/-1：同時更新 WAZA-ARI 計數
+        this.redWazaAri.update((v) => Math.max(0, v + delta));
+      }
+    } else {
+      this.blueTotalScore.update((v) => Math.max(0, v + delta));
+      if (partIndex !== null) {
+        const parts = [...this.blueParts()] as [number, number, number];
+        parts[partIndex - 1] = Math.max(0, parts[partIndex - 1] + (delta > 0 ? 1 : -1));
+        this.blueParts.set(parts);
+      } else {
+        this.blueWazaAri.update((v) => Math.max(0, v + delta));
+      }
+    }
+
     this.api
       .post<{ success: boolean }>("/match-scores/part", {
         matchId: match._id,
@@ -541,14 +697,7 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
           });
         },
       });
-    if (partIndex !== null) {
-      const parts = [...(side === "red" ? this.redParts() : this.blueParts())] as [number, number, number];
-      parts[partIndex - 1] = Math.max(0, parts[partIndex - 1] + delta);
-      if (side === "red") this.redParts.set(parts);
-      else this.blueParts.set(parts);
-    }
-    if (side === "red") this.redWazaAri.update((v) => Math.max(0, v + delta));
-    else this.blueWazaAri.update((v) => Math.max(0, v + delta));
+    // socket 事件（matchFoulUpdated）會以後端確認值修正 optimistic update
   }
 
   callFoul(
@@ -581,8 +730,13 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
       });
     if (side === "red") this.redShido.update((v) => Math.max(0, v + shidoUnits * delta));
     else this.blueShido.update((v) => Math.max(0, v + shidoUnits * delta));
-    if (oppSide === "red") this.redWazaAri.update((v) => Math.max(0, v + shidoUnits * delta));
-    else this.blueWazaAri.update((v) => Math.max(0, v + shidoUnits * delta));
+    if (oppSide === "red") {
+      this.redWazaAri.update((v) => Math.max(0, v + shidoUnits * delta));
+      this.redTotalScore.update((v) => Math.max(0, v + shidoUnits * delta));
+    } else {
+      this.blueWazaAri.update((v) => Math.max(0, v + shidoUnits * delta));
+      this.blueTotalScore.update((v) => Math.max(0, v + shidoUnits * delta));
+    }
     if (foulType === "chui" && delta > 0) {
       this.showChuiBadge(side);
     }
@@ -725,6 +879,40 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
       });
   }
 
+  resetMatchScores(): void {
+    const match = this.activeMatch();
+    if (!match) return;
+    Swal.fire({
+      icon: "warning",
+      title: "歸零計分",
+      text: "確定將本場所有得分、犯規、計時器全部清零？此操作無法復原。",
+      showCancelButton: true,
+      confirmButtonText: "確認歸零",
+      cancelButtonText: "取消",
+      background: "#1e293b",
+      color: "#fff",
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#6b7280",
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+      this.api.post("/match-scores/reset", { matchId: match._id }).subscribe({
+        next: () => {
+          this.resetScoringState();
+        },
+        error: () => {
+          Swal.fire({
+            icon: "error",
+            title: "歸零失敗",
+            toast: true,
+            position: "top-end",
+            showConfirmButton: false,
+            timer: 2500,
+          });
+        },
+      });
+    });
+  }
+
   backToList(): void {
     if (this.timerRunning()) {
       Swal.fire({
@@ -774,6 +962,8 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
     this.blueParts.set([0, 0, 0]);
     this.redWazaAri.set(0);
     this.blueWazaAri.set(0);
+    this.redTotalScore.set(0);
+    this.blueTotalScore.set(0);
     this.redShido.set(0);
     this.blueShido.set(0);
     this.fullIpponPending.set(false);
@@ -788,7 +978,13 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
     this.clearBlueOsaeKomiInterval();
     this.redOsaeKomiActive.set(false);
     this.blueOsaeKomiActive.set(false);
-    this.redOsaeKomiRemaining.set(0);
-    this.blueOsaeKomiRemaining.set(0);
+    this.redOsaeKomiRemaining.set(15);
+    this.blueOsaeKomiRemaining.set(15);
+    this.clearRedMedicalInterval();
+    this.clearBlueMedicalInterval();
+    this.redMedicalActive.set(false);
+    this.blueMedicalActive.set(false);
+    this.redMedicalRemaining.set(120);
+    this.blueMedicalRemaining.set(120);
   }
 }

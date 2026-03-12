@@ -84,13 +84,13 @@ export class AudienceSportSelectorComponent implements OnInit {
         this.go('/creative/audience', { eventId });
         break;
       case 'ne-waza':
-        this.go('/match-audience', { matchType: 'ne-waza', eventId });
+        this.go('/ne-waza-audience', { eventId });
         break;
       case 'fighting':
-        this.go('/match-audience', { matchType: 'fighting', eventId });
+        this.go('/fighting-audience', { eventId });
         break;
       case 'contact':
-        this.go('/match-audience', { matchType: 'contact', eventId });
+        this.go('/contact-audience', { eventId });
         break;
     }
   }

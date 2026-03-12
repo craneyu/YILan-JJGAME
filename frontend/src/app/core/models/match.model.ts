@@ -47,6 +47,8 @@ export interface Match {
   blueIppons?: IIppons;
   redWazaAri?: number;
   blueWazaAri?: number;
+  redTotalScore?: number;
+  blueTotalScore?: number;
   redShido?: number;
   blueShido?: number;
 }
