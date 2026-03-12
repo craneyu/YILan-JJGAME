@@ -90,12 +90,18 @@ export class MatchManagementComponent implements OnInit {
   importLoading = signal(false);
   isDragOver = signal(false);
   editState = signal<EditState | null>(null);
+  selectedMatchIds = signal<Set<string>>(new Set());
 
   typeLabel = computed(() => TYPE_LABEL[this.matchType()] ?? this.matchType());
 
   selectedEvent = computed(() =>
     this.events().find((e) => e._id === this.selectedEventId()),
   );
+
+  allSelected = computed(() => {
+    const all = this.matches();
+    return all.length > 0 && all.every((m) => this.selectedMatchIds().has(m._id));
+  });
 
   groupedMatches = computed((): GroupedMatches[] => {
     const map = new Map<string, Match[]>();
@@ -140,9 +146,116 @@ export class MatchManagementComponent implements OnInit {
         `/events/${eventId}/matches?matchType=${this.matchType()}`,
       )
       .subscribe({
-        next: (res) => { this.matches.set(res.data); this.loading.set(false); },
+        next: (res) => {
+          this.matches.set(res.data);
+          this.selectedMatchIds.set(new Set());
+          this.loading.set(false);
+        },
         error: () => this.loading.set(false),
       });
+  }
+
+  toggleSelect(matchId: string): void {
+    const s = new Set(this.selectedMatchIds());
+    if (s.has(matchId)) s.delete(matchId);
+    else s.add(matchId);
+    this.selectedMatchIds.set(s);
+  }
+
+  toggleSelectAll(): void {
+    if (this.allSelected()) {
+      this.selectedMatchIds.set(new Set());
+    } else {
+      this.selectedMatchIds.set(new Set(this.matches().map((m) => m._id)));
+    }
+  }
+
+  clearSelection(): void {
+    this.selectedMatchIds.set(new Set());
+  }
+
+  private async resetScores(ids: string[]): Promise<boolean> {
+    try {
+      await firstValueFrom(
+        this.api.post<{ success: boolean; resetCount: number }>(
+          '/match-scores/reset-bulk',
+          { matchIds: ids },
+        ),
+      );
+      this.matches.update((list) =>
+        list.map((m) =>
+          ids.includes(m._id) ? { ...m, status: 'pending' as const, result: undefined } : m,
+        ),
+      );
+      this.selectedMatchIds.set(new Set());
+      return true;
+    } catch {
+      Swal.fire({ icon: 'error', title: '清除失敗', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+      return false;
+    }
+  }
+
+  async clearAllScores(): Promise<void> {
+    const label = this.typeLabel();
+    const ids = this.matches().map((m) => m._id);
+    const result = await Swal.fire({
+      title: `清除全部${label}成績？`,
+      text: `此操作將重置 ${ids.length} 場比賽成績，場次資料保留，無法復原。`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: '確認清除',
+      cancelButtonText: '取消',
+      confirmButtonColor: '#ef4444',
+      ...SWAL_DARK,
+    });
+    if (!result.isConfirmed) return;
+    const ok = await this.resetScores(ids);
+    if (ok) {
+      Swal.fire({ icon: 'success', title: `已清除 ${ids.length} 場成績`, toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+    }
+  }
+
+  async clearCompletedScores(): Promise<void> {
+    const label = this.typeLabel();
+    const ids = this.matches().filter((m) => m.status === 'completed').map((m) => m._id);
+    if (ids.length === 0) {
+      Swal.fire({ icon: 'info', title: '目前沒有已完成的場次', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+      return;
+    }
+    const result = await Swal.fire({
+      title: `清除已完成${label}成績？`,
+      text: `此操作將重置 ${ids.length} 場已完成比賽的成績，無法復原。`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: '確認清除',
+      cancelButtonText: '取消',
+      confirmButtonColor: '#ef4444',
+      ...SWAL_DARK,
+    });
+    if (!result.isConfirmed) return;
+    const ok = await this.resetScores(ids);
+    if (ok) {
+      Swal.fire({ icon: 'success', title: `已清除 ${ids.length} 場成績`, toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+    }
+  }
+
+  async clearSelectedScores(): Promise<void> {
+    const ids = [...this.selectedMatchIds()];
+    const result = await Swal.fire({
+      title: `清除所選 ${ids.length} 場成績？`,
+      text: '此操作將重置所選場次成績，場次資料保留，無法復原。',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: '確認清除',
+      cancelButtonText: '取消',
+      confirmButtonColor: '#ef4444',
+      ...SWAL_DARK,
+    });
+    if (!result.isConfirmed) return;
+    const ok = await this.resetScores(ids);
+    if (ok) {
+      Swal.fire({ icon: 'success', title: `已清除 ${ids.length} 場成績`, toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+    }
   }
 
   toggleGroup(group: GroupedMatches): void {

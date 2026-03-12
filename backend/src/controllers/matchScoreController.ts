@@ -465,6 +465,48 @@ export async function resetScoreLogs(req: Request, res: Response): Promise<void>
   res.json({ success: true });
 }
 
+export async function resetMatchScoresBulk(req: Request, res: Response): Promise<void> {
+  const { matchIds } = req.body as { matchIds: string[] };
+
+  if (!Array.isArray(matchIds) || matchIds.length === 0) {
+    res.status(400).json({ success: false, error: 'matchIds 不可為空' });
+    return;
+  }
+
+  await Promise.all([
+    Match.updateMany(
+      { _id: { $in: matchIds } },
+      {
+        $set: {
+          status: 'pending',
+          redPart1Score: 0,
+          redPart2Score: 0,
+          redPart3Score: 0,
+          bluePart1Score: 0,
+          bluePart2Score: 0,
+          bluePart3Score: 0,
+          redWazaAri: 0,
+          blueWazaAri: 0,
+          redTotalScore: 0,
+          blueTotalScore: 0,
+          redShido: 0,
+          blueShido: 0,
+          redChuiCount: 0,
+          blueChuiCount: 0,
+          redIppons: { p1: 0, p2: 0, p3: 0 },
+          blueIppons: { p1: 0, p2: 0, p3: 0 },
+          redPartCounters: { p1: { plus2: 0, plus3: 0 }, p2: { plus2: 0, plus3: 0 }, p3: { plus2: 0, plus3: 0 } },
+          bluePartCounters: { p1: { plus2: 0, plus3: 0 }, p2: { plus2: 0, plus3: 0 }, p3: { plus2: 0, plus3: 0 } },
+        },
+        $unset: { result: '' },
+      },
+    ),
+    MatchScoreLog.deleteMany({ matchId: { $in: matchIds } }),
+  ]);
+
+  res.json({ success: true, resetCount: matchIds.length });
+}
+
 export async function getScoreSummary(req: Request, res: Response): Promise<void> {
   const matchId = req.query["matchId"] as string;
   if (!matchId) {

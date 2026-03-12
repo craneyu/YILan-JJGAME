@@ -39,12 +39,34 @@
         </button>
 
         @if (matches().length > 0) {
-          <button
-            class="glass-btn text-sm flex items-center gap-1.5 text-red-400 border-red-400/30 hover:bg-red-500/20 ml-auto"
-            (click)="clearAll()">
-            <fa-icon [icon]="faTrashAlt" class="text-xs"></fa-icon>
-            清空全部
-          </button>
+          <div class="ml-auto flex items-center gap-2 flex-wrap">
+            @if (selectedMatchIds().size > 0) {
+              <button
+                class="glass-btn text-sm flex items-center gap-1.5 text-orange-400 border-orange-400/30 hover:bg-orange-500/20"
+                (click)="clearSelectedScores()">
+                <fa-icon [icon]="faTrash" class="text-xs"></fa-icon>
+                清除所選成績（{{ selectedMatchIds().size }} 筆）
+              </button>
+            }
+            <button
+              class="glass-btn text-sm flex items-center gap-1.5 text-yellow-400 border-yellow-400/30 hover:bg-yellow-500/20"
+              (click)="clearCompletedScores()">
+              <fa-icon [icon]="faTrash" class="text-xs"></fa-icon>
+              清除已完成成績
+            </button>
+            <button
+              class="glass-btn text-sm flex items-center gap-1.5 text-red-400 border-red-400/30 hover:bg-red-500/20"
+              (click)="clearAllScores()">
+              <fa-icon [icon]="faTrash" class="text-xs"></fa-icon>
+              清除全部成績
+            </button>
+            <button
+              class="glass-btn text-sm flex items-center gap-1.5 text-red-400 border-red-400/30 hover:bg-red-500/20"
+              (click)="clearAll()">
+              <fa-icon [icon]="faTrashAlt" class="text-xs"></fa-icon>
+              清空全部
+            </button>
+          </div>
         }
       }
     </div>
@@ -97,6 +119,20 @@
       </div>
     }
 
+    <!-- 全選列 -->
+    @if (matches().length > 0) {
+      <div class="glass-card px-4 py-2 mb-2 flex items-center gap-3">
+        <input
+          type="checkbox"
+          [checked]="allSelected()"
+          (change)="toggleSelectAll()"
+          class="w-4 h-4 accent-blue-500 cursor-pointer" />
+        <span class="text-white/60 text-sm">
+          全選（已選 {{ selectedMatchIds().size }} / {{ matches().length }} 場）
+        </span>
+      </div>
+    }
+
     <!-- 場次列表（依量級分組） -->
     @for (group of groupedMatches(); track group.weightClass) {
       <div class="glass-card mb-3 overflow-hidden">
@@ -114,8 +150,14 @@
         @if (group.expanded) {
           <div class="border-t border-white/10">
             @for (m of group.matches; track m._id) {
-              <div class="px-4 py-3 border-b border-white/5 last:border-0"
+              <div class="px-4 py-3 border-b border-white/5 last:border-0 flex items-start gap-3"
                    [class.opacity-60]="m.status === 'completed'">
+                <input
+                  type="checkbox"
+                  [checked]="selectedMatchIds().has(m._id)"
+                  (change)="toggleSelect(m._id)"
+                  class="w-4 h-4 accent-blue-500 cursor-pointer mt-1 flex-shrink-0" />
+                <div class="flex-1 min-w-0">
                 @if (isEditing(m._id)) {
                   <!-- 編輯模式 -->
                   <div class="grid grid-cols-2 gap-2 mb-2">
@@ -180,6 +222,7 @@
                     }
                   </div>
                 }
+                </div>
               </div>
             }
           </div>

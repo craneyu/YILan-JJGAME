@@ -4,6 +4,7 @@ import {
   getScoreLogs,
   getScoreSummary,
   resetScoreLogs,
+  resetMatchScoresBulk,
   partScore,
   foulAction,
   setDuration,
@@ -18,6 +19,9 @@ router.post("/", verifyToken, requireRole("match_referee"), createScoreLog);
 router.post("/reset", verifyToken, requireRole("match_referee"), resetScoreLogs);
 router.get("/", verifyToken, requireRole("match_referee"), getScoreLogs);
 router.get("/summary", getScoreSummary);
+
+// 批次重置成績（admin only）
+router.post("/reset-bulk", verifyToken, requireRole("admin"), resetMatchScoresBulk);
 
 // 新端點（fighting v6）
 router.post("/part", verifyToken, requireRole("match_referee", "admin"), partScore);
