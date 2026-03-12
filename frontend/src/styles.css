@@ -49,3 +49,15 @@ body {
 .status-badge-done {
   @apply inline-flex items-center gap-1 text-green-400 text-sm;
 }
+
+.penalty-light-flash {
+  animation: penaltyLightFlash 0.65s ease-in-out;
+}
+
+@keyframes penaltyLightFlash {
+  0%   { transform: scale(1);    filter: brightness(1); }
+  25%  { transform: scale(1.2);  filter: brightness(2); }
+  50%  { transform: scale(1);    filter: brightness(1); }
+  75%  { transform: scale(1.1);  filter: brightness(1.5); }
+  100% { transform: scale(1);    filter: brightness(1); }
+}

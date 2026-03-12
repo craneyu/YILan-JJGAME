@@ -154,6 +154,52 @@ export interface InjuryEndedEvent {
   side: "red" | "blue";
 }
 
+// ── OSAE KOMI 事件 ──
+export interface OsaeKomiStartedEvent {
+  matchId: string;
+  side: "red" | "blue";
+  durationSec?: number;
+}
+
+export interface OsaeKomiEndedEvent {
+  matchId: string;
+  side: "red" | "blue";
+}
+
+// ── 對打計分事件 ──
+export interface MatchFoulUpdatedEvent {
+  matchId: string;
+  redWazaAri: number;
+  blueWazaAri: number;
+  redTotalScore?: number;
+  blueTotalScore?: number;
+  redShido: number;
+  blueShido: number;
+  redChuiCount?: number;
+  blueChuiCount?: number;
+  redPart1Score?: number;
+  redPart2Score?: number;
+  redPart3Score?: number;
+  bluePart1Score?: number;
+  bluePart2Score?: number;
+  bluePart3Score?: number;
+  redIppons?: { p1: number; p2: number; p3: number };
+  blueIppons?: { p1: number; p2: number; p3: number };
+  chuiEvent?: "red" | "blue" | null;
+}
+
+export interface MatchFullIpponEvent {
+  matchId: string;
+  suggestedWinner: "red" | "blue";
+}
+
+export interface MatchShidoDqEvent {
+  matchId: string;
+  suggestedDisqualified: "red" | "blue";
+  suggestedWinner: "red" | "blue";
+  shidoCount: number;
+}
+
 // ── 柔術場次事件 ──
 export interface MatchScoreUpdatedEvent {
   matchId: string;
@@ -384,6 +430,18 @@ export class SocketService {
     return fromEvent<{ matchId: string }>(this.socket, "match:scores-reset");
   }
 
+  get matchFoulUpdated$(): Observable<MatchFoulUpdatedEvent> {
+    return fromEvent<MatchFoulUpdatedEvent>(this.socket, "match:foul-updated");
+  }
+
+  get matchFullIppon$(): Observable<MatchFullIpponEvent> {
+    return fromEvent<MatchFullIpponEvent>(this.socket, "match:full-ippon");
+  }
+
+  get matchShidoDq$(): Observable<MatchShidoDqEvent> {
+    return fromEvent<MatchShidoDqEvent>(this.socket, "match:shido-dq");
+  }
+
   // ── 傷停事件 ──
   get injuryStarted$(): Observable<InjuryStartedEvent> {
     return fromEvent<InjuryStartedEvent>(this.socket, "injury:started");
@@ -413,5 +471,31 @@ export class SocketService {
     side: "red" | "blue",
   ): void {
     this.socket.emit("match:emit-injury-end", { eventId, matchId, side });
+  }
+
+  // ── OSAE KOMI ──
+  get osaeKomiStarted$(): Observable<OsaeKomiStartedEvent> {
+    return fromEvent<OsaeKomiStartedEvent>(this.socket, "osae-komi:started");
+  }
+
+  get osaeKomiEnded$(): Observable<OsaeKomiEndedEvent> {
+    return fromEvent<OsaeKomiEndedEvent>(this.socket, "osae-komi:ended");
+  }
+
+  emitOsaeKomiStarted(
+    eventId: string,
+    matchId: string,
+    side: "red" | "blue",
+    durationSec?: number,
+  ): void {
+    this.socket.emit("match:emit-osae-komi-start", { eventId, matchId, side, durationSec });
+  }
+
+  emitOsaeKomiEnded(
+    eventId: string,
+    matchId: string,
+    side: "red" | "blue",
+  ): void {
+    this.socket.emit("match:emit-osae-komi-end", { eventId, matchId, side });
   }
 }

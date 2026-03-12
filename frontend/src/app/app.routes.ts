@@ -108,10 +108,40 @@ export const appRoutes: Routes = [
     canActivate: [roleGuard("match_referee", "admin")],
   },
   {
-    path: "match-audience",
+    path: "fighting-referee",
     loadComponent: () =>
-      import("./features/match-audience/match-audience.component").then(
-        (m) => m.MatchAudienceComponent,
+      import("./features/fighting-referee/fighting-referee.component").then(
+        (m) => m.FightingRefereeComponent,
+      ),
+    canActivate: [roleGuard("match_referee", "admin")],
+  },
+  {
+    path: "ne-waza-referee",
+    loadComponent: () =>
+      import("./features/ne-waza-referee/ne-waza-referee.component").then(
+        (m) => m.NeWazaRefereeComponent,
+      ),
+    canActivate: [roleGuard("match_referee", "admin")],
+  },
+  {
+    path: "fighting-audience",
+    loadComponent: () =>
+      import("./features/fighting-audience/fighting-audience.component").then(
+        (m) => m.FightingAudienceComponent,
+      ),
+  },
+  {
+    path: "ne-waza-audience",
+    loadComponent: () =>
+      import("./features/ne-waza-audience/ne-waza-audience.component").then(
+        (m) => m.NeWazaAudienceComponent,
+      ),
+  },
+  {
+    path: "contact-audience",
+    loadComponent: () =>
+      import("./features/contact-audience/contact-audience.component").then(
+        (m) => m.ContactAudienceComponent,
       ),
   },
   { path: "**", redirectTo: "/login" },

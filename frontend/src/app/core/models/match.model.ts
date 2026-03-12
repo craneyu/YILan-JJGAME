@@ -1,8 +1,8 @@
 export type MatchType = "ne-waza" | "fighting" | "contact";
 export type MatchCategory = "male" | "female" | "mixed";
-export type MatchStatus = "pending" | "in-progress" | "completed";
+export type MatchStatus = "pending" | "in-progress" | "full-ippon-pending" | "shido-dq-pending" | "completed";
 export type MatchWinner = "red" | "blue";
-export type MatchMethod = "judge" | "submission" | "dq";
+export type MatchMethod = "judge" | "submission" | "dq" | "full-ippon" | "shido-dq";
 
 export interface MatchPlayer {
   name: string;
@@ -12,6 +12,12 @@ export interface MatchPlayer {
 export interface MatchResult {
   winner: MatchWinner;
   method: MatchMethod;
+}
+
+export interface IIppons {
+  p1: number;
+  p2: number;
+  p3: number;
 }
 
 export interface Match {
@@ -29,6 +35,22 @@ export interface Match {
   isBye: boolean;
   scheduledOrder: number;
   createdAt: string;
+  // fighting-specific (optional)
+  matchDuration?: number;
+  redPart1Score?: number;
+  redPart2Score?: number;
+  redPart3Score?: number;
+  bluePart1Score?: number;
+  bluePart2Score?: number;
+  bluePart3Score?: number;
+  redIppons?: IIppons;
+  blueIppons?: IIppons;
+  redWazaAri?: number;
+  blueWazaAri?: number;
+  redTotalScore?: number;
+  blueTotalScore?: number;
+  redShido?: number;
+  blueShido?: number;
 }
 
 export type ScoreLogSide = "red" | "blue";
@@ -37,7 +59,11 @@ export type ScoreLogType =
   | "advantage"
   | "warning"
   | "submission"
-  | "undo";
+  | "undo"
+  | "part-score"
+  | "all-parts-score"
+  | "foul"
+  | "timer-adjust";
 
 export interface MatchScoreLog {
   _id: string;
