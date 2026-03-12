@@ -5,6 +5,7 @@ import {
   signal,
   computed,
   inject,
+  HostListener,
   ChangeDetectionStrategy,
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
@@ -217,6 +218,19 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
         this.pauseTimer();
       }),
     );
+  }
+
+  @HostListener("document:keydown.space", ["$event"])
+  onSpaceKey(event: Event): void {
+    if (this.view() !== "scoring") return;
+    if (!this.timerSetupDone()) return;
+    if (this.timerRemaining() <= 0 && !this.timerRunning()) return;
+    event.preventDefault();
+    if (this.timerRunning()) {
+      this.pauseTimer();
+    } else {
+      this.resumeWithoutSave();
+    }
   }
 
   ngOnDestroy(): void {
