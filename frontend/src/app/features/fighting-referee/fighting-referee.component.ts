@@ -412,7 +412,6 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
   }
 
   resumeWithoutSave(): void {
-    this.timerRemaining.set(this.timerBeforeAdjust());
     this.startTimer();
   }
 
