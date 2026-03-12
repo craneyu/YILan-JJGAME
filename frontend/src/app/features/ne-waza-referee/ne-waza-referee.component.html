@@ -125,7 +125,7 @@
               <button class="glass-btn px-3 py-1 rounded-lg text-sm" (click)="adjustTimer(-60)">▼ 1分</button>
             </div>
           }
-          <div class="flex justify-center gap-3">
+          <div class="flex justify-center items-center gap-3">
             <button
               class="primary-btn px-6 py-2 rounded-xl flex items-center gap-2"
               (click)="toggleTimer()"
@@ -133,6 +133,7 @@
               <fa-icon [icon]="timerRunning() ? faPause : faPlay" />
               {{ timerRunning() ? "暫停" : "開始" }}
             </button>
+            <span class="text-white/30 text-xs">空白鍵</span>
           </div>
         </div>
 

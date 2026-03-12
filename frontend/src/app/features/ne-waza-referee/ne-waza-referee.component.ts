@@ -6,6 +6,7 @@ import {
   computed,
   inject,
   ChangeDetectionStrategy,
+  HostListener,
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { Router } from "@angular/router";
@@ -165,6 +166,14 @@ export class NeWazaRefereeComponent implements OnInit, OnDestroy {
       this.socket.joinEvent(eid);
       this.loadMatches();
     }
+  }
+
+  @HostListener("document:keydown.space", ["$event"])
+  onSpaceKey(event: Event): void {
+    if (this.view() !== "scoring") return;
+    if (this.timerRemaining() <= 0 && !this.timerRunning()) return;
+    event.preventDefault();
+    this.toggleTimer();
   }
 
   ngOnDestroy(): void {
