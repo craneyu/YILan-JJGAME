@@ -69,8 +69,9 @@ export async function createTeam(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  // 同組別內檢查隊員唯一性（同單位可在同組派多支隊伍，故不限隊名）
-  const duplicateMembers = await checkConflictInCategory(req.params.id as string, category, members);
+  // 同運動項目、同組別內檢查隊員唯一性
+  const competitionType: 'Duo' | 'Show' = req.body['competitionType'] === 'Show' ? 'Show' : 'Duo';
+  const duplicateMembers = await checkConflictInCategory(req.params.id as string, category, competitionType, members);
   if (duplicateMembers.length > 0) {
     res.status(409).json({
       success: false,
@@ -146,14 +147,15 @@ export async function batchDeleteTeams(req: Request, res: Response): Promise<voi
   res.json({ success: true, data: { deleted: result.deletedCount } });
 }
 
-// 同組別內檢查隊員姓名是否重複（不同組別的同名隊員允許存在）
-// 注意：同組別允許同單位多支隊伍，故不檢查隊名唯一性
+// 同運動項目、同組別內檢查隊員姓名是否重複
+// 不同運動項目（Duo/Show）視為獨立，允許同名隊員跨項目參賽
 async function checkConflictInCategory(
   eventId: string,
   category: string,
+  competitionType: 'Duo' | 'Show',
   newMembers: string[]
 ): Promise<string[]> {
-  const teamsInCategory = await Team.find({ eventId, category });
+  const teamsInCategory = await Team.find({ eventId, category, competitionType });
   const existingMembers = new Set(teamsInCategory.flatMap((t) => t.members));
   return newMembers.filter((m: string) => existingMembers.has(m));
 }
@@ -224,7 +226,7 @@ export async function importTeams(req: Request, res: Response): Promise<void> {
     };
     const category = categoryMap[categoryRaw] || 'male';
 
-    const duplicateMembers = await checkConflictInCategory(eventId, category, members);
+    const duplicateMembers = await checkConflictInCategory(eventId, category, competitionType, members);
     if (duplicateMembers.length > 0) {
       conflictList.push(`${teamName}（隊員重複：${duplicateMembers.join('、')}）`);
       continue;
