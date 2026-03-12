@@ -403,7 +403,6 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
           this.timerTotal.set(seconds);
           this.timerRemaining.set(seconds);
           this.timerSetupDone.set(true);
-          this.startTimer();
         },
         error: () => {
           Swal.fire({
