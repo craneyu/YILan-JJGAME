@@ -49,17 +49,42 @@ export async function partScore(req: Request, res: Response): Promise<void> {
 
   // 防負數檢查
   if (delta < 0) {
+    const counterKey = `${side}PartCounters` as "redPartCounters" | "bluePartCounters";
+    const rawCounters = (match[counterKey] as any) || { p1: { plus2: 0, plus3: 0 }, p2: { plus2: 0, plus3: 0 }, p3: { plus2: 0, plus3: 0 } };
+    const counters = rawCounters;
+
     if (partIndex === 1) {
-      if ((isRed ? match.redPart1Score : match.bluePart1Score) + delta < 0) {
+      const part1Score = isRed ? match.redPart1Score : match.bluePart1Score;
+      if (part1Score + delta < 0) {
         res.status(400).json({ success: false, error: "PART 1 分數不可低於 0" }); return;
       }
+      if (delta === -2 && (counters.p1?.plus2 ?? 0) === 0) {
+        res.status(400).json({ success: false, error: "PART 1 沒有 +2 可反向" }); return;
+      }
+      if (delta === -3 && (counters.p1?.plus3 ?? 0) === 0) {
+        res.status(400).json({ success: false, error: "PART 1 沒有 +3 可反向" }); return;
+      }
     } else if (partIndex === 2) {
-      if ((isRed ? match.redPart2Score : match.bluePart2Score) + delta < 0) {
+      const part2Score = isRed ? match.redPart2Score : match.bluePart2Score;
+      if (part2Score + delta < 0) {
         res.status(400).json({ success: false, error: "PART 2 分數不可低於 0" }); return;
       }
+      if (delta === -2 && (counters.p2?.plus2 ?? 0) === 0) {
+        res.status(400).json({ success: false, error: "PART 2 沒有 +2 可反向" }); return;
+      }
+      if (delta === -3 && (counters.p2?.plus3 ?? 0) === 0) {
+        res.status(400).json({ success: false, error: "PART 2 沒有 +3 可反向" }); return;
+      }
     } else if (partIndex === 3) {
-      if ((isRed ? match.redPart3Score : match.bluePart3Score) + delta < 0) {
+      const part3Score = isRed ? match.redPart3Score : match.bluePart3Score;
+      if (part3Score + delta < 0) {
         res.status(400).json({ success: false, error: "PART 3 分數不可低於 0" }); return;
+      }
+      if (delta === -2 && (counters.p3?.plus2 ?? 0) === 0) {
+        res.status(400).json({ success: false, error: "PART 3 沒有 +2 可反向" }); return;
+      }
+      if (delta === -3 && (counters.p3?.plus3 ?? 0) === 0) {
+        res.status(400).json({ success: false, error: "PART 3 沒有 +3 可反向" }); return;
       }
     } else {
       // ALL PARTS：檢查 WAZA-ARI 計數不可低於 0
@@ -99,6 +124,25 @@ export async function partScore(req: Request, res: Response): Promise<void> {
     const ippons = { p1: rawIppons?.p1 ?? 0, p2: rawIppons?.p2 ?? 0, p3: rawIppons?.p3 ?? 0 };
     ippons[pKey] = Math.max(0, ippons[pKey] + (delta > 0 ? 1 : -1));
     match[ipponKey] = ippons;
+
+    // 更新 PART plus 計數器（分開追蹤 +2/-2 和 +3/-3）
+    const counterKey = `${side}PartCounters` as "redPartCounters" | "bluePartCounters";
+    const rawCounters = (match[counterKey] as any) || { p1: { plus2: 0, plus3: 0 }, p2: { plus2: 0, plus3: 0 }, p3: { plus2: 0, plus3: 0 } };
+    const counters = {
+      p1: { plus2: rawCounters.p1?.plus2 ?? 0, plus3: rawCounters.p1?.plus3 ?? 0 },
+      p2: { plus2: rawCounters.p2?.plus2 ?? 0, plus3: rawCounters.p2?.plus3 ?? 0 },
+      p3: { plus2: rawCounters.p3?.plus2 ?? 0, plus3: rawCounters.p3?.plus3 ?? 0 }
+    };
+    if (delta === 2) {
+      counters[pKey].plus2 = Math.max(0, counters[pKey].plus2 + 1);
+    } else if (delta === -2) {
+      counters[pKey].plus2 = Math.max(0, counters[pKey].plus2 - 1);
+    } else if (delta === 3) {
+      counters[pKey].plus3 = Math.max(0, counters[pKey].plus3 + 1);
+    } else if (delta === -3) {
+      counters[pKey].plus3 = Math.max(0, counters[pKey].plus3 - 1);
+    }
+    match[counterKey] = counters;
   }
 
   // 確認是否達成 FULL IPPON
@@ -209,10 +253,8 @@ export async function foulAction(req: Request, res: Response): Promise<void> {
   // 更新 SHIDO 計次
   match[shidoKey] = Math.max(0, match[shidoKey] + shidoUnits * delta);
 
-  // 更新對手 WAZA-ARI 計數
+  // 更新對手 WAZA-ARI 及總計分（SHIDO 和 CHUI 都會）
   match[oppWazaKey] = Math.max(0, match[oppWazaKey] + shidoUnits * delta);
-
-  // 更新對手總計分
   const oppTotalKey = `${oppSide}TotalScore` as "redTotalScore" | "blueTotalScore";
   match[oppTotalKey] = Math.max(0, match[oppTotalKey] + shidoUnits * delta);
 
@@ -383,6 +425,8 @@ export async function resetScoreLogs(req: Request, res: Response): Promise<void>
   match.blueShido = 0;
   match.redIppons = { p1: 0, p2: 0, p3: 0 };
   match.blueIppons = { p1: 0, p2: 0, p3: 0 };
+  match.redPartCounters = { p1: { plus2: 0, plus3: 0 }, p2: { plus2: 0, plus3: 0 }, p3: { plus2: 0, plus3: 0 } };
+  match.bluePartCounters = { p1: { plus2: 0, plus3: 0 }, p2: { plus2: 0, plus3: 0 }, p3: { plus2: 0, plus3: 0 } };
   if (["full-ippon-pending", "shido-dq-pending"].includes(match.status)) {
     match.status = "in-progress";
   }

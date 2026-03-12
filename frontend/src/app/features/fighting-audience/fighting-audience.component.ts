@@ -4,6 +4,7 @@ import {
   OnDestroy,
   signal,
   computed,
+  effect,
   inject,
   ChangeDetectionStrategy,
 } from "@angular/core";
@@ -65,6 +66,44 @@ export class FightingAudienceComponent implements OnInit, OnDestroy {
   blueShido = signal(0);
   redParts = signal<[number, number, number]>([0, 0, 0]);
   blueParts = signal<[number, number, number]>([0, 0, 0]);
+  redFlashingIndex = signal(-1);
+  blueFlashingIndex = signal(-1);
+  private previousRedParts: [number, number, number] | null = null;
+  private previousBlueParts: [number, number, number] | null = null;
+  private redFlashTimer: ReturnType<typeof setTimeout> | null = null;
+  private blueFlashTimer: ReturnType<typeof setTimeout> | null = null;
+
+  private readonly partsFlashEffect = effect(() => {
+    const red = this.redParts();
+    const blue = this.blueParts();
+
+    if (this.previousRedParts === null) {
+      this.previousRedParts = [...red] as [number, number, number];
+    } else {
+      for (let i = 0; i < 3; i++) {
+        if (red[i] > this.previousRedParts[i]) {
+          if (this.redFlashTimer) clearTimeout(this.redFlashTimer);
+          this.redFlashingIndex.set(i);
+          this.redFlashTimer = setTimeout(() => this.redFlashingIndex.set(-1), 700);
+        }
+      }
+      this.previousRedParts = [...red] as [number, number, number];
+    }
+
+    if (this.previousBlueParts === null) {
+      this.previousBlueParts = [...blue] as [number, number, number];
+    } else {
+      for (let i = 0; i < 3; i++) {
+        if (blue[i] > this.previousBlueParts[i]) {
+          if (this.blueFlashTimer) clearTimeout(this.blueFlashTimer);
+          this.blueFlashingIndex.set(i);
+          this.blueFlashTimer = setTimeout(() => this.blueFlashingIndex.set(-1), 700);
+        }
+      }
+      this.previousBlueParts = [...blue] as [number, number, number];
+    }
+  }, { allowSignalWrites: true });
+
   fullIpponOverlay = signal(false);
   chuiBadgeRed = signal(false);
   chuiBadgeBlue = signal(false);
@@ -167,11 +206,12 @@ export class FightingAudienceComponent implements OnInit, OnDestroy {
         if (e.blueTotalScore !== undefined) this.blueTotalScore.set(e.blueTotalScore);
         this.redShido.set(e.redShido ?? 0);
         this.blueShido.set(e.blueShido ?? 0);
-        if (e.redIppons) {
-          this.redParts.set([e.redIppons.p1 ?? 0, e.redIppons.p2 ?? 0, e.redIppons.p3 ?? 0]);
+        // 根據 PART Score 而非 IPPON 計數來更新顯示
+        if (e.redPart1Score !== undefined || e.redPart2Score !== undefined || e.redPart3Score !== undefined) {
+          this.redParts.set([e.redPart1Score ?? 0, e.redPart2Score ?? 0, e.redPart3Score ?? 0]);
         }
-        if (e.blueIppons) {
-          this.blueParts.set([e.blueIppons.p1 ?? 0, e.blueIppons.p2 ?? 0, e.blueIppons.p3 ?? 0]);
+        if (e.bluePart1Score !== undefined || e.bluePart2Score !== undefined || e.bluePart3Score !== undefined) {
+          this.blueParts.set([e.bluePart1Score ?? 0, e.bluePart2Score ?? 0, e.bluePart3Score ?? 0]);
         }
         if (e.chuiEvent === "red") this.showChuiBadge("red");
         if (e.chuiEvent === "blue") this.showChuiBadge("blue");
@@ -293,6 +333,8 @@ export class FightingAudienceComponent implements OnInit, OnDestroy {
     this.subs.unsubscribe();
     if (this.chuiBadgeRedTimer) clearTimeout(this.chuiBadgeRedTimer);
     if (this.chuiBadgeBlueTimer) clearTimeout(this.chuiBadgeBlueTimer);
+    if (this.redFlashTimer) clearTimeout(this.redFlashTimer);
+    if (this.blueFlashTimer) clearTimeout(this.blueFlashTimer);
     this.clearRedInjuryInterval();
     this.clearBlueInjuryInterval();
     this.clearRedOsaeKomiInterval();
@@ -345,15 +387,16 @@ export class FightingAudienceComponent implements OnInit, OnDestroy {
             this.blueTotalScore.set(inProgress.blueTotalScore ?? 0);
             this.redShido.set(inProgress.redShido ?? 0);
             this.blueShido.set(inProgress.blueShido ?? 0);
+            // 根據 PART Score 而非 IPPON 計數來顯示
             this.redParts.set([
-              inProgress.redIppons?.p1 ?? 0,
-              inProgress.redIppons?.p2 ?? 0,
-              inProgress.redIppons?.p3 ?? 0,
+              inProgress.redPart1Score ?? 0,
+              inProgress.redPart2Score ?? 0,
+              inProgress.redPart3Score ?? 0,
             ]);
             this.blueParts.set([
-              inProgress.blueIppons?.p1 ?? 0,
-              inProgress.blueIppons?.p2 ?? 0,
-              inProgress.blueIppons?.p3 ?? 0,
+              inProgress.bluePart1Score ?? 0,
+              inProgress.bluePart2Score ?? 0,
+              inProgress.bluePart3Score ?? 0,
             ]);
             if (inProgress.status === "full-ippon-pending") {
               this.fullIpponOverlay.set(true);

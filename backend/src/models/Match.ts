@@ -27,6 +27,17 @@ export interface IIppons {
   p3: number;
 }
 
+export interface IPartPlusCounts {
+  plus2: number;
+  plus3: number;
+}
+
+export interface IPartCounters {
+  p1: IPartPlusCounts;
+  p2: IPartPlusCounts;
+  p3: IPartPlusCounts;
+}
+
 export interface IMatch extends Document {
   eventId: mongoose.Types.ObjectId;
   matchType: MatchType;
@@ -51,6 +62,9 @@ export interface IMatch extends Document {
   // IPPON counts per PART
   redIppons: IIppons;
   blueIppons: IIppons;
+  // PART plus (+2/-2 and +3/-3) counters to distinguish operations
+  redPartCounters: IPartCounters;
+  bluePartCounters: IPartCounters;
   // WAZA-ARI counts (only counts from ALL PARTS +1 and SHIDO penalties)
   redWazaAri: number;
   blueWazaAri: number;
@@ -93,6 +107,23 @@ const IpponsSchema = new Schema<IIppons>(
   { _id: false },
 );
 
+const PartPlusCountsSchema = new Schema<IPartPlusCounts>(
+  {
+    plus2: { type: Number, default: 0, min: 0 },
+    plus3: { type: Number, default: 0, min: 0 },
+  },
+  { _id: false },
+);
+
+const PartCountersSchema = new Schema<IPartCounters>(
+  {
+    p1: { type: PartPlusCountsSchema, default: () => ({ plus2: 0, plus3: 0 }) },
+    p2: { type: PartPlusCountsSchema, default: () => ({ plus2: 0, plus3: 0 }) },
+    p3: { type: PartPlusCountsSchema, default: () => ({ plus2: 0, plus3: 0 }) },
+  },
+  { _id: false },
+);
+
 const MatchSchema = new Schema<IMatch>(
   {
     eventId: { type: Schema.Types.ObjectId, ref: "Event", required: true },
@@ -127,6 +158,8 @@ const MatchSchema = new Schema<IMatch>(
     bluePart3Score: { type: Number, default: 0, min: 0 },
     redIppons: { type: IpponsSchema, default: () => ({ p1: 0, p2: 0, p3: 0 }) },
     blueIppons: { type: IpponsSchema, default: () => ({ p1: 0, p2: 0, p3: 0 }) },
+    redPartCounters: { type: PartCountersSchema, default: () => ({ p1: { plus2: 0, plus3: 0 }, p2: { plus2: 0, plus3: 0 }, p3: { plus2: 0, plus3: 0 } }) },
+    bluePartCounters: { type: PartCountersSchema, default: () => ({ p1: { plus2: 0, plus3: 0 }, p2: { plus2: 0, plus3: 0 }, p3: { plus2: 0, plus3: 0 } }) },
     redWazaAri: { type: Number, default: 0, min: 0 },
     blueWazaAri: { type: Number, default: 0, min: 0 },
     redTotalScore: { type: Number, default: 0, min: 0 },

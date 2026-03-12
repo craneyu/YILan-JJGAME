@@ -53,31 +53,39 @@ code:
 ---
 ### Requirement: PART score display above player card
 
-The referee interface SHALL display each player's PART scores in the order PART 1, PART 2, PART 3 above the scoring buttons. Each PART SHALL show its accumulated score value.
+The audience display SHALL render each player's P1/P2/P3 IPPON indicators as three vertically-stacked circular lights. Each circle SHALL display its label (P1, P2, or P3) centered inside the circle. A circle SHALL appear lit (yellow) when its IPPON count is greater than zero, and unlit (dark) when the count is zero. There SHALL be no outer rectangular border or container wrapping the three circles.
 
-#### Scenario: PART scores rendered in order
+#### Scenario: All IPPON counts are zero
 
-- **WHEN** a match is in progress
-- **THEN** the referee interface SHALL render the player's PART scores as three labeled values in left-to-right order: PART 1, PART 2, PART 3
+- **WHEN** a player's P1, P2, and P3 counts are all 0
+- **THEN** all three circles SHALL appear unlit with dark background (`bg-white/10`) and muted label text (`text-white/30`)
+
+#### Scenario: IPPON count becomes greater than zero
+
+- **WHEN** a player's IPPON count for any part increases from 0 to 1 or more
+- **THEN** the corresponding circle SHALL appear lit with yellow background (`bg-yellow-400`) and dark label text (`text-yellow-900`)
+
+#### Scenario: IPPON count increases by 1 (flash animation)
+
+- **WHEN** a player's IPPON count for any part increases by 1 (regardless of previous value)
+- **THEN** the corresponding circle SHALL play a flash animation for approximately 600–700ms AND SHALL remain lit (yellow) after the animation completes
+
+#### Scenario: Circles scale responsively
+
+- **WHEN** the audience display is viewed on screens of different sizes
+- **THEN** the circle diameter SHALL be `w-10 h-10` on small screens, `w-14 h-14` on md, `w-16 h-16` on lg, and `w-20 h-20` on xl and above
 
 
 <!-- @trace
-source: fighting-v6-advanced-scoring
-updated: 2026-03-11
+source: fighting-audience-penalty-lights
+updated: 2026-03-12
 code:
-  - frontend/src/app/core/services/socket.service.ts
-  - backend/src/models/Match.ts
-  - backend/src/controllers/matchController.ts
-  - backend/src/sockets/index.ts
-  - frontend/src/app/core/models/match.model.ts
-  - backend/src/models/MatchScoreLog.ts
-  - frontend/src/app/features/match-audience/match-audience.component.html
   - backend/src/controllers/matchScoreController.ts
-  - backend/src/routes/matchScores.ts
-  - frontend/src/app/features/match-referee/match-referee.component.ts
-  - frontend/src/app/features/match-audience/match-audience.component.ts
-  - frontend/src/app/features/match-referee/match-referee.component.html
-  - SPEC/SPEC-v6.md
+  - frontend/src/app/features/fighting-audience/fighting-audience.component.ts
+  - frontend/src/app/features/fighting-referee/fighting-referee.component.ts
+  - frontend/src/app/features/fighting-audience/fighting-audience.component.html
+  - frontend/src/app/features/fighting-referee/fighting-referee.component.html
+  - frontend/src/styles.css
 -->
 
 ---

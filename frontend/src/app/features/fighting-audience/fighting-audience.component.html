@@ -103,30 +103,32 @@
               <div class="text-white text-xs md:text-sm font-semibold tracking-widest">WAZA-ARI</div>
               <div class="text-lg md:text-2xl lg:text-3xl font-black text-white leading-tight">{{ redWazaAri() }}</div>
             </div>
-            <div class="flex flex-col items-center border border-white/30 rounded-xl bg-white/5 px-3 md:px-4 py-1 md:py-2">
+            <div class="flex flex-col items-center rounded-xl px-3 md:px-4 py-1 md:py-2 transition-colors"
+                 [class.bg-red-600]="redShido() > 0" [class.border]="redShido() === 0"
+                 [class.border-white/30]="redShido() === 0" [class.bg-white/5]="redShido() === 0">
               <div class="text-white text-xs md:text-sm font-semibold tracking-widest">SHIDO</div>
               <div class="text-lg md:text-2xl lg:text-3xl font-black text-white leading-tight">{{ redShido() }}</div>
             </div>
           </div>
-          @if (redShido() > 0) {
+          @if (chuiBadgeRed()) {
             <span class="w-full text-center text-xs md:text-sm font-black py-2 md:py-3 rounded-md bg-yellow-500/70 text-yellow-100 tracking-widest">CHUI</span>
           }
         </div>
 
-        <!-- 中右：P1/P2/P3 IPPON 格 -->
-        <div class="flex flex-col justify-center gap-2 shrink-0">
-          <div class="flex gap-2">
-            @for (p of [0, 1, 2]; track p) {
-              <div class="flex flex-col items-center rounded-xl border px-3 md:px-4 py-1 md:py-2"
-                   [class.bg-yellow-500/20]="redParts()[p] > 0" [class.border-yellow-400/60]="redParts()[p] > 0"
-                   [class.bg-white/5]="redParts()[p] === 0" [class.border-white/15]="redParts()[p] === 0">
-                <div class="text-xs md:text-sm font-bold"
-                     [class.text-yellow-400]="redParts()[p] > 0" [class.text-white/40]="redParts()[p] === 0">P{{ p + 1 }}</div>
-                <div class="text-lg md:text-2xl lg:text-3xl font-black"
-                     [class.text-yellow-300]="redParts()[p] > 0" [class.text-white/40]="redParts()[p] === 0">{{ redParts()[p] }}</div>
-              </div>
-            }
-          </div>
+        <!-- 中右：P1/P2/P3 燈號 -->
+        <div class="flex flex-col self-stretch justify-evenly shrink-0 py-2
+                    w-10 md:w-12 lg:w-14 xl:w-16">
+          @for (p of [0, 1, 2]; track p) {
+            <div class="rounded-full w-full aspect-square
+                        flex items-center justify-center font-bold transition-colors text-xs md:text-sm"
+                 [class.bg-yellow-400]="redParts()[p] > 0"
+                 [class.text-yellow-900]="redParts()[p] > 0"
+                 [class.bg-white/10]="redParts()[p] === 0"
+                 [class.text-white/30]="redParts()[p] === 0"
+                 [class.penalty-light-flash]="redFlashingIndex() === p">
+              P{{ p + 1 }}
+            </div>
+          }
         </div>
 
         <!-- 右：總計分 大分數 -->
@@ -179,30 +181,32 @@
               <div class="text-white text-xs md:text-sm font-semibold tracking-widest">WAZA-ARI</div>
               <div class="text-lg md:text-2xl lg:text-3xl font-black text-white leading-tight">{{ blueWazaAri() }}</div>
             </div>
-            <div class="flex flex-col items-center border border-white/30 rounded-xl bg-white/5 px-3 md:px-4 py-1 md:py-2">
+            <div class="flex flex-col items-center rounded-xl px-3 md:px-4 py-1 md:py-2 transition-colors"
+                 [class.bg-red-600]="blueShido() > 0" [class.border]="blueShido() === 0"
+                 [class.border-white/30]="blueShido() === 0" [class.bg-white/5]="blueShido() === 0">
               <div class="text-white text-xs md:text-sm font-semibold tracking-widest">SHIDO</div>
               <div class="text-lg md:text-2xl lg:text-3xl font-black text-white leading-tight">{{ blueShido() }}</div>
             </div>
           </div>
-          @if (blueShido() > 0) {
+          @if (chuiBadgeBlue()) {
             <span class="w-full text-center text-xs md:text-sm font-black py-2 md:py-3 rounded-md bg-yellow-500/70 text-yellow-100 tracking-widest">CHUI</span>
           }
         </div>
 
-        <!-- 中右：P1/P2/P3 IPPON 格 -->
-        <div class="flex flex-col justify-center gap-2 shrink-0">
-          <div class="flex gap-2">
-            @for (p of [0, 1, 2]; track p) {
-              <div class="flex flex-col items-center rounded-xl border px-3 md:px-4 py-1 md:py-2"
-                   [class.bg-yellow-500/20]="blueParts()[p] > 0" [class.border-yellow-400/60]="blueParts()[p] > 0"
-                   [class.bg-white/5]="blueParts()[p] === 0" [class.border-white/15]="blueParts()[p] === 0">
-                <div class="text-xs md:text-sm font-bold"
-                     [class.text-yellow-400]="blueParts()[p] > 0" [class.text-white/40]="blueParts()[p] === 0">P{{ p + 1 }}</div>
-                <div class="text-lg md:text-2xl lg:text-3xl font-black"
-                     [class.text-yellow-300]="blueParts()[p] > 0" [class.text-white/40]="blueParts()[p] === 0">{{ blueParts()[p] }}</div>
-              </div>
-            }
-          </div>
+        <!-- 中右：P1/P2/P3 燈號 -->
+        <div class="flex flex-col self-stretch justify-evenly shrink-0 py-2
+                    w-10 md:w-12 lg:w-14 xl:w-16">
+          @for (p of [0, 1, 2]; track p) {
+            <div class="rounded-full w-full aspect-square
+                        flex items-center justify-center font-bold transition-colors text-xs md:text-sm"
+                 [class.bg-yellow-400]="blueParts()[p] > 0"
+                 [class.text-yellow-900]="blueParts()[p] > 0"
+                 [class.bg-white/10]="blueParts()[p] === 0"
+                 [class.text-white/30]="blueParts()[p] === 0"
+                 [class.penalty-light-flash]="blueFlashingIndex() === p">
+              P{{ p + 1 }}
+            </div>
+          }
         </div>
 
         <!-- 右：總計分 大分數 -->

@@ -84,6 +84,17 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
   // ── 對打計分 Signals ──
   redParts = signal<[number, number, number]>([0, 0, 0]);
   blueParts = signal<[number, number, number]>([0, 0, 0]);
+  // PART plus counters (分開追蹤 +2/-2 和 +3/-3)
+  redPartCounters = signal<{ p1: { plus2: number; plus3: number }; p2: { plus2: number; plus3: number }; p3: { plus2: number; plus3: number } }>({
+    p1: { plus2: 0, plus3: 0 },
+    p2: { plus2: 0, plus3: 0 },
+    p3: { plus2: 0, plus3: 0 },
+  });
+  bluePartCounters = signal<{ p1: { plus2: number; plus3: number }; p2: { plus2: number; plus3: number }; p3: { plus2: number; plus3: number } }>({
+    p1: { plus2: 0, plus3: 0 },
+    p2: { plus2: 0, plus3: 0 },
+    p3: { plus2: 0, plus3: 0 },
+  });
   redWazaAri = signal(0);
   blueWazaAri = signal(0);
   redTotalScore = signal(0);
@@ -332,17 +343,24 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
   }
 
   private restoreFightingState(match: Match): void {
-    // 使用 IPPON 計數恢復 PART 次數（每次得分 +1，不論 +2 或 +3）
+    // 根據 PART Score 恢復分數（而非 IPPON 計數）
     this.redParts.set([
-      match.redIppons?.p1 ?? 0,
-      match.redIppons?.p2 ?? 0,
-      match.redIppons?.p3 ?? 0,
+      match.redPart1Score ?? 0,
+      match.redPart2Score ?? 0,
+      match.redPart3Score ?? 0,
     ]);
     this.blueParts.set([
-      match.blueIppons?.p1 ?? 0,
-      match.blueIppons?.p2 ?? 0,
-      match.blueIppons?.p3 ?? 0,
+      match.bluePart1Score ?? 0,
+      match.bluePart2Score ?? 0,
+      match.bluePart3Score ?? 0,
     ]);
+    // 恢復 PART plus 計數器
+    if ((match as any).redPartCounters) {
+      this.redPartCounters.set((match as any).redPartCounters);
+    }
+    if ((match as any).bluePartCounters) {
+      this.bluePartCounters.set((match as any).bluePartCounters);
+    }
     this.redWazaAri.set(match.redWazaAri ?? 0);
     this.blueWazaAri.set(match.blueWazaAri ?? 0);
     this.redTotalScore.set(match.redTotalScore ?? 0);
@@ -659,10 +677,18 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
       // 總計分永遠更新
       this.redTotalScore.update((v) => Math.max(0, v + delta));
       if (partIndex !== null) {
-        // PART +2/+3：只更新 IPPON 計數，不動 WAZA-ARI
+        // PART +2/+3：直接累加分數，不動 WAZA-ARI
         const parts = [...this.redParts()] as [number, number, number];
-        parts[partIndex - 1] = Math.max(0, parts[partIndex - 1] + (delta > 0 ? 1 : -1));
+        parts[partIndex - 1] = Math.max(0, parts[partIndex - 1] + delta);
         this.redParts.set(parts);
+        // 更新 PART plus 計數器
+        const counters = JSON.parse(JSON.stringify(this.redPartCounters()));
+        const pKey = `p${partIndex}` as "p1" | "p2" | "p3";
+        if (delta === 2) counters[pKey].plus2 = Math.max(0, counters[pKey].plus2 + 1);
+        else if (delta === -2) counters[pKey].plus2 = Math.max(0, counters[pKey].plus2 - 1);
+        else if (delta === 3) counters[pKey].plus3 = Math.max(0, counters[pKey].plus3 + 1);
+        else if (delta === -3) counters[pKey].plus3 = Math.max(0, counters[pKey].plus3 - 1);
+        this.redPartCounters.set(counters);
       } else {
         // ALL PARTS +1/-1：同時更新 WAZA-ARI 計數
         this.redWazaAri.update((v) => Math.max(0, v + delta));
@@ -671,8 +697,16 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
       this.blueTotalScore.update((v) => Math.max(0, v + delta));
       if (partIndex !== null) {
         const parts = [...this.blueParts()] as [number, number, number];
-        parts[partIndex - 1] = Math.max(0, parts[partIndex - 1] + (delta > 0 ? 1 : -1));
+        parts[partIndex - 1] = Math.max(0, parts[partIndex - 1] + delta);
         this.blueParts.set(parts);
+        // 更新 PART plus 計數器
+        const counters = JSON.parse(JSON.stringify(this.bluePartCounters()));
+        const pKey = `p${partIndex}` as "p1" | "p2" | "p3";
+        if (delta === 2) counters[pKey].plus2 = Math.max(0, counters[pKey].plus2 + 1);
+        else if (delta === -2) counters[pKey].plus2 = Math.max(0, counters[pKey].plus2 - 1);
+        else if (delta === 3) counters[pKey].plus3 = Math.max(0, counters[pKey].plus3 + 1);
+        else if (delta === -3) counters[pKey].plus3 = Math.max(0, counters[pKey].plus3 - 1);
+        this.bluePartCounters.set(counters);
       } else {
         this.blueWazaAri.update((v) => Math.max(0, v + delta));
       }
@@ -960,6 +994,16 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
     this.clearTimerInterval();
     this.redParts.set([0, 0, 0]);
     this.blueParts.set([0, 0, 0]);
+    this.redPartCounters.set({
+      p1: { plus2: 0, plus3: 0 },
+      p2: { plus2: 0, plus3: 0 },
+      p3: { plus2: 0, plus3: 0 },
+    });
+    this.bluePartCounters.set({
+      p1: { plus2: 0, plus3: 0 },
+      p2: { plus2: 0, plus3: 0 },
+      p3: { plus2: 0, plus3: 0 },
+    });
     this.redWazaAri.set(0);
     this.blueWazaAri.set(0);
     this.redTotalScore.set(0);
