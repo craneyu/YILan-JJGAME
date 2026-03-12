@@ -278,8 +278,8 @@
                      [class.text-yellow-300]="redShido() > 0" [class.text-white]="redShido() === 0">
                   {{ redShido() }}
                 </div>
-                @if (chuiBadgeRed()) {
-                  <div class="text-[9px] font-bold text-orange-300 bg-orange-500/25 border border-orange-400/50 rounded px-1.5 py-0.5 animate-pulse mt-1">CHUI</div>
+                @if (redChuiCount() > 0) {
+                  <div class="text-[9px] font-bold text-orange-300 bg-orange-500/25 border border-orange-400/50 rounded px-1.5 py-0.5 mt-1">CHUI</div>
                 }
               </div>
             </div>
@@ -431,8 +431,8 @@
                      [class.text-yellow-300]="blueShido() > 0" [class.text-white]="blueShido() === 0">
                   {{ blueShido() }}
                 </div>
-                @if (chuiBadgeBlue()) {
-                  <div class="text-[9px] font-bold text-orange-300 bg-orange-500/25 border border-orange-400/50 rounded px-1.5 py-0.5 animate-pulse mt-1">CHUI</div>
+                @if (blueChuiCount() > 0) {
+                  <div class="text-[9px] font-bold text-orange-300 bg-orange-500/25 border border-orange-400/50 rounded px-1.5 py-0.5 mt-1">CHUI</div>
                 }
               </div>
             </div>

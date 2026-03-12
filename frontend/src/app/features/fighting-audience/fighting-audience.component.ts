@@ -105,10 +105,8 @@ export class FightingAudienceComponent implements OnInit, OnDestroy {
   }, { allowSignalWrites: true });
 
   fullIpponOverlay = signal(false);
-  chuiBadgeRed = signal(false);
-  chuiBadgeBlue = signal(false);
-  private chuiBadgeRedTimer: ReturnType<typeof setTimeout> | null = null;
-  private chuiBadgeBlueTimer: ReturnType<typeof setTimeout> | null = null;
+  redChuiCount = signal(0);
+  blueChuiCount = signal(0);
 
   // 傷停（MEDICAL）
   redInjuryActive = signal(false);
@@ -213,8 +211,9 @@ export class FightingAudienceComponent implements OnInit, OnDestroy {
         if (e.bluePart1Score !== undefined || e.bluePart2Score !== undefined || e.bluePart3Score !== undefined) {
           this.blueParts.set([e.bluePart1Score ?? 0, e.bluePart2Score ?? 0, e.bluePart3Score ?? 0]);
         }
-        if (e.chuiEvent === "red") this.showChuiBadge("red");
-        if (e.chuiEvent === "blue") this.showChuiBadge("blue");
+        // CHUI count 追蹤：>0 時恆亮，-CHUI 執行後變 0 時熄滅
+        if (e.redChuiCount !== undefined) this.redChuiCount.set(e.redChuiCount);
+        if (e.blueChuiCount !== undefined) this.blueChuiCount.set(e.blueChuiCount);
       }),
     );
 
@@ -331,8 +330,6 @@ export class FightingAudienceComponent implements OnInit, OnDestroy {
     const eid = this.eventId();
     if (eid) this.socket.leaveEvent(eid);
     this.subs.unsubscribe();
-    if (this.chuiBadgeRedTimer) clearTimeout(this.chuiBadgeRedTimer);
-    if (this.chuiBadgeBlueTimer) clearTimeout(this.chuiBadgeBlueTimer);
     if (this.redFlashTimer) clearTimeout(this.redFlashTimer);
     if (this.blueFlashTimer) clearTimeout(this.blueFlashTimer);
     this.clearRedInjuryInterval();
@@ -352,18 +349,6 @@ export class FightingAudienceComponent implements OnInit, OnDestroy {
   }
   private clearBlueOsaeKomiInterval(): void {
     if (this.blueOsaeKomiInterval) { clearInterval(this.blueOsaeKomiInterval); this.blueOsaeKomiInterval = null; }
-  }
-
-  private showChuiBadge(side: "red" | "blue"): void {
-    if (side === "red") {
-      this.chuiBadgeRed.set(true);
-      if (this.chuiBadgeRedTimer) clearTimeout(this.chuiBadgeRedTimer);
-      this.chuiBadgeRedTimer = setTimeout(() => this.chuiBadgeRed.set(false), 5000);
-    } else {
-      this.chuiBadgeBlue.set(true);
-      if (this.chuiBadgeBlueTimer) clearTimeout(this.chuiBadgeBlueTimer);
-      this.chuiBadgeBlueTimer = setTimeout(() => this.chuiBadgeBlue.set(false), 5000);
-    }
   }
 
   private loadActiveMatch(eventId: string): void {
@@ -387,6 +372,8 @@ export class FightingAudienceComponent implements OnInit, OnDestroy {
             this.blueTotalScore.set(inProgress.blueTotalScore ?? 0);
             this.redShido.set(inProgress.redShido ?? 0);
             this.blueShido.set(inProgress.blueShido ?? 0);
+            this.redChuiCount.set((inProgress as any).redChuiCount ?? 0);
+            this.blueChuiCount.set((inProgress as any).blueChuiCount ?? 0);
             // 根據 PART Score 而非 IPPON 計數來顯示
             this.redParts.set([
               inProgress.redPart1Score ?? 0,
@@ -416,6 +403,8 @@ export class FightingAudienceComponent implements OnInit, OnDestroy {
     this.blueTotalScore.set(0);
     this.redShido.set(0);
     this.blueShido.set(0);
+    this.redChuiCount.set(0);
+    this.blueChuiCount.set(0);
     this.redParts.set([0, 0, 0]);
     this.blueParts.set([0, 0, 0]);
     this.fullIpponOverlay.set(false);

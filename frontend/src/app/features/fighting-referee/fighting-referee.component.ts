@@ -101,12 +101,10 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
   blueTotalScore = signal(0);
   redShido = signal(0);
   blueShido = signal(0);
+  redChuiCount = signal(0);
+  blueChuiCount = signal(0);
   fullIpponPending = signal(false);
   shidoDqPending = signal<"red" | "blue" | null>(null);
-  chuiBadgeRed = signal(false);
-  chuiBadgeBlue = signal(false);
-  private chuiBadgeRedTimer: ReturnType<typeof setTimeout> | null = null;
-  private chuiBadgeBlueTimer: ReturnType<typeof setTimeout> | null = null;
 
   // ── OSAE KOMI 計時器 ──
   redOsaeKomiRemaining = signal(15);
@@ -196,8 +194,9 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
         if (evt.blueIppons) {
           this.blueParts.set([evt.blueIppons.p1 ?? 0, evt.blueIppons.p2 ?? 0, evt.blueIppons.p3 ?? 0]);
         }
-        if (evt.chuiEvent === "red") this.showChuiBadge("red");
-        if (evt.chuiEvent === "blue") this.showChuiBadge("blue");
+        // CHUI count 追蹤：>0 時恆亮，-CHUI 執行後變 0 時熄滅
+        if (evt.redChuiCount !== undefined) this.redChuiCount.set(evt.redChuiCount);
+        if (evt.blueChuiCount !== undefined) this.blueChuiCount.set(evt.blueChuiCount);
       }),
     );
 
@@ -227,23 +226,10 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
     this.clearRedMedicalInterval();
     this.clearBlueMedicalInterval();
     this.subs.unsubscribe();
-    if (this.chuiBadgeRedTimer) clearTimeout(this.chuiBadgeRedTimer);
-    if (this.chuiBadgeBlueTimer) clearTimeout(this.chuiBadgeBlueTimer);
     const eid = this.eventId();
     if (eid) this.socket.leaveEvent(eid);
   }
 
-  private showChuiBadge(side: "red" | "blue"): void {
-    if (side === "red") {
-      this.chuiBadgeRed.set(true);
-      if (this.chuiBadgeRedTimer) clearTimeout(this.chuiBadgeRedTimer);
-      this.chuiBadgeRedTimer = setTimeout(() => this.chuiBadgeRed.set(false), 5000);
-    } else {
-      this.chuiBadgeBlue.set(true);
-      if (this.chuiBadgeBlueTimer) clearTimeout(this.chuiBadgeBlueTimer);
-      this.chuiBadgeBlueTimer = setTimeout(() => this.chuiBadgeBlue.set(false), 5000);
-    }
-  }
 
   // ──────────────────────────────────────────────────────────
   // LIST VIEW
@@ -367,6 +353,8 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
     this.blueTotalScore.set(match.blueTotalScore ?? 0);
     this.redShido.set(match.redShido ?? 0);
     this.blueShido.set(match.blueShido ?? 0);
+    this.redChuiCount.set((match as any).redChuiCount ?? 0);
+    this.blueChuiCount.set((match as any).blueChuiCount ?? 0);
 
     const duration = match.matchDuration ?? 0;
     if (duration > 0) {
@@ -771,8 +759,13 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
       this.blueWazaAri.update((v) => Math.max(0, v + shidoUnits * delta));
       this.blueTotalScore.update((v) => Math.max(0, v + shidoUnits * delta));
     }
-    if (foulType === "chui" && delta > 0) {
-      this.showChuiBadge(side);
+    // CHUI count optimistic update
+    if (foulType === "chui") {
+      if (side === "red") {
+        this.redChuiCount.update((v) => Math.max(0, v + delta));
+      } else {
+        this.blueChuiCount.update((v) => Math.max(0, v + delta));
+      }
     }
   }
 
@@ -1014,8 +1007,8 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
     this.shidoDqPending.set(null);
     this.timerSetupDone.set(false);
     this.timerBeforeAdjust.set(0);
-    this.chuiBadgeRed.set(false);
-    this.chuiBadgeBlue.set(false);
+    this.redChuiCount.set(0);
+    this.blueChuiCount.set(0);
     this.judgeWinner.set(null);
     this.dqPending.set(null);
     this.clearRedOsaeKomiInterval();

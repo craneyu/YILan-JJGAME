@@ -253,6 +253,12 @@ export async function foulAction(req: Request, res: Response): Promise<void> {
   // 更新 SHIDO 計次
   match[shidoKey] = Math.max(0, match[shidoKey] + shidoUnits * delta);
 
+  // 更新 CHUI 計數（用於觀眾端恆亮 CHUI badge）
+  if (foulType === "chui") {
+    const chuiCountKey = `${side}ChuiCount` as "redChuiCount" | "blueChuiCount";
+    match[chuiCountKey] = Math.max(0, match[chuiCountKey] + delta);
+  }
+
   // 更新對手 WAZA-ARI 及總計分（SHIDO 和 CHUI 都會）
   match[oppWazaKey] = Math.max(0, match[oppWazaKey] + shidoUnits * delta);
   const oppTotalKey = `${oppSide}TotalScore` as "redTotalScore" | "blueTotalScore";
@@ -287,7 +293,8 @@ export async function foulAction(req: Request, res: Response): Promise<void> {
     blueTotalScore: match.blueTotalScore,
     redShido: match.redShido,
     blueShido: match.blueShido,
-    chuiEvent: foulType === "chui" && delta > 0 ? side : null,
+    redChuiCount: match.redChuiCount,
+    blueChuiCount: match.blueChuiCount,
   });
 
   if (triggerShidoDq) {
@@ -423,6 +430,8 @@ export async function resetScoreLogs(req: Request, res: Response): Promise<void>
   match.blueTotalScore = 0;
   match.redShido = 0;
   match.blueShido = 0;
+  match.redChuiCount = 0;
+  match.blueChuiCount = 0;
   match.redIppons = { p1: 0, p2: 0, p3: 0 };
   match.blueIppons = { p1: 0, p2: 0, p3: 0 };
   match.redPartCounters = { p1: { plus2: 0, plus3: 0 }, p2: { plus2: 0, plus3: 0 }, p3: { plus2: 0, plus3: 0 } };

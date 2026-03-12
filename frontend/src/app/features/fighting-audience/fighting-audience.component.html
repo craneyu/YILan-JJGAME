@@ -110,7 +110,7 @@
               <div class="text-lg md:text-2xl lg:text-3xl font-black text-white leading-tight">{{ redShido() }}</div>
             </div>
           </div>
-          @if (chuiBadgeRed()) {
+          @if (redChuiCount() > 0) {
             <span class="w-full text-center text-xs md:text-sm font-black py-2 md:py-3 rounded-md bg-yellow-500/70 text-yellow-100 tracking-widest">CHUI</span>
           }
         </div>
@@ -188,7 +188,7 @@
               <div class="text-lg md:text-2xl lg:text-3xl font-black text-white leading-tight">{{ blueShido() }}</div>
             </div>
           </div>
-          @if (chuiBadgeBlue()) {
+          @if (blueChuiCount() > 0) {
             <span class="w-full text-center text-xs md:text-sm font-black py-2 md:py-3 rounded-md bg-yellow-500/70 text-yellow-100 tracking-widest">CHUI</span>
           }
         </div>

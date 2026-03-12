@@ -74,6 +74,9 @@ export interface IMatch extends Document {
   // SHIDO counts (CHUI = +3 SHIDO)
   redShido: number;
   blueShido: number;
+  // CHUI counts (用於判斷觀眾端 CHUI badge 是否恆亮，+CHUI時+=1，-CHUI時-=1)
+  redChuiCount: number;
+  blueChuiCount: number;
   // Match duration in seconds
   matchDuration: number;
 }
@@ -166,6 +169,8 @@ const MatchSchema = new Schema<IMatch>(
     blueTotalScore: { type: Number, default: 0, min: 0 },
     redShido: { type: Number, default: 0, min: 0 },
     blueShido: { type: Number, default: 0, min: 0 },
+    redChuiCount: { type: Number, default: 0, min: 0 },
+    blueChuiCount: { type: Number, default: 0, min: 0 },
     matchDuration: { type: Number, default: 180, min: 0 },
   },
   { timestamps: { createdAt: true, updatedAt: false } },

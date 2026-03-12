@@ -175,6 +175,8 @@ export interface MatchFoulUpdatedEvent {
   blueTotalScore?: number;
   redShido: number;
   blueShido: number;
+  redChuiCount?: number;
+  blueChuiCount?: number;
   redPart1Score?: number;
   redPart2Score?: number;
   redPart3Score?: number;
