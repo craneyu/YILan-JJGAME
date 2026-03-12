@@ -32,6 +32,10 @@ import {
   MatchStatus,
   MatchMethod,
 } from "../../core/models/match.model";
+import {
+  CategoryGroup,
+  groupMatchesByCategory,
+} from "../../core/utils/match-grouping";
 
 const CATEGORY_LABEL: Record<MatchCategory, string> = {
   male: "男子組",
@@ -130,6 +134,9 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
   // ── 計算屬性 ──
   eventId = computed(() => this.auth.user()?.eventId ?? "");
   fightingMatches = computed(() => this.matches().filter((m) => m.matchType === "fighting"));
+  groupedMatches = computed<CategoryGroup[]>(() =>
+    groupMatchesByCategory(this.fightingMatches()),
+  );
 
   displayTimer = computed(() => {
     const s = this.timerRemaining();

@@ -32,6 +32,10 @@ import {
   MatchStatus,
   MatchMethod,
 } from "../../core/models/match.model";
+import {
+  CategoryGroup,
+  groupMatchesByCategory,
+} from "../../core/utils/match-grouping";
 
 const WARNING_ADVANTAGE_THRESHOLD = 2;
 const WARNING_SCORE_THRESHOLD = 3;
@@ -133,6 +137,9 @@ export class NeWazaRefereeComponent implements OnInit, OnDestroy {
   // ── 計算屬性 ──
   eventId = computed(() => this.auth.user()?.eventId ?? "");
   neWazaMatches = computed(() => this.matches().filter((m) => m.matchType !== "fighting"));
+  groupedMatches = computed<CategoryGroup[]>(() =>
+    groupMatchesByCategory(this.neWazaMatches()),
+  );
 
   displayTimer = computed(() => {
     const s = this.timerRemaining();
