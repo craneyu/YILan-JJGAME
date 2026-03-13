@@ -238,3 +238,48 @@ code:
   - frontend/src/app/features/audience-sport-selector/audience-sport-selector.component.html
   - frontend/src/app/features/admin/admin-sport-selector/admin-sport-selector.component.ts
 -->
+
+---
+### Requirement: Admin can navigate to judge management from the event list page
+
+The event list page (`/admin/events`) SHALL provide a "裁判管理" button in the header action area. Clicking the button SHALL navigate to `/admin/judges`.
+
+#### Scenario: Admin clicks judge management button on event list page
+
+- **WHEN** admin is on `/admin/events` and clicks the "裁判管理" button
+- **THEN** the system SHALL navigate to `/admin/judges`
+
+<!-- @trace
+source: judge-management-navigation
+updated: 2026-03-13
+code:
+  - frontend/src/app/features/admin/admin.component.ts
+  - frontend/src/app/features/admin/match-management/match-management.component.ts
+  - frontend/src/app/features/admin/event-list/event-list.component.html
+  - backend/src/routes/auth.ts
+  - jju-docker-20260313-1347.tar.gz
+  - frontend/src/app/features/match-referee/match-referee.component.ts
+  - backend/src/controllers/authController.ts
+  - frontend/src/app/features/login/login.component.ts
+  - frontend/src/app/features/ne-waza-referee/ne-waza-referee.component.ts
+  - frontend/src/app/app.routes.ts
+  - package-docker.sh
+  - jju-docker-20260313.tar.gz
+  - frontend/src/app/features/admin/match-management/match-management.component.html
+  - backend/src/models/Event.ts
+  - jju-docker-20260313-1428.tar.gz
+  - frontend/src/app/features/admin/judge-management/judge-management.component.ts
+  - frontend/src/app/features/admin/event-list/event-list.component.ts
+  - frontend/src/app/features/admin/admin.component.html
+  - frontend/src/app/features/fighting-referee/fighting-referee.component.ts
+  - frontend/src/app/features/ne-waza-referee/ne-waza-referee.component.html
+  - frontend/src/app/features/admin/judge-management/judge-management.component.html
+  - frontend/src/app/features/admin/admin-sport-selector/admin-sport-selector.component.ts
+  - frontend/src/app/features/match-referee/match-referee.component.html
+  - frontend/src/app/features/admin/admin-sport-selector/admin-sport-selector.component.html
+  - backend/src/controllers/eventController.ts
+  - frontend/src/app/features/audience-sport-selector/audience-sport-selector.component.html
+  - frontend/src/app/features/referee-landing/referee-landing.component.html
+  - frontend/src/app/features/audience-sport-selector/audience-sport-selector.component.ts
+  - frontend/src/app/features/referee-landing/referee-landing.component.ts
+-->
