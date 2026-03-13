@@ -10,17 +10,22 @@ OUTPUT_FILE="jju-docker-${DATE}.tar.gz"
 echo "=== 柔術競賽平台 Docker 打包腳本 ==="
 echo ""
 
+# 重新建構最新映像
+echo "[1/4] 重新建構映像（確保包含最新程式碼）..."
+docker compose up --build -d
+echo "      映像建構完成"
+
 # 建立暫存目錄
 rm -rf "$PACKAGE_DIR"
 mkdir -p "$PACKAGE_DIR"
 
 # 匯出映像
-echo "[1/3] 匯出 Docker 映像（約需 1-2 分鐘）..."
+echo "[2/4] 匯出 Docker 映像（約需 1-2 分鐘）..."
 docker save yilan-jju-frontend yilan-jju-backend mongo:7 | gzip > "$PACKAGE_DIR/images.tar.gz"
 echo "      映像匯出完成"
 
 # 產生部署用 docker-compose.yml（使用 image: 而非 build:）
-echo "[2/3] 產生設定檔..."
+echo "[3/4] 產生設定檔..."
 cat > "$PACKAGE_DIR/docker-compose.yml" << 'EOF'
 services:
   frontend:
@@ -114,7 +119,7 @@ chmod +x "$PACKAGE_DIR/start.sh"
 echo "      設定檔產生完成"
 
 # 壓縮整個目錄
-echo "[3/3] 壓縮打包..."
+echo "[4/4] 壓縮打包..."
 tar -czf "$OUTPUT_FILE" "$PACKAGE_DIR"
 rm -rf "$PACKAGE_DIR"
 
