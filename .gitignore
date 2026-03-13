@@ -10,7 +10,7 @@ coverage/
 
 # Angular build cache
 .angular/
-jju-docker.tar.gz
+*.tar.gz
 GEMINI.md
 .spectra/
 openspec/.vector-search.db*
