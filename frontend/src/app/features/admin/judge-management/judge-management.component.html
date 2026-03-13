@@ -1,0 +1,166 @@
+<div class="min-h-screen p-4 md:p-6">
+  <div class="max-w-3xl mx-auto">
+
+    <!-- 頁首 -->
+    <div class="glass-card px-6 py-3 mb-6 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <button class="glass-btn px-2 py-1.5 text-xs flex items-center gap-1.5 mr-1" (click)="goBack()">
+          <fa-icon [icon]="faArrowLeft" class="text-xs"></fa-icon>
+          返回
+        </button>
+        <span class="text-white font-bold">裁判管理</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button
+          class="primary-btn text-xs flex items-center gap-1.5"
+          (click)="showCreateForm.set(!showCreateForm())">
+          <fa-icon [icon]="faPlus" class="text-xs"></fa-icon>
+          新增帳號
+        </button>
+        <button
+          class="glass-btn px-2 py-1.5 text-xs flex items-center gap-1.5"
+          (click)="loadJudges()">
+          <fa-icon [icon]="faArrowsRotate" class="text-xs"></fa-icon>
+          重新整理
+        </button>
+        <button
+          class="glass-btn px-3 py-1.5 text-sm flex items-center gap-1.5 text-red-400 border-red-400/30 hover:bg-red-500/20"
+          (click)="logout()">
+          <fa-icon [icon]="faRightFromBracket" class="text-xs"></fa-icon>
+          登出
+        </button>
+      </div>
+    </div>
+
+    <!-- 新增帳號表單 -->
+    @if (showCreateForm()) {
+      <div class="glass-card p-5 mb-5 space-y-3 border border-blue-400/30">
+        <h2 class="text-white font-semibold text-sm">新增帳號</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <input
+            type="text"
+            [(ngModel)]="newUserForm.username"
+            placeholder="帳號*"
+            class="bg-white/10 text-white border border-white/30 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400 placeholder:text-white/30" />
+          <input
+            type="password"
+            [(ngModel)]="newUserForm.password"
+            placeholder="密碼*"
+            class="bg-white/10 text-white border border-white/30 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400 placeholder:text-white/30" />
+          <select
+            [(ngModel)]="newUserForm.role"
+            class="bg-white/10 text-white border border-white/30 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400">
+            @for (opt of roleOptions; track opt.value) {
+              <option [value]="opt.value" class="bg-slate-800">{{ opt.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="flex gap-2 pt-1">
+          <button class="primary-btn flex-1 text-sm" (click)="createUser()">確認建立</button>
+          <button class="glass-btn text-sm" (click)="showCreateForm.set(false)">取消</button>
+        </div>
+      </div>
+    }
+
+    <!-- 裁判列表 -->
+    <div class="glass-card overflow-hidden">
+      <div class="px-5 py-3 border-b border-white/10">
+        <h2 class="text-white font-semibold">帳號列表</h2>
+        <p class="text-white/40 text-xs mt-0.5">共 {{ judges().length }} 個帳號</p>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-white/10">
+              <th class="text-left px-4 py-3 text-white/50 text-xs font-medium">帳號</th>
+              <th class="text-left px-4 py-3 text-white/50 text-xs font-medium">角色</th>
+              <th class="text-left px-4 py-3 text-white/50 text-xs font-medium">指派賽事</th>
+              <th class="px-4 py-3"></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (judge of judges(); track judge._id) {
+              <tr class="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                <td class="px-4 py-3">
+                  <span class="text-white font-medium">{{ judge.username }}</span>
+                  @if (judge.judgeNo) {
+                    <span class="ml-1.5 text-white/40 text-xs">#{{ judge.judgeNo }}</span>
+                  }
+                </td>
+                <td class="px-4 py-3">
+                  @if (editingUserId() === judge._id) {
+                    <!-- inline 角色編輯 -->
+                    <div class="flex items-center gap-1.5">
+                      <select
+                        [(ngModel)]="editingRole"
+                        class="bg-white/10 text-white border border-blue-400/60 rounded-lg px-2 py-1 text-xs outline-none focus:border-blue-400">
+                        @for (opt of roleOptions; track opt.value) {
+                          <option [value]="opt.value" class="bg-slate-800">{{ opt.label }}</option>
+                        }
+                      </select>
+                      <button
+                        class="glass-btn text-xs text-green-400 border-green-400/30 hover:bg-green-500/20 px-2 py-1"
+                        (click)="saveEditRole(judge)">
+                        <fa-icon [icon]="faCheck" class="text-xs"></fa-icon>
+                      </button>
+                      <button
+                        class="glass-btn text-xs px-2 py-1"
+                        (click)="cancelEditRole()">
+                        <fa-icon [icon]="faXmark" class="text-xs"></fa-icon>
+                      </button>
+                    </div>
+                  } @else {
+                    <!-- 唯讀角色 badge + 編輯按鈕 -->
+                    <div class="flex items-center gap-1.5">
+                      <span class="text-white/70 text-xs px-2 py-0.5 rounded-full bg-white/10 border border-white/20">
+                        {{ roleLabel(judge.role) }}
+                      </span>
+                      <button
+                        class="text-white/30 hover:text-blue-400 transition-colors"
+                        (click)="startEditRole(judge)"
+                        title="修改角色">
+                        <fa-icon [icon]="faPen" class="text-xs"></fa-icon>
+                      </button>
+                    </div>
+                  }
+                </td>
+                <td class="px-4 py-3">
+                  @if (judge.role !== 'admin' && judge.role !== 'audience') {
+                    <select
+                      class="bg-white/10 text-white border border-white/20 rounded-lg px-2 py-1 text-xs outline-none focus:border-blue-400 max-w-[180px]"
+                      [value]="judge.eventId?._id ?? ''"
+                      (change)="assignJudgeEvent(judge._id, $any($event.target).value)">
+                      <option value="" class="bg-slate-800">— 取消指派 —</option>
+                      @for (event of events(); track event._id) {
+                        <option [value]="event._id" class="bg-slate-800">{{ event.name }}</option>
+                      }
+                    </select>
+                  } @else {
+                    <span class="text-white/30 text-xs">—</span>
+                  }
+                </td>
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-1.5">
+                    <button
+                      class="flex items-center gap-1 text-xs text-yellow-400/80 hover:text-yellow-300 border border-yellow-400/30 hover:border-yellow-300/60 rounded-lg px-2 py-1 transition-colors"
+                      (click)="changePassword(judge)"
+                      title="變更密碼">
+                      <fa-icon [icon]="faKey" class="text-xs"></fa-icon> 改密碼
+                    </button>
+                    <button
+                      class="glass-btn text-xs text-red-400 border-red-400/30 hover:bg-red-500/20 px-2 py-1"
+                      (click)="deleteUser(judge)"
+                      title="刪除帳號">
+                      <fa-icon [icon]="faTrash" class="text-xs"></fa-icon>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>

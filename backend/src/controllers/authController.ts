@@ -130,6 +130,47 @@ export async function assignUserEvent(req: Request, res: Response): Promise<void
   res.json({ success: true, data: user });
 }
 
+// 管理員：更新使用者角色
+export async function updateRole(req: Request, res: Response): Promise<void> {
+  const { userId } = req.params;
+  const { role } = req.body;
+
+  const validRoles = ['scoring_judge', 'vr_judge', 'sequence_judge', 'match_referee', 'admin'];
+  if (!role || !validRoles.includes(role)) {
+    res.status(400).json({ success: false, error: '無效的角色' });
+    return;
+  }
+
+  const user = await User.findByIdAndUpdate(
+    userId,
+    { role },
+    { new: true, select: '-passwordHash' }
+  ).populate('eventId', 'name');
+
+  if (!user) {
+    res.status(404).json({ success: false, error: '使用者不存在' });
+    return;
+  }
+  res.json({ success: true, data: user });
+}
+
+// 管理員：刪除使用者帳號
+export async function deleteUser(req: Request, res: Response): Promise<void> {
+  const { userId } = req.params;
+
+  if (req.user!.userId === userId) {
+    res.status(400).json({ success: false, error: '不可刪除自己的帳號' });
+    return;
+  }
+
+  const user = await User.findByIdAndDelete(userId);
+  if (!user) {
+    res.status(404).json({ success: false, error: '使用者不存在' });
+    return;
+  }
+  res.json({ success: true });
+}
+
 // 裁判選擇賽事：更新 user.eventId 並回傳新 JWT
 export async function selectEvent(req: Request, res: Response): Promise<void> {
   const { eventId } = req.body;

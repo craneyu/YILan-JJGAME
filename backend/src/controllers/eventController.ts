@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
-import Event from "../models/Event";
+import Event, { SportType } from "../models/Event";
+import Match from "../models/Match";
 import GameState from "../models/GameState";
 import CreativeGameState from "../models/CreativeGameState";
 import Team from "../models/Team";
@@ -21,36 +22,35 @@ export async function listEvents(req: Request, res: Response): Promise<void> {
   res.json({ success: true, data: events });
 }
 
+const VALID_SPORTS: SportType[] = ['kata-duo', 'kata-show', 'ne-waza', 'fighting', 'contact'];
+
+function derivedCompetitionTypes(sports: SportType[]): ('Duo' | 'Show')[] {
+  const types: ('Duo' | 'Show')[] = [];
+  if (sports.includes('kata-duo')) types.push('Duo');
+  if (sports.includes('kata-show')) types.push('Show');
+  return types;
+}
+
 export async function createEvent(req: Request, res: Response): Promise<void> {
-  const { name, date, venue, competitionTypes } = req.body;
+  const { name, date, venue, includedSports } = req.body;
   if (!name) {
     res.status(400).json({ success: false, error: "賽事名稱為必填" });
     return;
   }
-  const types: ("Duo" | "Show")[] =
-    Array.isArray(competitionTypes) && competitionTypes.length > 0
-      ? competitionTypes.filter((t: string) => t === "Duo" || t === "Show")
-      : ["Duo"];
-  if (types.length === 0) {
-    res
-      .status(400)
-      .json({
-        success: false,
-        error: "competitionTypes 至少須包含 Duo 或 Show",
-      });
+  const sports: SportType[] = Array.isArray(includedSports)
+    ? includedSports.filter((s: unknown) => VALID_SPORTS.includes(s as SportType))
+    : [];
+  if (sports.length === 0) {
+    res.status(400).json({ success: false, error: "請至少選擇一個運動項目" });
     return;
   }
-  const event = await Event.create({
-    name,
-    date,
-    venue,
-    competitionTypes: types,
-  });
+  const competitionTypes = derivedCompetitionTypes(sports);
+  const event = await Event.create({ name, date, venue, includedSports: sports, competitionTypes });
   // 根據啟用的競賽類型分別初始化賽程狀態
   const inits: Promise<unknown>[] = [];
-  if (types.includes("Duo"))
+  if (competitionTypes.includes("Duo"))
     inits.push(GameState.create({ eventId: event._id }));
-  if (types.includes("Show"))
+  if (competitionTypes.includes("Show"))
     inits.push(CreativeGameState.create({ eventId: event._id }));
   await Promise.all(inits);
   res.status(201).json({ success: true, data: event });
@@ -66,21 +66,66 @@ export async function getEvent(req: Request, res: Response): Promise<void> {
 }
 
 export async function updateEvent(req: Request, res: Response): Promise<void> {
-  const { status, name, date, venue } = req.body;
-  const event = await Event.findByIdAndUpdate(
-    req.params.id,
-    {
-      ...(status && { status }),
-      ...(name && { name }),
-      ...(date && { date }),
-      ...(venue && { venue }),
-    },
-    { new: true },
-  );
-  if (!event) {
+  const { status, name, date, venue, includedSports } = req.body;
+  const eventId = req.params.id as string;
+  const existing = await Event.findById(eventId);
+  if (!existing) {
     res.status(404).json({ success: false, error: "賽事不存在" });
     return;
   }
+
+  // 若有異動 includedSports，檢查是否嘗試移除有資料的項目
+  if (Array.isArray(includedSports)) {
+    const newSports = includedSports.filter((s: unknown) => VALID_SPORTS.includes(s as SportType)) as SportType[];
+    if (newSports.length === 0) {
+      res.status(400).json({ success: false, error: "請至少保留一個運動項目" });
+      return;
+    }
+    const removedSports = (existing.includedSports as SportType[]).filter(s => !newSports.includes(s));
+    for (const sport of removedSports) {
+      if (sport === 'kata-duo' || sport === 'kata-show') {
+        const type = sport === 'kata-duo' ? 'Duo' : 'Show';
+        const count = await Team.countDocuments({ eventId, competitionType: type });
+        if (count > 0) {
+          res.status(400).json({ success: false, error: `${sport === 'kata-duo' ? '雙人演武' : '創意演武'} 已有 ${count} 支隊伍資料，無法移除` });
+          return;
+        }
+      } else {
+        const count = await Match.countDocuments({ eventId, matchType: sport });
+        if (count > 0) {
+          const labels: Record<string, string> = { 'ne-waza': '寢技', 'fighting': '對打', 'contact': '格鬥' };
+          res.status(400).json({ success: false, error: `${labels[sport]} 已有 ${count} 筆場次資料，無法移除` });
+          return;
+        }
+      }
+    }
+    const competitionTypes = derivedCompetitionTypes(newSports);
+    const event = await Event.findByIdAndUpdate(
+      eventId,
+      {
+        ...(status && { status }),
+        ...(name && { name }),
+        ...(date !== undefined && { date }),
+        ...(venue !== undefined && { venue }),
+        includedSports: newSports,
+        competitionTypes,
+      },
+      { new: true },
+    );
+    res.json({ success: true, data: event });
+    return;
+  }
+
+  const event = await Event.findByIdAndUpdate(
+    eventId,
+    {
+      ...(status && { status }),
+      ...(name && { name }),
+      ...(date !== undefined && { date }),
+      ...(venue !== undefined && { venue }),
+    },
+    { new: true },
+  );
   res.json({ success: true, data: event });
 }
 

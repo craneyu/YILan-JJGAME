@@ -1,0 +1,182 @@
+<div class="min-h-screen flex flex-col items-center pt-12 pb-8 px-6">
+  <div class="w-full max-w-2xl">
+
+    <!-- 頁首 -->
+    <div class="flex items-start justify-between mb-8">
+      <div>
+        <h1 class="text-3xl font-bold text-white mb-1">賽會管理</h1>
+        <p class="text-white/50 text-sm">選擇賽會進入管理，或建立新賽會</p>
+      </div>
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <button
+          class="primary-btn text-sm flex items-center gap-1.5"
+          (click)="showCreateForm.set(!showCreateForm())">
+          <fa-icon [icon]="faPlus" class="text-xs"></fa-icon>
+          建立賽會
+        </button>
+        <button
+          class="glass-btn px-3 py-2 text-sm flex items-center gap-1.5"
+          (click)="navigateToJudges()">
+          <fa-icon [icon]="faUserTie" class="text-xs"></fa-icon>
+          裁判管理
+        </button>
+        <button
+          class="glass-btn px-3 py-2 text-sm flex items-center gap-1.5 text-red-400 border-red-400/30 hover:bg-red-500/20"
+          (click)="logout()">
+          <fa-icon [icon]="faRightFromBracket" class="text-xs"></fa-icon>
+          登出
+        </button>
+      </div>
+    </div>
+
+    <!-- 建立賽會表單 -->
+    @if (showCreateForm()) {
+      <div class="glass-card p-5 mb-6 space-y-3">
+        <h2 class="text-white font-semibold mb-1">建立新賽會</h2>
+        <input
+          type="text"
+          [(ngModel)]="newEvent.name"
+          placeholder="賽事名稱*"
+          class="w-full bg-white/10 text-white border border-white/30 rounded-lg px-3 py-2 outline-none focus:border-blue-400 placeholder:text-white/30" />
+        <input
+          type="date"
+          [(ngModel)]="newEvent.date"
+          class="w-full bg-white/10 text-white border border-white/30 rounded-lg px-3 py-2 outline-none focus:border-blue-400" />
+        <input
+          type="text"
+          [(ngModel)]="newEvent.venue"
+          placeholder="場地"
+          class="w-full bg-white/10 text-white border border-white/30 rounded-lg px-3 py-2 outline-none focus:border-blue-400 placeholder:text-white/30" />
+        <div>
+          <p class="text-white/50 text-xs mb-2">運動項目（可複選，至少選一）</p>
+          <div class="grid grid-cols-3 gap-2 sm:grid-cols-5">
+            @for (opt of sportOptions; track opt.value) {
+              <button
+                type="button"
+                class="py-2 px-1 rounded-lg text-xs font-medium border transition-all text-center"
+                [class]="newEventSports().includes(opt.value)
+                  ? 'bg-blue-500/30 border-blue-400/60 text-blue-200'
+                  : 'bg-white/5 border-white/20 text-white/50 hover:bg-white/10'"
+                (click)="toggleNewSport(opt.value)">
+                {{ newEventSports().includes(opt.value) ? '☑' : '☐' }} {{ opt.label }}
+              </button>
+            }
+          </div>
+        </div>
+        <div class="flex gap-2 pt-1">
+          <button class="primary-btn flex-1" (click)="createEvent()">確認建立</button>
+          <button class="glass-btn" (click)="showCreateForm.set(false)">取消</button>
+        </div>
+      </div>
+    }
+
+    <!-- 賽會列表：空狀態 -->
+    @if (events().length === 0) {
+      <div class="glass-card p-8 text-center">
+        <p class="text-white/40">尚無賽事，請點擊「建立賽會」新增</p>
+      </div>
+    } @else {
+      <div class="space-y-3">
+        @for (event of events(); track event._id) {
+          @if (editingEventId() === event._id) {
+            <!-- Inline 編輯模式 -->
+            <div class="glass-card p-4 space-y-3 border border-blue-400/30">
+              <input
+                type="text"
+                [(ngModel)]="editEventForm.name"
+                placeholder="賽事名稱*"
+                class="w-full bg-white/10 text-white border border-white/30 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400 placeholder:text-white/30" />
+              <div class="grid grid-cols-2 gap-2">
+                <input
+                  type="date"
+                  [(ngModel)]="editEventForm.date"
+                  class="bg-white/10 text-white border border-white/30 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400" />
+                <input
+                  type="text"
+                  [(ngModel)]="editEventForm.venue"
+                  placeholder="場地"
+                  class="bg-white/10 text-white border border-white/30 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400 placeholder:text-white/30" />
+              </div>
+              <select
+                [(ngModel)]="editEventForm.status"
+                class="w-full bg-white/10 text-white border border-white/30 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400">
+                <option value="pending" class="bg-slate-800">待開始</option>
+                <option value="active" class="bg-slate-800">進行中</option>
+                <option value="closed" class="bg-slate-800">已結束</option>
+              </select>
+              <!-- 運動項目選擇 -->
+              <div>
+                <p class="text-white/50 text-xs mb-2">運動項目（有資料的項目無法移除）</p>
+                <div class="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                  @for (opt of sportOptions; track opt.value) {
+                    <button
+                      type="button"
+                      class="py-2 px-1 rounded-lg text-xs font-medium border transition-all text-center"
+                      [class]="editEventSports().includes(opt.value)
+                        ? 'bg-blue-500/30 border-blue-400/60 text-blue-200'
+                        : 'bg-white/5 border-white/20 text-white/50 hover:bg-white/10'"
+                      (click)="toggleEditSport(opt.value)">
+                      {{ editEventSports().includes(opt.value) ? '☑' : '☐' }} {{ opt.label }}
+                    </button>
+                  }
+                </div>
+              </div>
+              <div class="flex gap-2">
+                <button class="primary-btn flex-1 flex items-center justify-center gap-1.5 text-sm" (click)="saveEditEvent(event)">
+                  <fa-icon [icon]="faCheck" class="text-xs"></fa-icon> 儲存
+                </button>
+                <button class="glass-btn text-sm" (click)="cancelEditEvent()">
+                  <fa-icon [icon]="faXmark" class="text-xs"></fa-icon> 取消
+                </button>
+              </div>
+            </div>
+          } @else {
+            <!-- 顯示模式 -->
+            <div class="glass-card p-4 flex items-center gap-4">
+              <div class="flex-1 min-w-0">
+                <h3 class="text-white font-semibold truncate">{{ event.name }}</h3>
+                <div class="flex items-center gap-2 mt-1 flex-wrap">
+                  @if (event.date) {
+                    <span class="text-white/50 text-xs">{{ event.date | date:'yyyy/MM/dd' }}</span>
+                  }
+                  @if (event.venue) {
+                    <span class="text-white/40 text-xs">{{ event.venue }}</span>
+                  }
+                  @for (sport of (event.includedSports ?? []); track sport) {
+                    <span class="text-xs px-1.5 py-0.5 rounded-full border bg-white/10 border-white/20 text-white/70">
+                      {{ getSportLabel(sport) }}
+                    </span>
+                  }
+                  <span
+                    class="text-xs px-1.5 py-0.5 rounded-full border"
+                    [class]="event.status === 'active' ? 'bg-green-500/20 border-green-400/30 text-green-300' : event.status === 'closed' ? 'bg-white/10 border-white/20 text-white/40' : 'bg-yellow-500/20 border-yellow-400/30 text-yellow-300'">
+                    {{ event.status === 'active' ? '進行中' : event.status === 'closed' ? '已結束' : '待開始' }}
+                  </span>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 flex-shrink-0">
+                <button
+                  class="primary-btn text-sm flex items-center gap-1.5"
+                  (click)="enterEvent(event)">
+                  <fa-icon [icon]="faArrowRight" class="text-xs"></fa-icon>
+                  管理
+                </button>
+                <button
+                  class="glass-btn text-sm text-blue-400 border-blue-400/30 hover:bg-blue-500/20 px-2.5 py-2"
+                  (click)="startEditEvent(event)">
+                  <fa-icon [icon]="faPen" class="text-xs"></fa-icon>
+                </button>
+                <button
+                  class="glass-btn text-sm text-red-400 border-red-400/30 hover:bg-red-500/20 px-2.5 py-2"
+                  (click)="deleteEvent(event)">
+                  <fa-icon [icon]="faTrash" class="text-xs"></fa-icon>
+                </button>
+              </div>
+            </div>
+          }
+        }
+      </div>
+    }
+
+  </div>
+</div>

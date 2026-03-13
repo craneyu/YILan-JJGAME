@@ -1,18 +1,19 @@
 <div class="min-h-screen flex flex-col items-center justify-center p-6">
   <div class="w-full max-w-2xl">
 
-    <div class="text-center mb-10">
-      <h1 class="text-3xl font-bold text-white mb-2">觀眾計分板</h1>
-      <p class="text-white/60">請選擇觀看項目</p>
-    </div>
-
     <!-- 載入中 -->
     @if (loading()) {
+      <div class="text-center mb-10">
+        <h1 class="text-3xl font-bold text-white mb-2">觀眾計分板</h1>
+      </div>
       <div class="text-center text-white/40 py-12">載入中...</div>
     }
 
     <!-- 無進行中賽事 -->
     @if (!loading() && !activeEvent()) {
+      <div class="text-center mb-10">
+        <h1 class="text-3xl font-bold text-white mb-2">觀眾計分板</h1>
+      </div>
       <div class="glass-card p-8 text-center">
         <fa-icon [icon]="faCircleExclamation" class="text-white/40 text-4xl mb-4 block" />
         <p class="text-white/60 text-lg">尚無進行中賽事，請稍後再試</p>
@@ -21,91 +22,102 @@
 
     <!-- 運動項目選擇 -->
     @if (!loading() && activeEvent()) {
-      <div class="mb-4 text-center text-white/50 text-sm">
-        {{ activeEvent()!.name }}
+      <div class="mb-8 text-center">
+        <h2 class="text-3xl font-bold text-white mb-1">{{ activeEvent()!.name }}</h2>
+        <p class="text-white/50 text-base">觀眾計分板</p>
       </div>
       <div class="grid grid-cols-2 gap-4">
 
         <!-- 演武 -->
-        <button
-          class="glass-card p-6 text-left transition-all cursor-pointer border-2 border-transparent hover:bg-white/20 hover:border-blue-400/50 col-span-2"
-          (click)="navigateTo('kata')">
-          <div class="flex items-center gap-4">
-            <div class="w-14 h-14 rounded-xl bg-blue-500/30 flex items-center justify-center flex-shrink-0">
-              <fa-icon [icon]="faUsers" class="text-blue-400 text-2xl" />
-            </div>
-            <div>
-              <div class="flex items-center gap-2 mb-1">
-                <h2 class="text-white font-bold text-xl">演武</h2>
-                <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-500/30 text-blue-300 border border-blue-400/40">Duo</span>
+        @if (hasSport('kata-duo')) {
+          <button
+            class="glass-card p-6 text-left transition-all cursor-pointer border-2 border-transparent hover:bg-white/20 hover:border-blue-400/50 col-span-2"
+            (click)="navigateTo('kata')">
+            <div class="flex items-center gap-4">
+              <div class="w-14 h-14 rounded-xl bg-blue-500/30 flex items-center justify-center flex-shrink-0">
+                <fa-icon [icon]="faUsers" class="text-blue-400 text-2xl" />
               </div>
-              <p class="text-white/60 text-sm">雙人演武即時計分與排名</p>
+              <div>
+                <div class="flex items-center gap-2 mb-1">
+                  <h2 class="text-white font-bold text-xl">演武</h2>
+                  <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-500/30 text-blue-300 border border-blue-400/40">Duo</span>
+                </div>
+                <p class="text-white/60 text-sm">雙人演武即時計分與排名</p>
+              </div>
             </div>
-          </div>
-        </button>
+          </button>
+        }
 
         <!-- 創意演武 -->
-        <button
-          class="glass-card p-6 text-left transition-all cursor-pointer border-2 border-transparent hover:bg-white/20 hover:border-purple-400/50 col-span-2"
-          (click)="navigateTo('creative')">
-          <div class="flex items-center gap-4">
-            <div class="w-14 h-14 rounded-xl bg-purple-500/30 flex items-center justify-center flex-shrink-0">
-              <fa-icon [icon]="faStar" class="text-purple-400 text-2xl" />
-            </div>
-            <div>
-              <div class="flex items-center gap-2 mb-1">
-                <h2 class="text-white font-bold text-xl">創意演武</h2>
-                <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-500/30 text-purple-300 border border-purple-400/40">Show</span>
+        @if (hasSport('kata-show')) {
+          <button
+            class="glass-card p-6 text-left transition-all cursor-pointer border-2 border-transparent hover:bg-white/20 hover:border-purple-400/50 col-span-2"
+            (click)="navigateTo('creative')">
+            <div class="flex items-center gap-4">
+              <div class="w-14 h-14 rounded-xl bg-purple-500/30 flex items-center justify-center flex-shrink-0">
+                <fa-icon [icon]="faStar" class="text-purple-400 text-2xl" />
               </div>
-              <p class="text-white/60 text-sm">創意演武即時計分與排名</p>
+              <div>
+                <div class="flex items-center gap-2 mb-1">
+                  <h2 class="text-white font-bold text-xl">創意演武</h2>
+                  <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-500/30 text-purple-300 border border-purple-400/40">Show</span>
+                </div>
+                <p class="text-white/60 text-sm">創意演武即時計分與排名</p>
+              </div>
             </div>
-          </div>
-        </button>
+          </button>
+        }
 
         <!-- 寢技 -->
-        <button
-          class="glass-card p-6 text-left transition-all cursor-pointer border-2 border-transparent hover:bg-white/20 hover:border-green-400/50"
-          (click)="navigateTo('ne-waza')">
-          <div class="flex items-center gap-4">
-            <div class="w-12 h-12 rounded-xl bg-green-500/30 flex items-center justify-center flex-shrink-0">
-              <fa-icon [icon]="faShield" class="text-green-400 text-xl" />
+        @if (hasSport('ne-waza')) {
+          <button
+            [class]="'glass-card p-6 text-left transition-all cursor-pointer border-2 border-transparent hover:bg-white/20 hover:border-green-400/50' + (bothHalfSports() ? '' : ' col-span-2')"
+            (click)="navigateTo('ne-waza')">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-xl bg-green-500/30 flex items-center justify-center flex-shrink-0">
+                <fa-icon [icon]="faShield" class="text-green-400 text-xl" />
+              </div>
+              <div>
+                <h2 class="text-white font-bold text-lg mb-0.5">寢技</h2>
+                <p class="text-white/50 text-xs">Ne-Waza · 6分鐘</p>
+              </div>
             </div>
-            <div>
-              <h2 class="text-white font-bold text-lg mb-0.5">寢技</h2>
-              <p class="text-white/50 text-xs">Ne-Waza · 6分鐘</p>
-            </div>
-          </div>
-        </button>
+          </button>
+        }
 
         <!-- 對打 -->
-        <button
-          class="glass-card p-6 text-left transition-all cursor-pointer border-2 border-transparent hover:bg-white/20 hover:border-yellow-400/50"
-          (click)="navigateTo('fighting')">
-          <div class="flex items-center gap-4">
-            <div class="w-12 h-12 rounded-xl bg-yellow-500/30 flex items-center justify-center flex-shrink-0">
-              <fa-icon [icon]="faBolt" class="text-yellow-400 text-xl" />
+        @if (hasSport('fighting')) {
+          <button
+            [class]="'glass-card p-6 text-left transition-all cursor-pointer border-2 border-transparent hover:bg-white/20 hover:border-yellow-400/50' + (bothHalfSports() ? '' : ' col-span-2')"
+            (click)="navigateTo('fighting')">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-xl bg-yellow-500/30 flex items-center justify-center flex-shrink-0">
+                <fa-icon [icon]="faBolt" class="text-yellow-400 text-xl" />
+              </div>
+              <div>
+                <h2 class="text-white font-bold text-lg mb-0.5">對打</h2>
+                <p class="text-white/50 text-xs">Fighting · 3分鐘</p>
+              </div>
             </div>
-            <div>
-              <h2 class="text-white font-bold text-lg mb-0.5">對打</h2>
-              <p class="text-white/50 text-xs">Fighting · 3分鐘</p>
-            </div>
-          </div>
-        </button>
+          </button>
+        }
 
         <!-- 格鬥 -->
-        <button
-          class="glass-card p-6 text-left transition-all cursor-pointer border-2 border-transparent hover:bg-white/20 hover:border-red-400/50 col-span-2"
-          (click)="navigateTo('contact')">
-          <div class="flex items-center gap-4">
-            <div class="w-12 h-12 rounded-xl bg-red-500/30 flex items-center justify-center flex-shrink-0">
-              <fa-icon [icon]="faDragon" class="text-red-400 text-xl" />
+        @if (hasSport('contact')) {
+          <button
+            class="glass-card p-6 text-left transition-all cursor-pointer border-2 border-transparent hover:bg-white/20 hover:border-red-400/50 col-span-2"
+            (click)="navigateTo('contact')">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-xl bg-red-500/30 flex items-center justify-center flex-shrink-0">
+                <fa-icon [icon]="faDragon" class="text-red-400 text-xl" />
+              </div>
+              <div>
+                <h2 class="text-white font-bold text-lg mb-0.5">格鬥</h2>
+                <p class="text-white/50 text-xs">Contact · 預賽2分鐘 / 決賽3分鐘</p>
+              </div>
             </div>
-            <div>
-              <h2 class="text-white font-bold text-lg mb-0.5">格鬥</h2>
-              <p class="text-white/50 text-xs">Contact · 預賽2分鐘 / 決賽3分鐘</p>
-            </div>
-          </div>
-        </button>
+          </button>
+        }
 
       </div>
     }

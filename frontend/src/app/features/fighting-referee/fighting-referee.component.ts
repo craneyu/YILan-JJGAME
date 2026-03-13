@@ -986,7 +986,7 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
   }
 
   backToSportSelect(): void {
-    this.router.navigate(["/match-referee"]);
+    this.router.navigate(["/referee"]);
   }
 
   toggleFullscreen(): void {

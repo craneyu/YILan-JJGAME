@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { login, register, registerInitial, selectEvent, listJudges, assignUserEvent, changePassword } from '../controllers/authController';
+import { login, register, registerInitial, selectEvent, listJudges, assignUserEvent, changePassword, updateRole, deleteUser } from '../controllers/authController';
 import { verifyToken, requireRole } from '../middleware/auth';
 
 const router = Router();
@@ -13,5 +13,7 @@ router.post('/select-event', verifyToken, selectEvent);
 router.get('/users', verifyToken, requireRole('admin'), listJudges);
 router.patch('/users/:userId/event', verifyToken, requireRole('admin'), assignUserEvent);
 router.patch('/users/:userId/password', verifyToken, requireRole('admin'), changePassword);
+router.patch('/users/:userId/role', verifyToken, requireRole('admin'), updateRole);
+router.delete('/users/:userId', verifyToken, requireRole('admin'), deleteUser);
 
 export default router;

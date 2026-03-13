@@ -18,10 +18,13 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { ApiService } from '../../core/services/api.service';
 
+type SportType = 'kata-duo' | 'kata-show' | 'ne-waza' | 'fighting' | 'contact';
+
 interface EventItem {
   _id: string;
   name: string;
   status: string;
+  includedSports?: SportType[];
 }
 
 @Component({
@@ -65,6 +68,16 @@ export class AudienceSportSelectorComponent implements OnInit {
         error: () => this.loading.set(false),
       });
     }
+  }
+
+  hasSport(sport: SportType): boolean {
+    const sports = this.activeEvent()?.includedSports;
+    if (!sports || sports.length === 0) return true;
+    return sports.includes(sport);
+  }
+
+  bothHalfSports(): boolean {
+    return this.hasSport('ne-waza') && this.hasSport('fighting');
   }
 
   go(path: string, queryParams: Record<string, string> = {}): void {

@@ -1,0 +1,92 @@
+<div class="min-h-screen flex flex-col items-center pt-12 pb-8 px-6">
+  <div class="w-full max-w-md">
+
+    <!-- 頁首 -->
+    <div class="flex items-start justify-between mb-8">
+      <div>
+        @if (!loading() && event()) {
+          <h1 class="text-2xl font-bold text-white mb-1">{{ event()!.name }}</h1>
+        } @else {
+          <h1 class="text-2xl font-bold text-white mb-1">裁判作業台</h1>
+        }
+        <p class="text-white/50 text-sm">請選擇要執行的項目</p>
+      </div>
+      <button
+        class="glass-btn px-3 py-2 text-sm flex items-center gap-1.5 text-red-400 border-red-400/30 hover:bg-red-500/20 flex-shrink-0"
+        (click)="logout()">
+        <fa-icon [icon]="faRightFromBracket" class="text-xs"></fa-icon>
+        登出
+      </button>
+    </div>
+
+    <!-- 載入中 -->
+    @if (loading()) {
+      <div class="text-center text-white/40 py-12">載入中...</div>
+    }
+
+    <!-- 未指派賽事 -->
+    @if (!loading() && noEventAssigned()) {
+      <div class="glass-card p-8 text-center">
+        <fa-icon [icon]="faCircleExclamation" class="text-yellow-400 text-4xl mb-4 block" />
+        <p class="text-white font-semibold mb-1">尚未指派賽事</p>
+        <p class="text-white/50 text-sm">請聯繫管理員指派賽事後再登入</p>
+      </div>
+    }
+
+    <!-- 項目卡片 -->
+    @if (!loading() && !noEventAssigned()) {
+      <div class="space-y-3">
+
+        @if (hasSport('ne-waza')) {
+          <button
+            class="glass-card w-full p-5 text-left transition-all cursor-pointer border-2 border-transparent hover:bg-white/20 hover:border-green-400/50"
+            (click)="navigateTo('/ne-waza-referee')">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-xl bg-green-500/30 flex items-center justify-center flex-shrink-0">
+                <fa-icon [icon]="faShield" class="text-green-400 text-xl" />
+              </div>
+              <div>
+                <h2 class="text-white font-bold text-lg mb-0.5">寢技</h2>
+                <p class="text-white/50 text-xs">Ne-Waza 裁判作業台</p>
+              </div>
+            </div>
+          </button>
+        }
+
+        @if (hasSport('fighting')) {
+          <button
+            class="glass-card w-full p-5 text-left transition-all cursor-pointer border-2 border-transparent hover:bg-white/20 hover:border-yellow-400/50"
+            (click)="navigateTo('/fighting-referee')">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-xl bg-yellow-500/30 flex items-center justify-center flex-shrink-0">
+                <fa-icon [icon]="faBolt" class="text-yellow-400 text-xl" />
+              </div>
+              <div>
+                <h2 class="text-white font-bold text-lg mb-0.5">對打</h2>
+                <p class="text-white/50 text-xs">Fighting 裁判作業台</p>
+              </div>
+            </div>
+          </button>
+        }
+
+        @if (hasSport('contact')) {
+          <button
+            class="glass-card w-full p-5 text-left transition-all cursor-pointer border-2 border-transparent hover:bg-white/20 hover:border-red-400/50"
+            (click)="navigateTo('/contact-referee')">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-xl bg-red-500/30 flex items-center justify-center flex-shrink-0">
+                <fa-icon [icon]="faDragon" class="text-red-400 text-xl" />
+              </div>
+              <div>
+                <h2 class="text-white font-bold text-lg mb-0.5">格鬥</h2>
+                <p class="text-white/50 text-xs">Contact 裁判作業台</p>
+              </div>
+            </div>
+          </button>
+        }
+
+      </div>
+    }
+
+  </div>
+</div>

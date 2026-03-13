@@ -9,7 +9,7 @@
       </button>
       <div class="flex-1">
         <h1 class="text-xl font-bold text-white">{{ typeLabel() }} 賽程管理</h1>
-        <p class="text-white/50 text-xs">{{ selectedEvent()?.name ?? '未選擇賽事' }}</p>
+        <p class="text-white/50 text-xs">{{ currentEvent()?.name ?? '載入中…' }}</p>
       </div>
       <button class="glass-btn px-3 py-2 text-sm flex items-center gap-1.5 text-red-400 border-red-400/30 hover:bg-red-500/20" (click)="logout()">
         <fa-icon [icon]="faRightFromBracket" class="text-xs"></fa-icon>
@@ -20,66 +20,47 @@
     <!-- 隱藏的 file input，永遠在 DOM 中 -->
     <input #fileInput type="file" accept=".xlsx,.csv" class="hidden" (change)="onFileInputChange($event)" />
 
-    <!-- 賽事選擇 + 操作列 -->
+    <!-- 操作列 -->
     <div class="glass-card p-4 mb-4 flex flex-wrap gap-3 items-center">
-      <select
-        [ngModel]="selectedEventId()"
-        (ngModelChange)="selectedEventId.set($event); onEventChange()"
-        class="bg-white/10 text-white border border-white/30 rounded-lg px-3 py-2 outline-none focus:border-blue-400 min-w-48">
-        <option value="" class="bg-slate-800">請選擇賽事</option>
-        @for (ev of events(); track ev._id) {
-          <option [value]="ev._id" class="bg-slate-800">{{ ev.name }}</option>
-        }
-      </select>
+      <button class="glass-btn text-sm flex items-center gap-1.5" (click)="downloadTemplate()">
+        <fa-icon [icon]="faDownload" class="text-xs"></fa-icon>
+        下載範本
+      </button>
 
-      @if (selectedEventId()) {
-        <button class="glass-btn text-sm flex items-center gap-1.5" (click)="downloadTemplate()">
-          <fa-icon [icon]="faDownload" class="text-xs"></fa-icon>
-          下載範本
-        </button>
-
-        @if (matches().length > 0) {
-          <div class="ml-auto flex items-center gap-2 flex-wrap">
-            @if (selectedMatchIds().size > 0) {
-              <button
-                class="glass-btn text-sm flex items-center gap-1.5 text-orange-400 border-orange-400/30 hover:bg-orange-500/20"
-                (click)="clearSelectedScores()">
-                <fa-icon [icon]="faTrash" class="text-xs"></fa-icon>
-                清除所選成績（{{ selectedMatchIds().size }} 筆）
-              </button>
-            }
+      @if (matches().length > 0) {
+        <div class="ml-auto flex items-center gap-2 flex-wrap">
+          @if (selectedMatchIds().size > 0) {
             <button
-              class="glass-btn text-sm flex items-center gap-1.5 text-yellow-400 border-yellow-400/30 hover:bg-yellow-500/20"
-              (click)="clearCompletedScores()">
+              class="glass-btn text-sm flex items-center gap-1.5 text-orange-400 border-orange-400/30 hover:bg-orange-500/20"
+              (click)="clearSelectedScores()">
               <fa-icon [icon]="faTrash" class="text-xs"></fa-icon>
-              清除已完成成績
+              清除所選成績（{{ selectedMatchIds().size }} 筆）
             </button>
-            <button
-              class="glass-btn text-sm flex items-center gap-1.5 text-red-400 border-red-400/30 hover:bg-red-500/20"
-              (click)="clearAllScores()">
-              <fa-icon [icon]="faTrash" class="text-xs"></fa-icon>
-              清除全部成績
-            </button>
-            <button
-              class="glass-btn text-sm flex items-center gap-1.5 text-red-400 border-red-400/30 hover:bg-red-500/20"
-              (click)="clearAll()">
-              <fa-icon [icon]="faTrashAlt" class="text-xs"></fa-icon>
-              清空全部
-            </button>
-          </div>
-        }
+          }
+          <button
+            class="glass-btn text-sm flex items-center gap-1.5 text-yellow-400 border-yellow-400/30 hover:bg-yellow-500/20"
+            (click)="clearCompletedScores()">
+            <fa-icon [icon]="faTrash" class="text-xs"></fa-icon>
+            清除已完成成績
+          </button>
+          <button
+            class="glass-btn text-sm flex items-center gap-1.5 text-red-400 border-red-400/30 hover:bg-red-500/20"
+            (click)="clearAllScores()">
+            <fa-icon [icon]="faTrash" class="text-xs"></fa-icon>
+            清除全部成績
+          </button>
+          <button
+            class="glass-btn text-sm flex items-center gap-1.5 text-red-400 border-red-400/30 hover:bg-red-500/20"
+            (click)="clearAll()">
+            <fa-icon [icon]="faTrashAlt" class="text-xs"></fa-icon>
+            清空全部
+          </button>
+        </div>
       }
     </div>
 
-    <!-- 無賽事選擇 -->
-    @if (!selectedEventId()) {
-      <div class="glass-card p-8 text-center">
-        <p class="text-white/40">請先選擇賽事以查看賽程資料</p>
-      </div>
-    }
-
     <!-- 拖曳匯入區域 -->
-    @if (selectedEventId() && !loading()) {
+    @if (!loading() && !loading()) {
       <div
         class="glass-card mb-4 p-6 border-2 border-dashed transition-all duration-200 cursor-pointer select-none"
         [class.border-blue-400]="isDragOver()"
@@ -106,14 +87,14 @@
     }
 
     <!-- 載入中 -->
-    @if (selectedEventId() && loading()) {
+    @if (loading()) {
       <div class="glass-card p-8 text-center">
         <p class="text-white/60">載入中...</p>
       </div>
     }
 
     <!-- 無資料提示 -->
-    @if (selectedEventId() && !loading() && matches().length === 0) {
+    @if (!loading() && matches().length === 0) {
       <div class="glass-card p-4 text-center">
         <p class="text-white/30 text-xs">尚無賽程資料</p>
       </div>

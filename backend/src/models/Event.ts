@@ -1,5 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
+export type SportType = 'kata-duo' | 'kata-show' | 'ne-waza' | 'fighting' | 'contact';
+
 export interface IEvent extends Document {
   name: string;
   date?: Date;
@@ -10,6 +12,7 @@ export interface IEvent extends Document {
   categoryOrderDuo: string[];
   categoryOrderShow: string[];
   competitionTypes: ('Duo' | 'Show')[];
+  includedSports: SportType[];
   createdAt: Date;
 }
 
@@ -31,6 +34,11 @@ const EventSchema = new Schema<IEvent>(
       type: [String],
       enum: ['Duo', 'Show'],
       default: ['Duo'],
+    },
+    includedSports: {
+      type: [String],
+      enum: ['kata-duo', 'kata-show', 'ne-waza', 'fighting', 'contact'],
+      default: [],
     },
   },
   { timestamps: true }

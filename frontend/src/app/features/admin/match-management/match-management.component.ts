@@ -35,6 +35,8 @@ interface EventItem {
   _id: string;
   name: string;
   status: string;
+  date?: string;
+  venue?: string;
 }
 
 interface GroupedMatches {
@@ -83,8 +85,8 @@ export class MatchManagementComponent implements OnInit {
   faRightFromBracket = faRightFromBracket;
 
   matchType = signal<string>("");
-  events = signal<EventItem[]>([]);
-  selectedEventId = signal<string>("");
+  currentEvent = signal<EventItem | null>(null);
+  private eventId = "";
   matches = signal<Match[]>([]);
   loading = signal(false);
   importLoading = signal(false);
@@ -93,10 +95,6 @@ export class MatchManagementComponent implements OnInit {
   selectedMatchIds = signal<Set<string>>(new Set());
 
   typeLabel = computed(() => TYPE_LABEL[this.matchType()] ?? this.matchType());
-
-  selectedEvent = computed(() =>
-    this.events().find((e) => e._id === this.selectedEventId()),
-  );
 
   allSelected = computed(() => {
     const all = this.matches();
@@ -124,19 +122,11 @@ export class MatchManagementComponent implements OnInit {
   ngOnInit(): void {
     const type = this.route.snapshot.params["matchType"] as string;
     this.matchType.set(type);
-    this.loadEvents();
-  }
-
-  private loadEvents(): void {
-    this.api.get<{ success: boolean; data: EventItem[] }>("/events").subscribe({
-      next: (res) => this.events.set(res.data.filter((e) => e.status !== "closed")),
+    this.eventId = this.route.snapshot.params["eventId"] as string;
+    this.api.get<{ success: boolean; data: EventItem }>(`/events/${this.eventId}`).subscribe({
+      next: (res) => this.currentEvent.set(res.data),
     });
-  }
-
-  onEventChange(): void {
-    const id = this.selectedEventId();
-    if (!id) { this.matches.set([]); return; }
-    this.loadMatches(id);
+    this.loadMatches(this.eventId);
   }
 
   private loadMatches(eventId: string): void {
@@ -281,7 +271,7 @@ export class MatchManagementComponent implements OnInit {
   saveEdit(m: Match): void {
     const s = this.editState();
     if (!s || s.matchId !== m._id) return;
-    const eventId = this.selectedEventId();
+    const eventId = this.eventId;
     this.api
       .patch<{ success: boolean; data: Match }>(
         `/events/${eventId}/matches/${m._id}`,
@@ -314,9 +304,8 @@ export class MatchManagementComponent implements OnInit {
       color: "#fff",
     });
     if (!result.isConfirmed) return;
-    const eventId = this.selectedEventId();
     this.api
-      .delete<{ success: boolean }>(`/events/${eventId}/matches/${m._id}`)
+      .delete<{ success: boolean }>(`/events/${this.eventId}/matches/${m._id}`)
       .subscribe({
         next: () => {
           this.matches.set(this.matches().filter((x) => x._id !== m._id));
@@ -340,10 +329,9 @@ export class MatchManagementComponent implements OnInit {
       color: "#fff",
     });
     if (!result.isConfirmed) return;
-    const eventId = this.selectedEventId();
     this.api
       .delete<{ success: boolean; deleted: number }>(
-        `/events/${eventId}/matches?matchType=${this.matchType()}`,
+        `/events/${this.eventId}/matches?matchType=${this.matchType()}`,
       )
       .subscribe({
         next: (res) => {
@@ -392,7 +380,7 @@ export class MatchManagementComponent implements OnInit {
 
   // ── 匯入主流程 ────────────────────────────
   private async handleFile(file: File): Promise<void> {
-    const ev = this.selectedEvent();
+    const ev = this.currentEvent();
     if (!ev || this.importLoading()) return;
 
     // 永遠詢問，避免因 signal 尚未載入而跳過對話框
@@ -514,7 +502,7 @@ export class MatchManagementComponent implements OnInit {
   }
 
   goBack(): void {
-    this.router.navigate(["/admin"]);
+    this.router.navigate(["/admin/events", this.eventId]);
   }
 
   logout(): void {

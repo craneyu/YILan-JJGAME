@@ -10,7 +10,7 @@
           </button>
           <div>
             <h1 class="text-xl font-bold tracking-wide flex items-center gap-2">
-              <span class="text-cyan-300">寢技</span>
+              <span class="text-cyan-300">{{ sportLabel }}</span>
               <span class="text-white/30 text-base font-normal">場次管理</span>
             </h1>
           </div>
@@ -26,7 +26,7 @@
 
       @if (!loading() && neWazaMatches().length === 0) {
         <div class="glass-card rounded-2xl p-8 text-center text-white/40">
-          <p>目前無寢技賽程</p>
+          <p>目前無{{ sportLabel }}賽程</p>
           <p class="text-sm mt-2">請管理員匯入賽程後重新整理</p>
         </div>
       }

@@ -9,7 +9,7 @@ import {
   HostListener,
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
-import { Router } from "@angular/router";
+import { ActivatedRoute, Router } from "@angular/router";
 import { Subscription } from "rxjs";
 import Swal from "sweetalert2";
 import { FaIconComponent } from "@fortawesome/angular-fontawesome";
@@ -73,6 +73,10 @@ export class NeWazaRefereeComponent implements OnInit, OnDestroy {
   private auth = inject(AuthService);
   private socket = inject(SocketService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
+
+  readonly sportType: 'ne-waza' | 'contact' = this.route.snapshot.data['sportType'] ?? 'ne-waza';
+  readonly sportLabel = this.sportType === 'contact' ? '格鬥' : '寢技';
 
   faLock = faLock;
   faPlay = faPlay;
@@ -136,7 +140,7 @@ export class NeWazaRefereeComponent implements OnInit, OnDestroy {
 
   // ── 計算屬性 ──
   eventId = computed(() => this.auth.user()?.eventId ?? "");
-  neWazaMatches = computed(() => this.matches().filter((m) => m.matchType !== "fighting"));
+  neWazaMatches = computed(() => this.matches().filter((m) => m.matchType === this.sportType));
   groupedMatches = computed<CategoryGroup[]>(() =>
     groupMatchesByCategory(this.neWazaMatches()),
   );
@@ -205,7 +209,7 @@ export class NeWazaRefereeComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (res) => {
           this.loading.set(false);
-          this.matches.set(res.data.filter((m) => m.matchType !== "fighting"));
+          this.matches.set(res.data.filter((m) => m.matchType === this.sportType));
         },
         error: () => {
           this.loading.set(false);
@@ -888,7 +892,7 @@ export class NeWazaRefereeComponent implements OnInit, OnDestroy {
   }
 
   backToSportSelect(): void {
-    this.router.navigate(["/match-referee"]);
+    this.router.navigate(["/referee"]);
   }
 
   toggleFullscreen(): void {

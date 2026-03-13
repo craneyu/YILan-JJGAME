@@ -3,8 +3,9 @@
 
 set -e
 
+DATE=$(date +%Y%m%d-%H%M)
 PACKAGE_DIR="jju-package"
-OUTPUT_FILE="jju-docker.tar.gz"
+OUTPUT_FILE="jju-docker-${DATE}.tar.gz"
 
 echo "=== 柔術競賽平台 Docker 打包腳本 ==="
 echo ""
@@ -125,6 +126,6 @@ echo "  檔案：$OUTPUT_FILE"
 echo "  大小：$SIZE"
 echo ""
 echo "傳輸到 MacBook Air 後，執行："
-echo "  tar -xzf jju-docker.tar.gz"
+echo "  tar -xzf $OUTPUT_FILE"
 echo "  cd jju-package"
 echo "  ./start.sh"

@@ -77,6 +77,19 @@ export const appRoutes: Routes = [
   // ── 管理員 ──
   {
     path: "admin",
+    redirectTo: "/admin/events",
+    pathMatch: "full",
+  },
+  {
+    path: "admin/events",
+    loadComponent: () =>
+      import("./features/admin/event-list/event-list.component").then(
+        (m) => m.EventListComponent,
+      ),
+    canActivate: [roleGuard("admin")],
+  },
+  {
+    path: "admin/events/:eventId",
     loadComponent: () =>
       import("./features/admin/admin-sport-selector/admin-sport-selector.component").then(
         (m) => m.AdminSportSelectorComponent,
@@ -84,29 +97,39 @@ export const appRoutes: Routes = [
     canActivate: [roleGuard("admin")],
   },
   {
-    path: "admin/kata",
+    path: "admin/events/:eventId/kata",
     loadComponent: () =>
       import("./features/admin/admin.component").then((m) => m.AdminComponent),
     canActivate: [roleGuard("admin")],
   },
   {
-    path: "admin/matches/:matchType",
+    path: "admin/events/:eventId/matches/:matchType",
     loadComponent: () =>
       import("./features/admin/match-management/match-management.component").then(
         (m) => m.MatchManagementComponent,
       ),
     canActivate: [roleGuard("admin")],
   },
-
-  // ── 柔術場次 ──
   {
-    path: "match-referee",
+    path: "admin/judges",
     loadComponent: () =>
-      import("./features/match-referee/match-referee.component").then(
-        (m) => m.MatchRefereeComponent,
+      import("./features/admin/judge-management/judge-management.component").then(
+        (m) => m.JudgeManagementComponent,
+      ),
+    canActivate: [roleGuard("admin")],
+  },
+
+  // ── 裁判入口 ──
+  {
+    path: "referee",
+    loadComponent: () =>
+      import("./features/referee-landing/referee-landing.component").then(
+        (m) => m.RefereeLandingComponent,
       ),
     canActivate: [roleGuard("match_referee", "admin")],
   },
+
+  // ── 柔術場次 ──
   {
     path: "fighting-referee",
     loadComponent: () =>
@@ -122,6 +145,16 @@ export const appRoutes: Routes = [
         (m) => m.NeWazaRefereeComponent,
       ),
     canActivate: [roleGuard("match_referee", "admin")],
+    data: { sportType: "ne-waza" },
+  },
+  {
+    path: "contact-referee",
+    loadComponent: () =>
+      import("./features/ne-waza-referee/ne-waza-referee.component").then(
+        (m) => m.NeWazaRefereeComponent,
+      ),
+    canActivate: [roleGuard("match_referee", "admin")],
+    data: { sportType: "contact" },
   },
   {
     path: "fighting-audience",

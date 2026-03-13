@@ -27,7 +27,7 @@ import Swal from "sweetalert2";
 import * as XLSX from "xlsx";
 import { ApiService } from "../../core/services/api.service";
 import { AuthService } from "../../core/services/auth.service";
-import { Router } from "@angular/router";
+import { ActivatedRoute, Router } from "@angular/router";
 
 interface EventItem {
   _id: string;
@@ -104,14 +104,6 @@ interface CategoryRanking {
   items: (RankingItem & { rank: number })[];
 }
 
-interface JudgeUser {
-  _id: string;
-  username: string;
-  role: string;
-  judgeNo?: number;
-  eventId?: { _id: string; name: string } | null;
-}
-
 @Component({
   selector: "app-admin",
   standalone: true,
@@ -122,43 +114,12 @@ export class AdminComponent implements OnInit {
   private api = inject(ApiService);
   private auth = inject(AuthService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
 
-  events = signal<EventItem[]>([]);
+  private eventIdFromRoute = '';
+
   selectedEvent = signal<EventItem | null>(null);
   teams = signal<TeamItem[]>([]);
-
-  // 賽事類型篩選（管理員可同時管理兩種比賽）
-  eventTypeFilter = signal<"all" | "kata" | "creative">("all");
-  filteredEvents = computed(() => {
-    const f = this.eventTypeFilter();
-    if (f === "all") return this.events();
-    const target = f === "kata" ? "Duo" : "Show";
-    return this.events().filter((e) =>
-      (e.competitionTypes ?? ["Duo"]).includes(target),
-    );
-  });
-
-  eventsCountByType(type: string): number {
-    if (type === "all") return this.events().length;
-    const target = type === "kata" ? "Duo" : "Show";
-    return this.events().filter((e) =>
-      (e.competitionTypes ?? ["Duo"]).includes(target),
-    ).length;
-  }
-
-  // 建立賽事表單
-  newEvent = { name: "", date: "", venue: "" };
-  newEventCompetitionTypes = signal<("Duo" | "Show")[]>(["Duo"]);
-  showCreateEvent = signal(false);
-
-  // 編輯賽事
-  editingEventId = signal<string | null>(null);
-  editEventForm = {
-    name: "",
-    date: "",
-    venue: "",
-    status: "pending" as "pending" | "active" | "closed",
-  };
 
   // 新增隊伍表單
   newTeam = {
@@ -279,10 +240,6 @@ export class AdminComponent implements OnInit {
       this.filteredTeams().every((t) => this.selectedTeamIds().has(t._id)),
   );
 
-  // 裁判管理
-  judges = signal<JudgeUser[]>([]);
-  showJudges = signal(false);
-
   faUserShield = faUserShield;
   faPlus = faPlus;
   faFileArrowUp = faFileArrowUp;
@@ -304,265 +261,18 @@ export class AdminComponent implements OnInit {
   faRightFromBracket = faRightFromBracket;
 
   ngOnInit(): void {
-    this.loadEvents();
-    this.loadJudges();
+    this.eventIdFromRoute = this.route.snapshot.params['eventId'] as string;
+    this.loadEvent();
   }
 
-  loadJudges(): void {
+  loadEvent(): void {
     this.api
-      .get<{ success: boolean; data: JudgeUser[] }>("/auth/users")
-      .subscribe({
-        next: (res) => this.judges.set(res.data),
-      });
-  }
-
-  assignJudgeEvent(judgeId: string, eventId: string): void {
-    this.api
-      .patch<{
-        success: boolean;
-        data: JudgeUser;
-      }>(`/auth/users/${judgeId}/event`, { eventId: eventId || null })
+      .get<{ success: boolean; data: EventItem }>(`/events/${this.eventIdFromRoute}`)
       .subscribe({
         next: (res) => {
-          if (res.success) {
-            this.judges.update((j) =>
-              j.map((u) => (u._id === judgeId ? res.data : u)),
-            );
-            Swal.fire({
-              icon: "success",
-              title: "已更新指派",
-              toast: true,
-              position: "top-end",
-              showConfirmButton: false,
-              timer: 1500,
-            });
-          }
+          if (res.success) this.selectEvent(res.data);
         },
-        error: () =>
-          Swal.fire({
-            icon: "error",
-            title: "指派失敗",
-            toast: true,
-            position: "top-end",
-            showConfirmButton: false,
-            timer: 3000,
-          }),
       });
-  }
-
-  loadEvents(): void {
-    this.api.get<{ success: boolean; data: EventItem[] }>("/events").subscribe({
-      next: (res) => this.events.set(res.data),
-    });
-  }
-
-  createEvent(): void {
-    if (!this.newEvent.name) {
-      Swal.fire({
-        icon: "warning",
-        title: "請填寫賽事名稱",
-        toast: true,
-        position: "top-end",
-        showConfirmButton: false,
-        timer: 2000,
-      });
-      return;
-    }
-    const competitionTypes = this.newEventCompetitionTypes();
-    if (competitionTypes.length === 0) {
-      Swal.fire({
-        icon: "warning",
-        title: "請至少選擇一個競賽項目",
-        toast: true,
-        position: "top-end",
-        showConfirmButton: false,
-        timer: 2000,
-      });
-      return;
-    }
-    this.api
-      .post<{
-        success: boolean;
-        data: EventItem;
-      }>("/events", { ...this.newEvent, competitionTypes })
-      .subscribe({
-        next: (res) => {
-          if (res.success) {
-            this.events.update((e) => [res.data, ...e]);
-            this.newEvent = { name: "", date: "", venue: "" };
-            this.newEventCompetitionTypes.set(["Duo"]);
-            this.showCreateEvent.set(false);
-            Swal.fire({
-              icon: "success",
-              title: "賽事已建立",
-              toast: true,
-              position: "top-end",
-              showConfirmButton: false,
-              timer: 2000,
-            });
-          }
-        },
-        error: (err) =>
-          Swal.fire({
-            icon: "error",
-            title: err.error?.error ?? "建立失敗",
-            toast: true,
-            position: "top-end",
-            showConfirmButton: false,
-            timer: 3000,
-          }),
-      });
-  }
-
-  startEditEvent(event: EventItem): void {
-    this.editingEventId.set(event._id);
-    this.editEventForm = {
-      name: event.name,
-      date: event.date ?? "",
-      venue: event.venue ?? "",
-      status: event.status as "pending" | "active" | "closed",
-    };
-  }
-
-  cancelEditEvent(): void {
-    this.editingEventId.set(null);
-  }
-
-  saveEditEvent(event: EventItem): void {
-    if (!this.editEventForm.name) {
-      Swal.fire({
-        icon: "warning",
-        title: "請填寫賽事名稱",
-        toast: true,
-        position: "top-end",
-        showConfirmButton: false,
-        timer: 2000,
-      });
-      return;
-    }
-    this.api
-      .patch<{ success: boolean; data: EventItem }>(`/events/${event._id}`, {
-        name: this.editEventForm.name,
-        date: this.editEventForm.date || undefined,
-        venue: this.editEventForm.venue || undefined,
-        status: this.editEventForm.status,
-      })
-      .subscribe({
-        next: (res) => {
-          if (res.success) {
-            this.events.update((evts) =>
-              evts.map((e) => (e._id === event._id ? res.data : e)),
-            );
-            if (this.selectedEvent()?._id === event._id)
-              this.selectedEvent.set(res.data);
-            this.editingEventId.set(null);
-            Swal.fire({
-              icon: "success",
-              title: "賽事已更新",
-              toast: true,
-              position: "top-end",
-              showConfirmButton: false,
-              timer: 2000,
-            });
-          }
-        },
-        error: (err) =>
-          Swal.fire({
-            icon: "error",
-            title: err.error?.error ?? "更新失敗",
-            toast: true,
-            position: "top-end",
-            showConfirmButton: false,
-            timer: 3000,
-          }),
-      });
-  }
-
-  async closeEvent(event: EventItem): Promise<void> {
-    const result = await Swal.fire({
-      icon: "warning",
-      title: `確認關閉「${event.name}」？`,
-      text: "關閉後此賽事將不再顯示於觀眾與裁判入口",
-      showCancelButton: true,
-      confirmButtonText: "確認關閉",
-      cancelButtonText: "取消",
-      confirmButtonColor: "#ef4444",
-    });
-    if (!result.isConfirmed) return;
-
-    this.api
-      .patch<{
-        success: boolean;
-        data: EventItem;
-      }>(`/events/${event._id}`, { status: "closed" })
-      .subscribe({
-        next: (res) => {
-          if (res.success) {
-            this.events.update((evts) =>
-              evts.map((e) => (e._id === event._id ? res.data : e)),
-            );
-            if (this.selectedEvent()?._id === event._id)
-              this.selectedEvent.set(res.data);
-            Swal.fire({
-              icon: "success",
-              title: "賽事已關閉",
-              toast: true,
-              position: "top-end",
-              showConfirmButton: false,
-              timer: 2000,
-            });
-          }
-        },
-        error: (err) =>
-          Swal.fire({
-            icon: "error",
-            title: err.error?.error ?? "關閉失敗",
-            toast: true,
-            position: "top-end",
-            showConfirmButton: false,
-            timer: 3000,
-          }),
-      });
-  }
-
-  async deleteEvent(event: EventItem): Promise<void> {
-    const result = await Swal.fire({
-      icon: "warning",
-      title: `確認刪除「${event.name}」？`,
-      html: "此操作將<b>永久刪除</b>該賽事及其所有隊伍、評分資料，<br>無法復原。",
-      showCancelButton: true,
-      confirmButtonText: "確認刪除",
-      cancelButtonText: "取消",
-      confirmButtonColor: "#ef4444",
-    });
-    if (!result.isConfirmed) return;
-
-    this.api.delete<{ success: boolean }>(`/events/${event._id}`).subscribe({
-      next: () => {
-        this.events.update((evts) => evts.filter((e) => e._id !== event._id));
-        if (this.selectedEvent()?._id === event._id) {
-          this.selectedEvent.set(null);
-          this.teams.set([]);
-        }
-        Swal.fire({
-          icon: "success",
-          title: "賽事已刪除",
-          toast: true,
-          position: "top-end",
-          showConfirmButton: false,
-          timer: 2000,
-        });
-      },
-      error: (err) =>
-        Swal.fire({
-          icon: "error",
-          title: err.error?.error ?? "刪除失敗",
-          toast: true,
-          position: "top-end",
-          showConfirmButton: false,
-          timer: 3000,
-        }),
-    });
   }
 
   selectEvent(event: EventItem): void {
@@ -585,49 +295,6 @@ export class AdminComponent implements OnInit {
     const types = event.competitionTypes ?? ["Duo"];
     if (types.includes("Duo")) this.loadRankings();
     if (types.includes("Show")) this.loadCreativeRankings();
-  }
-
-  async changePassword(judge: JudgeUser): Promise<void> {
-    const { value: newPassword } = await Swal.fire({
-      title: `變更「${judge.username}」的密碼`,
-      input: "password",
-      inputLabel: "新密碼",
-      inputPlaceholder: "請輸入新密碼（至少 4 個字元）",
-      inputAttributes: { autocomplete: "new-password" },
-      showCancelButton: true,
-      confirmButtonText: "確認變更",
-      cancelButtonText: "取消",
-      inputValidator: (value) => {
-        if (!value || value.length < 4) return "密碼長度至少 4 個字元";
-        return null;
-      },
-    });
-    if (!newPassword) return;
-
-    this.api
-      .patch<{
-        success: boolean;
-      }>(`/auth/users/${judge._id}/password`, { newPassword })
-      .subscribe({
-        next: () =>
-          Swal.fire({
-            icon: "success",
-            title: "密碼已變更",
-            toast: true,
-            position: "top-end",
-            showConfirmButton: false,
-            timer: 2000,
-          }),
-        error: (err) =>
-          Swal.fire({
-            icon: "error",
-            title: err.error?.error ?? "變更失敗",
-            toast: true,
-            position: "top-end",
-            showConfirmButton: false,
-            timer: 3000,
-          }),
-      });
   }
 
   loadTeams(eventId: string): void {
@@ -1634,16 +1301,6 @@ ${sectionsHtml}
     return t.includes("Show") ? "創意演武 Show" : "雙人演武 Duo";
   }
 
-  toggleNewEventType(type: "Duo" | "Show"): void {
-    this.newEventCompetitionTypes.update((types) => {
-      if (types.includes(type)) {
-        const next = types.filter((t) => t !== type);
-        return next.length === 0 ? types : next; // 至少保留一個
-      }
-      return [...types, type];
-    });
-  }
-
   effectiveCategoryOrder(
     event: EventItem | null,
     type: "Duo" | "Show",
@@ -1708,9 +1365,6 @@ ${sectionsHtml}
       .subscribe({
         next: (res) => {
           if (res.success) {
-            this.events.update((evts) =>
-              evts.map((e) => (e._id === eventId ? res.data : e)),
-            );
             if (this.selectedEvent()?._id === eventId)
               this.selectedEvent.set(res.data);
             this.editingCategoryOrderId.set(null);
@@ -1745,7 +1399,7 @@ ${sectionsHtml}
   }
 
   goBack(): void {
-    this.router.navigate(["/admin"]);
+    this.router.navigate(["/admin/events", this.eventIdFromRoute]);
   }
 
   logout(): void {

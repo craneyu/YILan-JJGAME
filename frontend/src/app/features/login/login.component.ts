@@ -352,7 +352,7 @@ export class LoginComponent implements OnInit {
       sequence_judge: "/judge/sequence",
       admin: "/admin",
       audience: "/audience-select",
-      match_referee: "/match-referee",
+      match_referee: "/referee",
     };
     this.router.navigate([routeMap[role] ?? "/audience-select"]);
   }
