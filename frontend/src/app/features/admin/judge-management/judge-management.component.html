@@ -128,11 +128,10 @@
                   @if (judge.role !== 'admin' && judge.role !== 'audience') {
                     <select
                       class="bg-white/10 text-white border border-white/20 rounded-lg px-2 py-1 text-xs outline-none focus:border-blue-400 max-w-[180px]"
-                      [value]="judge.eventId?._id ?? ''"
                       (change)="assignJudgeEvent(judge._id, $any($event.target).value)">
-                      <option value="" class="bg-slate-800">— 取消指派 —</option>
+                      <option value="" [selected]="!judge.eventId" class="bg-slate-800">— 取消指派 —</option>
                       @for (event of events(); track event._id) {
-                        <option [value]="event._id" class="bg-slate-800">{{ event.name }}</option>
+                        <option [value]="event._id" [selected]="event._id === judge.eventId?._id" class="bg-slate-800">{{ event.name }}</option>
                       }
                     </select>
                   } @else {
