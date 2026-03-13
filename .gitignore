@@ -11,6 +11,7 @@ coverage/
 # Angular build cache
 .angular/
 *.tar.gz
+*.zip
 GEMINI.md
 .spectra/
 openspec/.vector-search.db*
