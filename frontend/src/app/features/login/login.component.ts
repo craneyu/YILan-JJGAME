@@ -242,7 +242,8 @@ export class LoginComponent implements OnInit {
 
             this.auth.setEventCompetitionTypes(types);
             // match_referee 與演武競賽類型（Duo/Show）無關，直接導向
-            if (current.role === "match_referee") {
+            // types.length === 0 代表賽事無演武項目（如 contact-only），同樣直接導向
+            if (current.role === "match_referee" || types.length === 0) {
               this.auth.login(
                 res.data.token,
                 { ...current, eventId: res.data.eventId },
@@ -300,7 +301,10 @@ export class LoginComponent implements OnInit {
     const applyTypes = (types: ("Duo" | "Show")[]) => {
       this.availableTypes.set(types);
       this.auth.setEventCompetitionTypes(types);
-      if (types.length === 1) {
+      if (types.length === 0) {
+        // 賽事無演武項目（如 contact-only），直接導向
+        this.navigateByRole(role);
+      } else if (types.length === 1) {
         const authType: CompetitionType =
           types[0] === "Show" ? "creative" : "kata";
         this.auth.setCompetitionType(authType);
@@ -312,7 +316,7 @@ export class LoginComponent implements OnInit {
     };
 
     const cached = this.events().find((e) => e._id === eventId);
-    if (cached?.competitionTypes?.length) {
+    if (cached?.competitionTypes !== undefined) {
       applyTypes(cached.competitionTypes);
     } else {
       // events 尚未載入（timing），直接向 API 取得賽事資訊

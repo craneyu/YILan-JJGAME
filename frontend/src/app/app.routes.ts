@@ -150,11 +150,10 @@ export const appRoutes: Routes = [
   {
     path: "contact-referee",
     loadComponent: () =>
-      import("./features/ne-waza-referee/ne-waza-referee.component").then(
-        (m) => m.NeWazaRefereeComponent,
+      import("./features/contact-referee/contact-referee.component").then(
+        (m) => m.ContactRefereeComponent,
       ),
     canActivate: [roleGuard("match_referee", "admin")],
-    data: { sportType: "contact" },
   },
   {
     path: "fighting-audience",

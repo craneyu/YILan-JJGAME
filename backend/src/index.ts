@@ -19,6 +19,7 @@ import creativeFlowRoutes from "./routes/creativeFlow";
 import creativePenaltyRoutes from "./routes/creativePenalties";
 import matchRoutes from "./routes/matches";
 import matchScoreRoutes from "./routes/matchScores";
+import contactActionRoutes from "./routes/contactAction";
 
 const app = express();
 const httpServer = createServer(app);
@@ -45,6 +46,7 @@ app.use("/api/v1/creative/flow", creativeFlowRoutes);
 app.use("/api/v1/creative/penalties", creativePenaltyRoutes);
 app.use("/api/v1/events", matchRoutes);
 app.use("/api/v1/match-scores", matchScoreRoutes);
+app.use("/api/v1/contact", contactActionRoutes);
 
 // 健康檢查
 app.get("/health", (_req, res) => {

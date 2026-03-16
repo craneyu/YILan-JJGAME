@@ -15,6 +15,7 @@ import {
   faCircleExclamation,
   faRightFromBracket,
 } from '@fortawesome/free-solid-svg-icons';
+import Swal from 'sweetalert2';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 
@@ -50,6 +51,9 @@ export class RefereeLandingComponent implements OnInit {
   noEventAssigned = signal(false);
 
   ngOnInit(): void {
+    // 關閉登入時可能殘留的 SweetAlert toast（其 fixed 容器會擋住頁面點擊）
+    Swal.close();
+
     const eventId = this.auth.user()?.eventId;
     if (!eventId) {
       this.noEventAssigned.set(true);

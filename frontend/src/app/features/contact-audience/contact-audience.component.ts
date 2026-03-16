@@ -18,15 +18,19 @@ import {
 
 import {
   SocketService,
-  MatchScoreUpdatedEvent,
   MatchTimerUpdatedEvent,
-  MatchEndedEvent,
-  MatchWinnerPreviewEvent,
   InjuryStartedEvent,
   InjuryEndedEvent,
 } from "../../core/services/socket.service";
 import { ApiService } from "../../core/services/api.service";
 import { Match } from "../../core/models/match.model";
+
+const WINNER_METHOD_LABEL: Record<string, string> = {
+  submission: "降伏勝",
+  knockdown: "擊倒勝",
+  "foul-dq": "犯規失格",
+  dq: "犯規失格",
+};
 
 @Component({
   selector: "app-contact-audience",
@@ -47,16 +51,13 @@ export class ContactAudienceComponent implements OnInit, OnDestroy {
   activeMatch = signal<Match | null>(null);
   isFullscreen = signal(false);
 
-  // 即時計分
-  redScore = signal(0);
-  blueScore = signal(0);
-  redAdvantage = signal(0);
-  blueAdvantage = signal(0);
-  redWarnings = signal(0);
-  blueWarnings = signal(0);
+  // ── Contact 計分（亮牌制）──
+  foulCount = signal<{ red: number; blue: number }>({ red: 0, blue: 0 });
+  knockdownCount = signal<{ red: number; blue: number }>({ red: 0, blue: 0 });
+  goldenMinuteCount = signal(0);
 
   // 計時器
-  timerRemaining = signal(0);
+  timerRemaining = signal(180);
   timerPaused = signal(true);
 
   // 比賽結果
@@ -81,23 +82,25 @@ export class ContactAudienceComponent implements OnInit, OnDestroy {
 
   displayRedInjuryTimer = computed(() => {
     const s = this.redInjuryRemaining();
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    return `${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
+    return `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
   });
 
   displayBlueInjuryTimer = computed(() => {
     const s = this.blueInjuryRemaining();
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    return `${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
+    return `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
   });
 
   winnerLabel = computed(() => {
     const r = this.matchResult();
     if (!r) return "";
-    return r.winner === "red" ? "紅方勝" : "藍方勝";
+    const side = r.winner === "red" ? "紅方" : "藍方";
+    const method = WINNER_METHOD_LABEL[r.method] ?? r.method;
+    return `${side} ${method}`;
   });
+
+  cardRange(count: number): number[] {
+    return Array.from({ length: count }, (_, i) => i);
+  }
 
   private subs = new Subscription();
 
@@ -111,6 +114,7 @@ export class ContactAudienceComponent implements OnInit, OnDestroy {
       }
     });
 
+    // 場次開始 → 重新載入
     this.subs.add(
       this.socket.matchStarted$.subscribe(() => {
         const eid = this.eventId();
@@ -118,19 +122,7 @@ export class ContactAudienceComponent implements OnInit, OnDestroy {
       }),
     );
 
-    this.subs.add(
-      this.socket.matchScoreUpdated$.subscribe((e: MatchScoreUpdatedEvent) => {
-        const m = this.activeMatch();
-        if (!m || m._id !== e.matchId) return;
-        this.redScore.set(e.scores.red);
-        this.blueScore.set(e.scores.blue);
-        this.redAdvantage.set(e.advantages.red);
-        this.blueAdvantage.set(e.advantages.blue);
-        this.redWarnings.set(e.warnings.red);
-        this.blueWarnings.set(e.warnings.blue);
-      }),
-    );
-
+    // 計時器更新
     this.subs.add(
       this.socket.matchTimerUpdated$.subscribe((e: MatchTimerUpdatedEvent) => {
         const m = this.activeMatch();
@@ -140,41 +132,45 @@ export class ContactAudienceComponent implements OnInit, OnDestroy {
       }),
     );
 
+    // Contact 犯規牌更新（6.1）
     this.subs.add(
-      this.socket.matchEnded$.subscribe((e: MatchEndedEvent) => {
+      this.socket.contactFoulUpdated$.subscribe((e) => {
+        const m = this.activeMatch();
+        if (!m || m._id !== e.matchId) return;
+        this.foulCount.set(e.foulCount);
+      }),
+    );
+
+    // Contact 擊倒牌更新（6.1）
+    this.subs.add(
+      this.socket.contactKnockdownUpdated$.subscribe((e) => {
+        const m = this.activeMatch();
+        if (!m || m._id !== e.matchId) return;
+        this.knockdownCount.set(e.knockdownCount);
+      }),
+    );
+
+    // 黃金分鐘（6.4）
+    this.subs.add(
+      this.socket.contactGoldenMinute$.subscribe((e) => {
+        const m = this.activeMatch();
+        if (!m || m._id !== e.matchId) return;
+        this.goldenMinuteCount.set(e.goldenMinuteCount);
+        // 計時器重設為 60s 暫停（由 matchTimerUpdated 事件帶入）
+      }),
+    );
+
+    // Contact 勝者宣告（6.5）
+    this.subs.add(
+      this.socket.contactWinner$.subscribe((e) => {
         const m = this.activeMatch();
         if (!m || m._id !== e.matchId) return;
         this.timerPaused.set(true);
-        this.matchResult.set({ winner: e.winner, method: e.method });
+        this.matchResult.set({ winner: e.winner as "red" | "blue", method: e.method });
       }),
     );
 
-    this.subs.add(
-      this.socket.matchWinnerPreview$.subscribe((e: MatchWinnerPreviewEvent) => {
-        const m = this.activeMatch();
-        if (!m || m._id !== e.matchId) return;
-        this.timerPaused.set(true);
-        this.matchResult.set({ winner: e.winner, method: "judge" });
-      }),
-    );
-
-    this.subs.add(
-      this.socket.matchWinnerPreviewCancelled$.subscribe((e: { matchId: string }) => {
-        const m = this.activeMatch();
-        if (!m || m._id !== e.matchId) return;
-        this.matchResult.set(null);
-      }),
-    );
-
-    this.subs.add(
-      this.socket.matchScoresReset$.subscribe((e: { matchId: string }) => {
-        const m = this.activeMatch();
-        if (!m || m._id !== e.matchId) return;
-        this.resetScores();
-        this.matchResult.set(null);
-      }),
-    );
-
+    // 傷停（6.6）
     this.subs.add(
       this.socket.injuryStarted$.subscribe((e: InjuryStartedEvent) => {
         const m = this.activeMatch();
@@ -252,50 +248,31 @@ export class ContactAudienceComponent implements OnInit, OnDestroy {
       .get<{ success: boolean; data: Match[] }>(`/events/${eventId}/matches?matchType=contact`)
       .subscribe({
         next: (res) => {
-          const inProgress =
-            res.data.find((m) => m.status === "in-progress") ?? null;
+          const inProgress = res.data.find((m) => m.status === "in-progress") ?? null;
           this.activeMatch.set(inProgress);
           this.matchResult.set(null);
-          this.resetScores();
+          this.resetState();
           if (inProgress) {
-            this.restoreScores(inProgress._id);
+            this.foulCount.set({
+              red: inProgress.foulCount?.red ?? 0,
+              blue: inProgress.foulCount?.blue ?? 0,
+            });
+            this.knockdownCount.set({
+              red: inProgress.knockdownCount?.red ?? 0,
+              blue: inProgress.knockdownCount?.blue ?? 0,
+            });
+            this.goldenMinuteCount.set(inProgress.goldenMinuteCount ?? 0);
           }
         },
         error: () => {},
       });
   }
 
-  private restoreScores(matchId: string): void {
-    this.api
-      .get<{
-        success: boolean;
-        data: {
-          scores: { red: number; blue: number };
-          advantages: { red: number; blue: number };
-          warnings: { red: number; blue: number };
-        };
-      }>(`/match-scores/summary?matchId=${matchId}`)
-      .subscribe({
-        next: (res) => {
-          this.redScore.set(res.data.scores.red);
-          this.blueScore.set(res.data.scores.blue);
-          this.redAdvantage.set(res.data.advantages.red);
-          this.blueAdvantage.set(res.data.advantages.blue);
-          this.redWarnings.set(res.data.warnings.red);
-          this.blueWarnings.set(res.data.warnings.blue);
-        },
-        error: () => {},
-      });
-  }
-
-  private resetScores(): void {
-    this.redScore.set(0);
-    this.blueScore.set(0);
-    this.redAdvantage.set(0);
-    this.blueAdvantage.set(0);
-    this.redWarnings.set(0);
-    this.blueWarnings.set(0);
-    this.timerRemaining.set(0);
+  private resetState(): void {
+    this.foulCount.set({ red: 0, blue: 0 });
+    this.knockdownCount.set({ red: 0, blue: 0 });
+    this.goldenMinuteCount.set(0);
+    this.timerRemaining.set(180);
     this.timerPaused.set(true);
     this.clearRedInjuryInterval();
     this.clearBlueInjuryInterval();

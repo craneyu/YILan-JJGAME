@@ -51,6 +51,10 @@ export interface Match {
   blueTotalScore?: number;
   redShido?: number;
   blueShido?: number;
+  // contact-specific fields
+  foulCount?: { red: number; blue: number };
+  knockdownCount?: { red: number; blue: number };
+  goldenMinuteCount?: number;
 }
 
 export type ScoreLogSide = "red" | "blue";

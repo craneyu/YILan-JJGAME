@@ -38,6 +38,11 @@ export interface IPartCounters {
   p3: IPartPlusCounts;
 }
 
+export interface ISideCount {
+  red: number;
+  blue: number;
+}
+
 export interface IMatch extends Document {
   eventId: mongoose.Types.ObjectId;
   matchType: MatchType;
@@ -52,6 +57,10 @@ export interface IMatch extends Document {
   isBye: boolean;
   scheduledOrder: number;
   createdAt: Date;
+  // contact-specific fields
+  foulCount: ISideCount;
+  knockdownCount: ISideCount;
+  goldenMinuteCount: number;
   // PART scores
   redPart1Score: number;
   redPart2Score: number;
@@ -153,6 +162,15 @@ const MatchSchema = new Schema<IMatch>(
     result: { type: MatchResultSchema },
     isBye: { type: Boolean, default: false },
     scheduledOrder: { type: Number, required: true },
+    foulCount: {
+      red: { type: Number, default: 0, min: 0 },
+      blue: { type: Number, default: 0, min: 0 },
+    },
+    knockdownCount: {
+      red: { type: Number, default: 0, min: 0 },
+      blue: { type: Number, default: 0, min: 0 },
+    },
+    goldenMinuteCount: { type: Number, default: 0, min: 0, max: 2 },
     redPart1Score: { type: Number, default: 0, min: 0 },
     redPart2Score: { type: Number, default: 0, min: 0 },
     redPart3Score: { type: Number, default: 0, min: 0 },

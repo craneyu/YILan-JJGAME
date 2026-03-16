@@ -498,4 +498,21 @@ export class SocketService {
   ): void {
     this.socket.emit("match:emit-osae-komi-end", { eventId, matchId, side });
   }
+
+  // ── Contact 亮牌計分事件 ──
+  get contactFoulUpdated$(): Observable<{ matchId: string; side: string; foulCount: { red: number; blue: number } }> {
+    return fromEvent(this.socket, "match:contact-foul-updated");
+  }
+
+  get contactKnockdownUpdated$(): Observable<{ matchId: string; side: string; knockdownCount: { red: number; blue: number } }> {
+    return fromEvent(this.socket, "match:contact-knockdown-updated");
+  }
+
+  get contactGoldenMinute$(): Observable<{ matchId: string; goldenMinuteCount: number }> {
+    return fromEvent(this.socket, "match:contact-golden-minute");
+  }
+
+  get contactWinner$(): Observable<{ matchId: string; winner: "red" | "blue"; method: string }> {
+    return fromEvent(this.socket, "match:contact-winner");
+  }
 }
