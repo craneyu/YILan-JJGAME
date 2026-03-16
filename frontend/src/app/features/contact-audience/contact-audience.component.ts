@@ -14,6 +14,7 @@ import { FaIconComponent } from "@fortawesome/angular-fontawesome";
 import {
   faExpand,
   faCompress,
+  faPersonFalling,
 } from "@fortawesome/free-solid-svg-icons";
 
 import {
@@ -30,6 +31,7 @@ const WINNER_METHOD_LABEL: Record<string, string> = {
   knockdown: "擊倒勝",
   "foul-dq": "犯規失格",
   dq: "犯規失格",
+  decision: "判定勝",
 };
 
 @Component({
@@ -46,6 +48,7 @@ export class ContactAudienceComponent implements OnInit, OnDestroy {
 
   faExpand = faExpand;
   faCompress = faCompress;
+  faPersonFalling = faPersonFalling;
 
   eventId = signal("");
   activeMatch = signal<Match | null>(null);
@@ -59,6 +62,7 @@ export class ContactAudienceComponent implements OnInit, OnDestroy {
   // 計時器
   timerRemaining = signal(180);
   timerPaused = signal(true);
+  private timerInterval: ReturnType<typeof setInterval> | null = null;
 
   // 比賽結果
   matchResult = signal<{ winner: "red" | "blue"; method: string } | null>(null);
@@ -93,9 +97,13 @@ export class ContactAudienceComponent implements OnInit, OnDestroy {
   winnerLabel = computed(() => {
     const r = this.matchResult();
     if (!r) return "";
-    const side = r.winner === "red" ? "紅方" : "藍方";
+    const winnerSide = r.winner === "red" ? "紅方" : "藍方";
+    const loserSide  = r.winner === "red" ? "藍方" : "紅方";
+    if (r.method === "dq" || r.method === "foul-dq") {
+      return `${winnerSide}勝（${loserSide}犯規失格）`;
+    }
     const method = WINNER_METHOD_LABEL[r.method] ?? r.method;
-    return `${side} ${method}`;
+    return `${winnerSide} ${method}`;
   });
 
   cardRange(count: number): number[] {
@@ -122,13 +130,18 @@ export class ContactAudienceComponent implements OnInit, OnDestroy {
       }),
     );
 
-    // 計時器更新
+    // 計時器更新：socket 事件校正值，本地 interval 負責每秒遞減
     this.subs.add(
       this.socket.matchTimerUpdated$.subscribe((e: MatchTimerUpdatedEvent) => {
         const m = this.activeMatch();
         if (!m || m._id !== e.matchId) return;
         this.timerRemaining.set(e.remaining);
         this.timerPaused.set(e.paused);
+        if (!e.paused) {
+          this.startLocalTimer();
+        } else {
+          this.stopLocalTimer();
+        }
       }),
     );
 
@@ -160,13 +173,43 @@ export class ContactAudienceComponent implements OnInit, OnDestroy {
       }),
     );
 
+    // 歸零重置
+    this.subs.add(
+      this.socket.contactReset$.subscribe((e) => {
+        const m = this.activeMatch();
+        if (!m || m._id !== e.matchId) return;
+        this.foulCount.set({ red: 0, blue: 0 });
+        this.knockdownCount.set({ red: 0, blue: 0 });
+        this.goldenMinuteCount.set(0);
+        this.clearRedInjuryInterval();
+        this.clearBlueInjuryInterval();
+        this.redInjuryActive.set(false);
+        this.redInjuryVisible.set(false);
+        this.redInjuryRemaining.set(120);
+        this.blueInjuryActive.set(false);
+        this.blueInjuryVisible.set(false);
+        this.blueInjuryRemaining.set(120);
+        // 計時器由後端同步廣播的 matchTimerUpdated 事件重設
+      }),
+    );
+
     // Contact 勝者宣告（6.5）
     this.subs.add(
       this.socket.contactWinner$.subscribe((e) => {
         const m = this.activeMatch();
         if (!m || m._id !== e.matchId) return;
         this.timerPaused.set(true);
+        this.stopLocalTimer();
         this.matchResult.set({ winner: e.winner as "red" | "blue", method: e.method });
+      }),
+    );
+
+    // 取消宣告
+    this.subs.add(
+      this.socket.contactCancelWinner$.subscribe((e) => {
+        const m = this.activeMatch();
+        if (!m || m._id !== e.matchId) return;
+        this.matchResult.set(null);
       }),
     );
 
@@ -225,8 +268,28 @@ export class ContactAudienceComponent implements OnInit, OnDestroy {
     const eid = this.eventId();
     if (eid) this.socket.leaveEvent(eid);
     this.subs.unsubscribe();
+    this.stopLocalTimer();
     this.clearRedInjuryInterval();
     this.clearBlueInjuryInterval();
+  }
+
+  private startLocalTimer(): void {
+    if (this.timerInterval) return; // 已在執行，不重複啟動
+    this.timerInterval = setInterval(() => {
+      const current = this.timerRemaining();
+      if (current <= 0) {
+        this.stopLocalTimer();
+        return;
+      }
+      this.timerRemaining.set(current - 1);
+    }, 1000);
+  }
+
+  private stopLocalTimer(): void {
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
+    }
   }
 
   private clearRedInjuryInterval(): void {

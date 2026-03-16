@@ -1,11 +1,13 @@
-<div class="min-h-screen bg-gradient-to-br from-slate-900 via-red-950 to-slate-900 text-white p-4">
-
+<div
+  class="min-h-screen bg-gradient-to-br from-slate-900 via-red-950 to-slate-900 text-white p-4">
   <!-- ── 列表視圖 ── -->
   @if (view() === "list") {
     <div class="max-w-2xl mx-auto">
       <div class="flex items-center justify-between mb-4">
         <div class="flex items-center gap-3">
-          <button class="glass-btn px-3 py-2 rounded-xl text-sm" (click)="backToSportSelect()">
+          <button
+            class="glass-btn px-3 py-2 rounded-xl text-sm"
+            (click)="backToSportSelect()">
             ← 返回
           </button>
           <div>
@@ -15,10 +17,38 @@
             </h1>
           </div>
         </div>
-        <button class="glass-btn px-3 py-2 rounded-xl text-sm" (click)="loadMatches()">
-          重新載入
-        </button>
+        <div class="flex gap-2">
+          <button
+            class="glass-btn px-3 py-2 rounded-xl text-sm"
+            (click)="loadMatches()">
+            重新載入
+          </button>
+          <button
+            class="glass-btn px-3 py-2 rounded-xl text-sm"
+            [class.bg-red-500!]="batchMode()"
+            [class.border-red-400!]="batchMode()"
+            (click)="toggleBatchMode()">
+            {{ batchMode() ? "取消" : "批次清空" }}
+          </button>
+        </div>
       </div>
+
+      @if (batchMode()) {
+        <div class="flex items-center justify-between mb-3 px-1">
+          <button
+            class="text-sm text-white/60 underline"
+            (click)="toggleSelectAll()">
+            {{ allSelected() ? "取消全選" : "全選" }}
+          </button>
+          <button
+            class="primary-btn px-4 py-2 rounded-xl text-sm font-bold bg-red-600/70 hover:bg-red-500/80 border-red-400/40"
+            [class.opacity-40]="selectedIds().size === 0"
+            [disabled]="selectedIds().size === 0"
+            (click)="confirmBatchReset()">
+            確認清空（{{ selectedIds().size }}）
+          </button>
+        </div>
+      }
 
       @if (loading()) {
         <div class="text-center py-12 text-white/50">載入中...</div>
@@ -33,39 +63,85 @@
 
       @for (group of groupedMatches(); track group.category) {
         <div class="mb-5">
-          <div class="text-base font-bold text-white/80 mb-2 px-1">{{ CATEGORY_LABEL[group.category] }}</div>
+          <div class="text-base font-bold text-white/80 mb-2 px-1">
+            {{ CATEGORY_LABEL[group.category] }}
+          </div>
           @for (wg of group.weightGroups; track wg.weightClass) {
             <div class="mb-3">
-              <div class="text-xs font-semibold text-white/40 mb-1.5 px-2 uppercase tracking-wide">{{ wg.weightClass }}</div>
+              <div
+                class="text-xs font-semibold text-white/40 mb-1.5 px-2 uppercase tracking-wide">
+                {{ wg.weightClass }}
+              </div>
               @for (match of wg.matches; track match._id) {
                 <div
                   class="glass-card rounded-2xl p-4 mb-2 flex items-center justify-between cursor-pointer transition-all"
-                  [class.opacity-50]="match.status === 'completed'"
-                  [class.cursor-not-allowed]="match.status === 'completed'"
-                  [class.ring-2]="match.status !== 'pending' && match.status !== 'completed'"
-                  [class.ring-blue-400]="match.status === 'in-progress'"
-                  (click)="selectMatch(match)">
+                  [class.opacity-50]="
+                    match.status === 'completed' && !batchMode()
+                  "
+                  [class.cursor-not-allowed]="
+                    match.status === 'completed' && !batchMode()
+                  "
+                  [class.ring-2]="
+                    !batchMode() &&
+                    match.status !== 'pending' &&
+                    match.status !== 'completed'
+                  "
+                  [class.ring-blue-400]="
+                    !batchMode() && match.status === 'in-progress'
+                  "
+                  [class.!ring-2]="batchMode() && selectedIds().has(match._id)"
+                  [class.!ring-red-400]="
+                    batchMode() && selectedIds().has(match._id)
+                  "
+                  (click)="
+                    batchMode() ? toggleSelect(match._id) : selectMatch(match)
+                  ">
                   <div class="flex-1">
                     <div class="flex items-center gap-2 mb-1">
-                      <span class="text-white/40 text-xs">#{{ match.scheduledOrder }}</span>
-                      <span class="text-xs px-2 py-0.5 rounded-full bg-white/10">R{{ match.round }}-{{ match.matchNo }}</span>
+                      <span class="text-white/40 text-xs"
+                        >#{{ match.scheduledOrder }}</span
+                      >
+                      <span class="text-xs px-2 py-0.5 rounded-full bg-white/10"
+                        >R{{ match.round }}-{{ match.matchNo }}</span
+                      >
                     </div>
                     <div class="flex items-center gap-3">
-                      <span class="text-red-300 font-semibold">{{ match.redPlayer.name }}</span>
+                      <span class="text-red-300 font-semibold">{{
+                        match.redPlayer.name
+                      }}</span>
                       <span class="text-white/30 text-sm">vs</span>
-                      <span class="text-blue-300 font-semibold">{{ match.bluePlayer.name }}</span>
+                      <span class="text-blue-300 font-semibold">{{
+                        match.bluePlayer.name
+                      }}</span>
                     </div>
                     <div class="text-white/40 text-xs mt-0.5">
-                      {{ match.redPlayer.teamName }} vs {{ match.bluePlayer.teamName }}
+                      {{ match.redPlayer.teamName }} vs
+                      {{ match.bluePlayer.teamName }}
                     </div>
                   </div>
                   <div class="ml-4 flex items-center gap-2">
-                    @if (match.status === "completed") {
+                    @if (batchMode()) {
+                      <div
+                        class="w-5 h-5 rounded border-2 flex items-center justify-center shrink-0"
+                        [class.bg-red-500]="selectedIds().has(match._id)"
+                        [class.border-red-400]="selectedIds().has(match._id)"
+                        [class.border-white/40]="!selectedIds().has(match._id)">
+                        @if (selectedIds().has(match._id)) {
+                          <span class="text-white text-xs font-bold">✓</span>
+                        }
+                      </div>
+                    } @else if (match.status === "completed") {
                       <span class="text-xs text-white/30">已完成</span>
                     } @else if (match.status === "in-progress") {
-                      <span class="text-xs px-2 py-0.5 rounded-full bg-blue-500/60 text-white animate-pulse">進行中</span>
+                      <span
+                        class="text-xs px-2 py-0.5 rounded-full bg-blue-500/60 text-white animate-pulse"
+                        >進行中</span
+                      >
                     } @else {
-                      <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/60">待開始</span>
+                      <span
+                        class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/60"
+                        >待開始</span
+                      >
                     }
                   </div>
                 </div>
@@ -81,29 +157,42 @@
   @if (view() === "scoring") {
     @if (activeMatch(); as match) {
       <div class="max-w-5xl mx-auto">
-
         <!-- 頂部工具列 -->
         <div class="flex items-center justify-between mb-4 gap-3">
-          <button class="glass-btn px-3 py-2 rounded-xl text-sm shrink-0" (click)="backToList()">
-            ← 列表
+          <button
+            class="glass-btn px-3 py-2 rounded-xl text-sm shrink-0"
+            (click)="backToList()">
+            ← 返回
           </button>
           <div class="flex-1 text-center">
-            <div class="text-sm font-semibold text-white/70">
-              {{ CATEGORY_LABEL[match.category] }} {{ match.weightClass }}
-              <span class="text-white/40 ml-2">R{{ match.round }}-{{ match.matchNo }}</span>
+            <div class="text-xl font-semibold text-white/70">
+              格鬥 {{ CATEGORY_LABEL[match.category] }} {{ match.weightClass }}
             </div>
             <div class="text-xs text-white/40 mt-0.5">
-              {{ match.redPlayer.name }} vs {{ match.bluePlayer.name }}
+              <span class="text-white/40 ml-2"
+                >R{{ match.round }}-{{ match.matchNo }}</span
+              >
+              <!-- {{ match.redPlayer.name }} vs {{ match.bluePlayer.name }} -->
             </div>
           </div>
-          <button class="glass-btn px-3 py-2 rounded-xl text-sm shrink-0" (click)="toggleFullscreen()">
+          <button
+            class="glass-btn px-3 py-2 rounded-xl text-sm shrink-0 border-red-400/40 text-red-300"
+            [class.opacity-40]="!!declaredWinner()"
+            [disabled]="!!declaredWinner()"
+            (click)="resetAllCounts()">
+            歸零
+          </button>
+          <button
+            class="glass-btn px-3 py-2 rounded-xl text-sm shrink-0"
+            (click)="toggleFullscreen()">
             <fa-icon [icon]="isFullscreen() ? faCompress : faExpand" />
           </button>
         </div>
 
         <!-- 計時器 -->
-        <div class="glass-card rounded-2xl p-4 mb-4 flex items-center justify-between gap-4">
-          <div class="flex items-center gap-3">
+        <div
+          class="glass-card rounded-2xl p-4 mb-4 flex items-center justify-between gap-4">
+          <div class="flex flex-col items-start gap-1">
             @if (!timerRunning() && !declaredWinner()) {
               <button
                 class="primary-btn px-6 py-2.5 rounded-xl font-bold flex items-center gap-2"
@@ -120,27 +209,62 @@
                 暫停
               </button>
             }
+            @if (!declaredWinner()) {
+              <span class="text-xs text-white/30">按空白鍵可切換暫停/繼續</span>
+            }
           </div>
 
-          <!-- 計時器顯示 -->
-          <div
-            class="text-5xl font-mono font-bold tracking-widest"
-            [class.text-red-400]="timerRemaining() <= 30 && timerRunning()"
-            [class.text-yellow-400]="timerRemaining() <= 60 && timerRemaining() > 30"
-            [class.text-white]="timerRemaining() > 60">
-            {{ displayTimer() }}
+          <!-- 計時器顯示 + 微調按鈕 -->
+          <div class="flex flex-col items-center gap-1">
+            <div
+              class="text-5xl font-mono font-bold tracking-widest"
+              [class.text-red-400]="timerRemaining() <= 30 && timerRunning()"
+              [class.text-yellow-400]="
+                timerRemaining() <= 60 && timerRemaining() > 30
+              "
+              [class.text-white]="timerRemaining() > 60">
+              {{ displayTimer() }}
+            </div>
+            @if (!timerRunning() && !declaredWinner()) {
+              <div class="flex gap-1">
+                <button
+                  class="glass-btn px-2 py-0.5 rounded-lg text-xs"
+                  (click)="adjustTimer(-10)">
+                  -10s
+                </button>
+                <button
+                  class="glass-btn px-2 py-0.5 rounded-lg text-xs"
+                  (click)="adjustTimer(-1)">
+                  -1s
+                </button>
+                <button
+                  class="glass-btn px-2 py-0.5 rounded-lg text-xs"
+                  (click)="adjustTimer(1)">
+                  +1s
+                </button>
+                <button
+                  class="glass-btn px-2 py-0.5 rounded-lg text-xs"
+                  (click)="adjustTimer(10)">
+                  +10s
+                </button>
+              </div>
+            }
           </div>
 
           <!-- 黃金分鐘 -->
           <div class="flex items-center gap-2">
             <div class="text-xs text-white/40 text-right">
-              黃金分鐘<br>
-              <span class="text-yellow-400 font-bold">{{ goldenMinuteCount() }}/2</span>
+              黃金分鐘<br />
+              <span class="text-yellow-400 font-bold"
+                >{{ goldenMinuteCount() }}/2</span
+              >
             </div>
             <button
               class="glass-btn px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-1.5 border-yellow-400/40 text-yellow-300"
               [class.opacity-30]="!canGoldenMinute() || !!declaredWinner()"
-              [class.cursor-not-allowed]="!canGoldenMinute() || !!declaredWinner()"
+              [class.cursor-not-allowed]="
+                !canGoldenMinute() || !!declaredWinner()
+              "
               [disabled]="!canGoldenMinute() || !!declaredWinner()"
               (click)="triggerGoldenMinute()">
               <fa-icon [icon]="faStar" />
@@ -151,25 +275,40 @@
 
         <!-- 紅藍雙方主面板 -->
         <div class="grid grid-cols-2 gap-4 mb-4">
-
           <!-- ─── 紅方 ─── -->
-          <div class="glass-card rounded-2xl p-4 border border-red-400/30 flex flex-col gap-3">
+          <div
+            class="glass-card rounded-2xl p-4 !border-2 !border-red-400 flex flex-col gap-3">
             <div class="text-center">
-              <div class="text-red-400 text-xs font-bold tracking-widest uppercase mb-0.5">紅方</div>
-              <div class="text-white font-bold text-lg leading-tight truncate">{{ match.redPlayer.name }}</div>
-              <div class="text-white/40 text-xs truncate">{{ match.redPlayer.teamName }}</div>
+              <div
+                class="text-red-400 text-sm font-bold tracking-widest uppercase mb-0.5">
+                紅方
+              </div>
+              <div class="text-white font-bold text-2xl leading-tight truncate">
+                {{ match.redPlayer.name }}
+              </div>
+              <div class="text-white/70 text-base truncate">
+                {{ match.redPlayer.teamName }}
+              </div>
             </div>
 
             <!-- 犯規牌列 -->
             <div>
-              <div class="text-white/50 text-xs mb-1.5">犯規牌 <span class="text-white/80 font-bold">{{ foulCount().red }}</span></div>
-              <div class="flex gap-1.5 min-h-[3rem] items-center flex-wrap">
-                @for (c of cardRange(foulCount().red); track c) {
-                  <div class="aspect-[2/3] bg-yellow-400 rounded-md shadow-md shadow-yellow-500/30 w-7"></div>
-                }
-                @if (foulCount().red === 0) {
-                  <div class="text-white/20 text-xs">—</div>
-                }
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-white/70 text-sm font-semibold"
+                  >犯規次數
+                  <span class="text-white font-bold ml-2">{{
+                    foulCount().red
+                  }}</span></span
+                >
+                <div class="flex gap-1.5 items-center min-h-[2.75rem]">
+                  @for (c of cardRange(foulCount().red); track c) {
+                    <div
+                      class="aspect-[2/3] bg-yellow-400 rounded-md shadow-md shadow-yellow-500/30 w-7"></div>
+                  }
+                  @if (foulCount().red === 0) {
+                    <div class="text-white/20 text-xs">—</div>
+                  }
+                </div>
               </div>
               <div class="flex gap-2 mt-2">
                 <button
@@ -181,7 +320,9 @@
                 </button>
                 <button
                   class="glass-btn flex-1 py-2 rounded-xl text-sm font-bold"
-                  [class.opacity-50]="foulCount().red === 0 || !!declaredWinner()"
+                  [class.opacity-50]="
+                    foulCount().red === 0 || !!declaredWinner()
+                  "
                   [disabled]="foulCount().red === 0 || !!declaredWinner()"
                   (click)="callFoul('red', -1)">
                   -犯規
@@ -191,14 +332,23 @@
 
             <!-- 擊倒牌列 -->
             <div>
-              <div class="text-white/50 text-xs mb-1.5">擊倒牌 <span class="text-white/80 font-bold">{{ knockdownCount().red }}</span></div>
-              <div class="flex gap-1.5 min-h-[3rem] items-center flex-wrap">
-                @for (c of cardRange(knockdownCount().red); track c) {
-                  <div class="aspect-[2/3] bg-yellow-400 rounded-md shadow-md shadow-yellow-500/30 w-7"></div>
-                }
-                @if (knockdownCount().red === 0) {
-                  <div class="text-white/20 text-xs">—</div>
-                }
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-white/70 text-sm font-semibold"
+                  >藍方倒地次數
+                  <span class="text-white font-bold ml-2">{{
+                    knockdownCount().red
+                  }}</span></span
+                >
+                <div class="flex gap-1.5 items-center min-h-[2.75rem]">
+                  @for (c of cardRange(knockdownCount().red); track c) {
+                    <fa-icon
+                      [icon]="faPersonFalling"
+                      class="text-2xl text-blue-400 drop-shadow-[0_0_6px_rgba(96,165,250,0.7)]" />
+                  }
+                  @if (knockdownCount().red === 0) {
+                    <div class="text-white/20 text-xs">—</div>
+                  }
+                </div>
               </div>
               <div class="flex gap-2 mt-2">
                 <button
@@ -206,88 +356,157 @@
                   [class.opacity-50]="!!declaredWinner()"
                   [disabled]="!!declaredWinner()"
                   (click)="callKnockdown('red', 1)">
-                  +擊倒
+                  +藍方倒地
                 </button>
                 <button
                   class="glass-btn flex-1 py-2 rounded-xl text-sm font-bold"
-                  [class.opacity-50]="knockdownCount().red === 0 || !!declaredWinner()"
+                  [class.opacity-50]="
+                    knockdownCount().red === 0 || !!declaredWinner()
+                  "
                   [disabled]="knockdownCount().red === 0 || !!declaredWinner()"
                   (click)="callKnockdown('red', -1)">
-                  -擊倒
+                  -藍方倒地
                 </button>
               </div>
             </div>
 
             <!-- 傷停 -->
-            <div class="border-t border-white/10 pt-2">
-              @if (redMedicalActive()) {
-                <div class="flex items-center justify-between gap-2">
-                  <span class="text-amber-400 text-sm font-bold animate-pulse">
-                    🏥 傷停 {{ displayRedMedical() }}
-                  </span>
-                  <button
-                    class="glass-btn px-3 py-1.5 rounded-xl text-xs border-amber-400/40 text-amber-300"
-                    (click)="toggleMedical('red')">
-                    結束傷停
-                  </button>
+            <div class="border-t border-white/10 pt-2 flex items-center gap-3">
+              <!-- 左 50%：十字 + 倒數 -->
+              <div
+                class="w-1/2 flex flex-row items-center justify-center gap-1.5">
+                <div
+                  class="w-8 h-8 bg-white rounded-sm p-0.5"
+                  [class.opacity-25]="!redMedicalActive()">
+                  <div
+                    class="w-full h-full bg-red-600"
+                    style="
+                      clip-path: polygon(
+                        33% 0%,
+                        67% 0%,
+                        67% 33%,
+                        100% 33%,
+                        100% 67%,
+                        67% 67%,
+                        67% 100%,
+                        33% 100%,
+                        33% 67%,
+                        0% 67%,
+                        0% 33%,
+                        33% 33%
+                      );
+                    "></div>
                 </div>
-              } @else {
+                <span
+                  class="font-mono font-bold text-3xl tabular-nums"
+                  [class.text-amber-400]="redMedicalActive()"
+                  [class.animate-pulse]="redMedicalActive()"
+                  [class.text-white/35]="!redMedicalActive()">
+                  {{ displayRedMedical() }}
+                </span>
+              </div>
+              <!-- 右 50%：傷停標籤 + 開始按鈕 -->
+              <div class="w-1/2 flex flex-col items-center gap-1">
                 <button
-                  class="w-full glass-btn py-2 rounded-xl text-sm border-amber-400/20 text-amber-400/70 hover:text-amber-300"
-                  [class.opacity-40]="redMedicalRemaining() <= 0 || !!declaredWinner()"
+                  class="w-full glass-btn py-2 rounded-xl text-sm font-bold"
+                  [class.border-amber-400]="redMedicalActive()"
+                  [class.text-amber-300]="redMedicalActive()"
+                  [class.border-amber-400/20]="!redMedicalActive()"
+                  [class.text-white/60]="!redMedicalActive()"
+                  [class.opacity-40]="
+                    redMedicalRemaining() <= 0 || !!declaredWinner()
+                  "
                   [disabled]="redMedicalRemaining() <= 0 || !!declaredWinner()"
                   (click)="toggleMedical('red')">
-                  🏥 傷停
+                  傷停開始
                 </button>
-              }
+              </div>
             </div>
 
             <!-- 紅方勝負宣告 -->
-            <div class="border-t border-white/10 pt-2 flex flex-col gap-1.5">
-              <div class="text-white/30 text-xs mb-0.5">紅方勝</div>
-              <button
-                class="glass-btn w-full py-2 rounded-xl text-sm font-bold border-red-400/40 text-red-300"
-                [class.opacity-40]="!!declaredWinner()"
-                [disabled]="!!declaredWinner()"
-                (click)="declareWinner('red', 'submission')">
-                <fa-icon [icon]="faGavel" class="mr-1" />
-                降伏勝
-              </button>
-              <button
-                class="glass-btn w-full py-2 rounded-xl text-sm font-bold border-red-400/40 text-red-300"
-                [class.opacity-40]="!!declaredWinner()"
-                [disabled]="!!declaredWinner()"
-                (click)="declareWinner('red', 'knockdown')">
-                擊倒勝
-              </button>
-              <button
-                class="glass-btn w-full py-2 rounded-xl text-xs border-red-400/30 text-red-200/70"
-                [class.opacity-40]="!!declaredWinner()"
-                [disabled]="!!declaredWinner()"
-                (click)="declareWinner('red', 'foul-dq')">
-                （藍方犯規失格）
-              </button>
+            <div class="border-t border-white/10 pt-2">
+              <div class="text-red-300/80 text-sm font-bold mb-1.5">紅方勝</div>
+              <div class="grid grid-cols-2 gap-1.5">
+                <button
+                  class="glass-btn py-2 rounded-xl text-sm font-bold border-red-400/40 text-red-300"
+                  [class.opacity-40]="!!declaredWinner()"
+                  [disabled]="!!declaredWinner()"
+                  (click)="declareWinner('red', 'submission')">
+                  <fa-icon [icon]="faGavel" class="mr-1" />
+                  降伏勝
+                </button>
+                <button
+                  class="glass-btn py-2 rounded-xl text-sm font-bold border-red-400/40 text-red-300"
+                  [class.opacity-40]="!!declaredWinner()"
+                  [disabled]="!!declaredWinner()"
+                  (click)="declareWinner('red', 'knockdown')">
+                  TKO 擊倒勝
+                </button>
+                <button
+                  class="glass-btn py-2 rounded-xl text-xs border-red-400/30 text-red-200/70"
+                  [class.opacity-40]="!!declaredWinner()"
+                  [disabled]="!!declaredWinner()"
+                  (click)="declareWinner('red', 'foul-dq')">
+                  藍方犯規失格
+                </button>
+                <button
+                  class="glass-btn py-2 rounded-xl text-sm font-bold border-yellow-400/50 text-yellow-300"
+                  [class.opacity-40]="
+                    !canEffectiveAttackWin() || !!declaredWinner()
+                  "
+                  [class.cursor-not-allowed]="
+                    !canEffectiveAttackWin() || !!declaredWinner()
+                  "
+                  [disabled]="!canEffectiveAttackWin() || !!declaredWinner()"
+                  (click)="declareWinner('red', 'effective-attack')">
+                  <fa-icon [icon]="faStar" class="mr-1" />
+                  有效攻擊勝
+                </button>
+                <button
+                  class="glass-btn col-span-2 py-2 rounded-xl text-sm font-bold border-red-300/50 text-red-200"
+                  [class.opacity-40]="!!declaredWinner()"
+                  [disabled]="!!declaredWinner()"
+                  (click)="declareWinner('red', 'decision')">
+                  判定勝
+                </button>
+              </div>
             </div>
           </div>
 
           <!-- ─── 藍方 ─── -->
-          <div class="glass-card rounded-2xl p-4 border border-blue-400/30 flex flex-col gap-3">
+          <div
+            class="glass-card rounded-2xl p-4 !border-2 !border-blue-400 flex flex-col gap-3">
             <div class="text-center">
-              <div class="text-blue-400 text-xs font-bold tracking-widest uppercase mb-0.5">藍方</div>
-              <div class="text-white font-bold text-lg leading-tight truncate">{{ match.bluePlayer.name }}</div>
-              <div class="text-white/40 text-xs truncate">{{ match.bluePlayer.teamName }}</div>
+              <div
+                class="text-blue-400 text-sm font-bold tracking-widest uppercase mb-0.5">
+                藍方
+              </div>
+              <div class="text-white font-bold text-2xl leading-tight truncate">
+                {{ match.bluePlayer.name }}
+              </div>
+              <div class="text-white/70 text-base truncate">
+                {{ match.bluePlayer.teamName }}
+              </div>
             </div>
 
             <!-- 犯規牌列 -->
             <div>
-              <div class="text-white/50 text-xs mb-1.5">犯規牌 <span class="text-white/80 font-bold">{{ foulCount().blue }}</span></div>
-              <div class="flex gap-1.5 min-h-[3rem] items-center flex-wrap">
-                @for (c of cardRange(foulCount().blue); track c) {
-                  <div class="aspect-[2/3] bg-yellow-400 rounded-md shadow-md shadow-yellow-500/30 w-7"></div>
-                }
-                @if (foulCount().blue === 0) {
-                  <div class="text-white/20 text-xs">—</div>
-                }
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-white/70 text-sm font-semibold"
+                  >犯規次數
+                  <span class="text-white font-bold ml-2">{{
+                    foulCount().blue
+                  }}</span></span
+                >
+                <div class="flex gap-1.5 items-center min-h-[2.75rem]">
+                  @for (c of cardRange(foulCount().blue); track c) {
+                    <div
+                      class="aspect-[2/3] bg-yellow-400 rounded-md shadow-md shadow-yellow-500/30 w-7"></div>
+                  }
+                  @if (foulCount().blue === 0) {
+                    <div class="text-white/20 text-xs">—</div>
+                  }
+                </div>
               </div>
               <div class="flex gap-2 mt-2">
                 <button
@@ -299,7 +518,9 @@
                 </button>
                 <button
                   class="glass-btn flex-1 py-2 rounded-xl text-sm font-bold"
-                  [class.opacity-50]="foulCount().blue === 0 || !!declaredWinner()"
+                  [class.opacity-50]="
+                    foulCount().blue === 0 || !!declaredWinner()
+                  "
                   [disabled]="foulCount().blue === 0 || !!declaredWinner()"
                   (click)="callFoul('blue', -1)">
                   -犯規
@@ -309,14 +530,23 @@
 
             <!-- 擊倒牌列 -->
             <div>
-              <div class="text-white/50 text-xs mb-1.5">擊倒牌 <span class="text-white/80 font-bold">{{ knockdownCount().blue }}</span></div>
-              <div class="flex gap-1.5 min-h-[3rem] items-center flex-wrap">
-                @for (c of cardRange(knockdownCount().blue); track c) {
-                  <div class="aspect-[2/3] bg-yellow-400 rounded-md shadow-md shadow-yellow-500/30 w-7"></div>
-                }
-                @if (knockdownCount().blue === 0) {
-                  <div class="text-white/20 text-xs">—</div>
-                }
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-white/70 text-sm font-semibold"
+                  >紅方倒地次數
+                  <span class="text-white font-bold ml-2">{{
+                    knockdownCount().blue
+                  }}</span></span
+                >
+                <div class="flex gap-1.5 items-center min-h-[2.75rem]">
+                  @for (c of cardRange(knockdownCount().blue); track c) {
+                    <fa-icon
+                      [icon]="faPersonFalling"
+                      class="text-2xl text-red-400 drop-shadow-[0_0_6px_rgba(248,113,113,0.7)]" />
+                  }
+                  @if (knockdownCount().blue === 0) {
+                    <div class="text-white/20 text-xs">—</div>
+                  }
+                </div>
               </div>
               <div class="flex gap-2 mt-2">
                 <button
@@ -324,73 +554,160 @@
                   [class.opacity-50]="!!declaredWinner()"
                   [disabled]="!!declaredWinner()"
                   (click)="callKnockdown('blue', 1)">
-                  +擊倒
+                  +紅方倒地
                 </button>
                 <button
                   class="glass-btn flex-1 py-2 rounded-xl text-sm font-bold"
-                  [class.opacity-50]="knockdownCount().blue === 0 || !!declaredWinner()"
+                  [class.opacity-50]="
+                    knockdownCount().blue === 0 || !!declaredWinner()
+                  "
                   [disabled]="knockdownCount().blue === 0 || !!declaredWinner()"
                   (click)="callKnockdown('blue', -1)">
-                  -擊倒
+                  -紅方倒地
                 </button>
               </div>
             </div>
 
             <!-- 傷停 -->
-            <div class="border-t border-white/10 pt-2">
-              @if (blueMedicalActive()) {
-                <div class="flex items-center justify-between gap-2">
-                  <span class="text-amber-400 text-sm font-bold animate-pulse">
-                    🏥 傷停 {{ displayBlueMedical() }}
-                  </span>
-                  <button
-                    class="glass-btn px-3 py-1.5 rounded-xl text-xs border-amber-400/40 text-amber-300"
-                    (click)="toggleMedical('blue')">
-                    結束傷停
-                  </button>
+            <div class="border-t border-white/10 pt-2 flex items-center gap-3">
+              <!-- 左 50%：十字 + 倒數 -->
+              <div
+                class="w-1/2 flex flex-row items-center justify-center gap-1.5">
+                <div
+                  class="w-8 h-8 bg-white rounded-sm p-0.5"
+                  [class.opacity-25]="!blueMedicalActive()">
+                  <div
+                    class="w-full h-full bg-red-600"
+                    style="
+                      clip-path: polygon(
+                        33% 0%,
+                        67% 0%,
+                        67% 33%,
+                        100% 33%,
+                        100% 67%,
+                        67% 67%,
+                        67% 100%,
+                        33% 100%,
+                        33% 67%,
+                        0% 67%,
+                        0% 33%,
+                        33% 33%
+                      );
+                    "></div>
                 </div>
-              } @else {
+                <span
+                  class="font-mono font-bold text-3xl tabular-nums"
+                  [class.text-amber-400]="blueMedicalActive()"
+                  [class.animate-pulse]="blueMedicalActive()"
+                  [class.text-white/35]="!blueMedicalActive()">
+                  {{ displayBlueMedical() }}
+                </span>
+              </div>
+              <!-- 右 50%：傷停標籤 + 開始按鈕 -->
+              <div class="w-1/2 flex flex-col items-center gap-1">
                 <button
-                  class="w-full glass-btn py-2 rounded-xl text-sm border-amber-400/20 text-amber-400/70 hover:text-amber-300"
-                  [class.opacity-40]="blueMedicalRemaining() <= 0 || !!declaredWinner()"
+                  class="w-full glass-btn py-2 rounded-xl text-sm font-bold"
+                  [class.border-amber-400]="blueMedicalActive()"
+                  [class.text-amber-300]="blueMedicalActive()"
+                  [class.border-amber-400/20]="!blueMedicalActive()"
+                  [class.text-white/60]="!blueMedicalActive()"
+                  [class.opacity-40]="
+                    blueMedicalRemaining() <= 0 || !!declaredWinner()
+                  "
                   [disabled]="blueMedicalRemaining() <= 0 || !!declaredWinner()"
                   (click)="toggleMedical('blue')">
-                  🏥 傷停
+                  傷停開始
                 </button>
-              }
+              </div>
             </div>
 
             <!-- 藍方勝負宣告 -->
-            <div class="border-t border-white/10 pt-2 flex flex-col gap-1.5">
-              <div class="text-white/30 text-xs mb-0.5">藍方勝</div>
-              <button
-                class="glass-btn w-full py-2 rounded-xl text-sm font-bold border-blue-400/40 text-blue-300"
-                [class.opacity-40]="!!declaredWinner()"
-                [disabled]="!!declaredWinner()"
-                (click)="declareWinner('blue', 'submission')">
-                <fa-icon [icon]="faGavel" class="mr-1" />
-                降伏勝
-              </button>
-              <button
-                class="glass-btn w-full py-2 rounded-xl text-sm font-bold border-blue-400/40 text-blue-300"
-                [class.opacity-40]="!!declaredWinner()"
-                [disabled]="!!declaredWinner()"
-                (click)="declareWinner('blue', 'knockdown')">
-                擊倒勝
-              </button>
-              <button
-                class="glass-btn w-full py-2 rounded-xl text-xs border-blue-400/30 text-blue-200/70"
-                [class.opacity-40]="!!declaredWinner()"
-                [disabled]="!!declaredWinner()"
-                (click)="declareWinner('blue', 'foul-dq')">
-                （紅方犯規失格）
-              </button>
+            <div class="border-t border-white/10 pt-2">
+              <div class="text-blue-300/80 text-sm font-bold mb-1.5">
+                藍方勝
+              </div>
+              <div class="grid grid-cols-2 gap-1.5">
+                <button
+                  class="glass-btn py-2 rounded-xl text-sm font-bold border-blue-400/40 text-blue-300"
+                  [class.opacity-40]="!!declaredWinner()"
+                  [disabled]="!!declaredWinner()"
+                  (click)="declareWinner('blue', 'submission')">
+                  <fa-icon [icon]="faGavel" class="mr-1" />
+                  降伏勝
+                </button>
+                <button
+                  class="glass-btn py-2 rounded-xl text-sm font-bold border-blue-400/40 text-blue-300"
+                  [class.opacity-40]="!!declaredWinner()"
+                  [disabled]="!!declaredWinner()"
+                  (click)="declareWinner('blue', 'knockdown')">
+                  TKO 擊倒勝
+                </button>
+                <button
+                  class="glass-btn py-2 rounded-xl text-xs border-blue-400/30 text-blue-200/70"
+                  [class.opacity-40]="!!declaredWinner()"
+                  [disabled]="!!declaredWinner()"
+                  (click)="declareWinner('blue', 'foul-dq')">
+                  紅方犯規失格
+                </button>
+                <button
+                  class="glass-btn py-2 rounded-xl text-sm font-bold border-yellow-400/50 text-yellow-300"
+                  [class.opacity-40]="
+                    !canEffectiveAttackWin() || !!declaredWinner()
+                  "
+                  [class.cursor-not-allowed]="
+                    !canEffectiveAttackWin() || !!declaredWinner()
+                  "
+                  [disabled]="!canEffectiveAttackWin() || !!declaredWinner()"
+                  (click)="declareWinner('blue', 'effective-attack')">
+                  <fa-icon [icon]="faStar" class="mr-1" />
+                  有效攻擊勝
+                </button>
+                <button
+                  class="glass-btn col-span-2 py-2 rounded-xl text-sm font-bold border-blue-300/50 text-blue-200"
+                  [class.opacity-40]="!!declaredWinner()"
+                  [disabled]="!!declaredWinner()"
+                  (click)="declareWinner('blue', 'decision')">
+                  判定勝
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
+        <!-- 宣勝後操作 overlay -->
+        @if (declaredWinner(); as winner) {
+          <div
+            class="glass-card rounded-2xl p-6 mt-2 flex flex-col items-center gap-4"
+            [class.!border-2]="true"
+            [ngClass]="
+              winner === 'red' ? '!border-red-400' : '!border-blue-400'
+            ">
+            <div
+              class="text-2xl font-bold"
+              [class.text-red-300]="winner === 'red'"
+              [class.text-blue-300]="winner === 'blue'">
+              {{ winner === "red" ? "紅方勝" : "藍方勝" }}
+            </div>
+            <div class="flex gap-3 w-full">
+              <button
+                class="flex-1 glass-btn py-3 rounded-xl font-bold text-base border-green-400/50 text-green-300"
+                (click)="goNextMatch()">
+                下一場次
+              </button>
+              <button
+                class="flex-1 glass-btn py-3 rounded-xl font-bold text-base border-white/30 text-white/80"
+                (click)="endMatch()">
+                結束比賽
+              </button>
+              <button
+                class="flex-1 glass-btn py-3 rounded-xl font-bold text-base border-yellow-400/50 text-yellow-300"
+                (click)="cancelWinner()">
+                取消宣告
+              </button>
+            </div>
+          </div>
+        }
       </div>
     }
   }
-
 </div>

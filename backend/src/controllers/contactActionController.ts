@@ -3,7 +3,7 @@ import Match from "../models/Match";
 import { broadcast } from "../sockets/index";
 
 type Side = "red" | "blue";
-type ActionType = "foul" | "knockdown" | "goldenMinute";
+type ActionType = "foul" | "knockdown" | "goldenMinute" | "reset";
 
 /**
  * PATCH /api/v1/contact-action
@@ -46,6 +46,10 @@ export async function contactAction(req: Request, res: Response): Promise<void> 
       res.status(400).json({ success: false, error: "犯規計數已為 0，不可繼續減少" });
       return;
     }
+    if (delta > 0 && current[side] >= 2) {
+      res.status(400).json({ success: false, error: "犯規計數已達上限（2次）" });
+      return;
+    }
 
     current[side] = Math.max(0, current[side] + delta);
     match.foulCount = current;
@@ -66,6 +70,10 @@ export async function contactAction(req: Request, res: Response): Promise<void> 
 
     if (delta < 0 && current[side] <= 0) {
       res.status(400).json({ success: false, error: "擊倒計數已為 0，不可繼續減少" });
+      return;
+    }
+    if (delta > 0 && current[side] >= 2) {
+      res.status(400).json({ success: false, error: "擊倒計數已達上限（2次）" });
       return;
     }
 
@@ -92,6 +100,18 @@ export async function contactAction(req: Request, res: Response): Promise<void> 
       goldenMinuteCount: match.goldenMinuteCount,
     });
     res.json({ success: true, data: { goldenMinuteCount: match.goldenMinuteCount } });
+    return;
+  }
+
+  if (action === "reset") {
+    match.foulCount = { red: 0, blue: 0 };
+    match.knockdownCount = { red: 0, blue: 0 };
+    match.goldenMinuteCount = 0;
+    await match.save();
+
+    broadcast.contactReset(eventId, { matchId });
+    broadcast.matchTimerUpdated(eventId, { matchId, remaining: 180, paused: true });
+    res.json({ success: true });
     return;
   }
 

@@ -1,5 +1,5 @@
-<div class="h-screen bg-gray-950 text-white flex flex-col select-none relative overflow-hidden">
-
+<div
+  class="h-screen bg-gray-950 text-white flex flex-col select-none relative overflow-hidden">
   <!-- 全螢幕按鈕 -->
   <div class="absolute top-3 right-3 z-10">
     <button
@@ -14,7 +14,9 @@
     <div class="flex-1 flex items-center justify-center">
       <div class="text-center">
         <div class="text-6xl xl:text-8xl mb-6">🥊</div>
-        <h1 class="text-3xl xl:text-5xl font-bold text-white/50 mb-2">格鬥計分板</h1>
+        <h1 class="text-3xl xl:text-5xl font-bold text-white/50 mb-2">
+          格鬥計分板
+        </h1>
         <p class="text-white/30 xl:text-2xl">等待下一場比賽...</p>
       </div>
     </div>
@@ -22,15 +24,15 @@
 
   <!-- 計分板（滿版） -->
   @if (activeMatch(); as match) {
-
     <!-- 勝負覆蓋層（6.5）-->
     @if (matchResult(); as result) {
       <div
         class="absolute inset-0 z-20 flex flex-col items-center justify-center"
         [class.bg-red-900/80]="result.winner === 'red'"
         [class.bg-blue-900/80]="result.winner === 'blue'">
-        <div class="text-6xl md:text-8xl xl:text-9xl font-black text-white animate-bounce mb-4">
-          {{ result.winner === 'red' ? '紅方' : '藍方' }}
+        <div
+          class="text-6xl md:text-8xl xl:text-9xl font-black text-white animate-bounce mb-4">
+          {{ result.winner === "red" ? "紅方" : "藍方" }}
         </div>
         <div class="text-3xl md:text-5xl xl:text-6xl font-bold text-yellow-300">
           {{ winnerLabel() }}
@@ -38,11 +40,13 @@
       </div>
     }
 
-    <div class="flex-1 flex flex-col min-h-0 px-4 md:px-6 lg:px-8 xl:px-10 pt-3 pb-2 gap-3 xl:gap-4">
-
+    <div
+      class="flex-1 flex flex-col min-h-0 px-4 md:px-6 lg:px-8 xl:px-10 pt-3 pb-2 gap-3 xl:gap-4">
       <!-- 場次資訊列 -->
       <div class="text-center shrink-0">
-        <div class="text-white font-black text-2xl md:text-3xl lg:text-4xl xl:text-5xl 2xl:text-6xl tracking-wide leading-tight">
+        <div
+          class="text-white font-black text-2xl md:text-3xl lg:text-4xl xl:text-5xl 2xl:text-6xl tracking-wide leading-tight">
+          格鬥
           {{
             match.category === "male"
               ? "男子組"
@@ -52,14 +56,17 @@
           }}
           {{ match.weightClass }}
         </div>
-        <div class="text-white/40 text-xs md:text-sm lg:text-base xl:text-lg tracking-widest uppercase mt-0.5">
+        <div
+          class="text-white/40 text-xs md:text-sm lg:text-base xl:text-lg tracking-widest uppercase mt-0.5">
           R{{ match.round }}-{{ match.matchNo }}
         </div>
         <!-- 黃金分鐘指示（6.4）-->
         @if (goldenMinuteCount() > 0) {
-          <div class="mt-1 inline-flex items-center gap-2 bg-yellow-500/20 border border-yellow-400/40 rounded-full px-4 py-1">
-            <span class="text-yellow-400 font-bold text-sm md:text-base xl:text-lg">
-              ⭐ 黃金分鐘 {{ goldenMinuteCount() }}/2
+          <div
+            class="mt-1 inline-flex items-center gap-2 bg-yellow-500/20 border border-yellow-400/40 rounded-full px-4 py-1">
+            <span
+              class="text-yellow-400 font-bold text-sm md:text-base xl:text-lg">
+              ⭐ 第{{ goldenMinuteCount() }}次黃金加時賽
             </span>
           </div>
         }
@@ -68,11 +75,11 @@
       <!-- 紅方列 -->
       <div
         class="flex-1 flex items-center gap-4 md:gap-6 lg:gap-8 rounded-2xl bg-white/5 border border-red-400/40 shadow-lg shadow-red-900/20 px-4 md:px-6 lg:px-8 xl:px-10 py-3 xl:py-4 min-h-0">
-
         <!-- 左：姓名 + 傷停計時 -->
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-3 flex-wrap">
-            <span class="text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-black text-white leading-tight truncate">
+            <span
+              class="text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-black text-white leading-tight truncate">
               {{ match.redPlayer.name }}
             </span>
             <!-- 傷停（6.6）-->
@@ -80,27 +87,49 @@
               <span
                 class="flex items-center gap-2 text-2xl md:text-3xl xl:text-4xl font-black text-amber-400 shrink-0 bg-amber-500/10 border border-amber-400/50 rounded-xl px-3 py-1"
                 [class.injury-pulse]="redInjuryActive()">
-                <div class="w-7 h-7 md:w-9 md:h-9 xl:w-10 xl:h-10 bg-white rounded shrink-0 p-1">
-                  <div class="w-full h-full bg-red-600" style="clip-path: polygon(33% 0%,67% 0%,67% 33%,100% 33%,100% 67%,67% 67%,67% 100%,33% 100%,33% 67%,0% 67%,0% 33%,33% 33%)"></div>
+                <div
+                  class="w-7 h-7 md:w-9 md:h-9 xl:w-10 xl:h-10 bg-white rounded shrink-0 p-1">
+                  <div
+                    class="w-full h-full bg-red-600"
+                    style="
+                      clip-path: polygon(
+                        33% 0%,
+                        67% 0%,
+                        67% 33%,
+                        100% 33%,
+                        100% 67%,
+                        67% 67%,
+                        67% 100%,
+                        33% 100%,
+                        33% 67%,
+                        0% 67%,
+                        0% 33%,
+                        33% 33%
+                      );
+                    "></div>
                 </div>
                 {{ displayRedInjuryTimer() }}
               </span>
             }
           </div>
-          <div class="text-white/60 text-base md:text-xl lg:text-2xl xl:text-3xl font-semibold mt-1 truncate">
+          <div
+            class="text-white/60 text-base md:text-xl lg:text-2xl xl:text-3xl font-semibold mt-1 truncate">
             {{ match.redPlayer.teamName }}
           </div>
         </div>
 
         <!-- 右：亮牌列（6.2 — 無數字分數 6.3）-->
         <div class="flex flex-col gap-3 xl:gap-4 shrink-0 items-end">
-
           <!-- 犯規牌列 -->
           <div class="flex flex-col items-end gap-1.5">
-            <div class="text-white/40 text-xs md:text-sm xl:text-base">犯規</div>
-            <div class="flex gap-1.5 md:gap-2 xl:gap-2.5 min-h-[3rem] md:min-h-[4rem] xl:min-h-[5rem] items-center">
+            <div class="text-white/40 text-xs md:text-sm xl:text-base">
+              犯規
+            </div>
+            <div
+              class="flex gap-1.5 md:gap-2 xl:gap-2.5 min-h-[3rem] md:min-h-[4rem] xl:min-h-[5rem] items-center">
               @for (c of cardRange(foulCount().red); track c) {
-                <div class="aspect-[2/3] bg-yellow-400 rounded-md shadow-lg shadow-yellow-500/40 w-8 md:w-10 xl:w-12 2xl:w-14"></div>
+                <div
+                  class="aspect-[2/3] bg-yellow-400 rounded-md shadow-lg shadow-yellow-500/40 w-8 md:w-10 xl:w-12 2xl:w-14"></div>
               }
               @if (foulCount().red === 0) {
                 <div class="text-white/20 text-sm">—</div>
@@ -110,10 +139,15 @@
 
           <!-- 擊倒牌列 -->
           <div class="flex flex-col items-end gap-1.5">
-            <div class="text-white/40 text-xs md:text-sm xl:text-base">擊倒</div>
-            <div class="flex gap-1.5 md:gap-2 xl:gap-2.5 min-h-[3rem] md:min-h-[4rem] xl:min-h-[5rem] items-center">
+            <div class="text-white/40 text-xs md:text-sm xl:text-base">
+              藍方倒地
+            </div>
+            <div
+              class="flex gap-1.5 md:gap-2 xl:gap-2.5 min-h-[3rem] md:min-h-[4rem] xl:min-h-[5rem] items-center">
               @for (c of cardRange(knockdownCount().red); track c) {
-                <div class="aspect-[2/3] bg-yellow-400 rounded-md shadow-lg shadow-yellow-500/40 w-8 md:w-10 xl:w-12 2xl:w-14"></div>
+                <fa-icon
+                  [icon]="faPersonFalling"
+                  class="text-3xl md:text-4xl xl:text-5xl text-blue-400 drop-shadow-[0_0_8px_rgba(96,165,250,0.7)]" />
               }
               @if (knockdownCount().red === 0) {
                 <div class="text-white/20 text-sm">—</div>
@@ -126,11 +160,11 @@
       <!-- 藍方列 -->
       <div
         class="flex-1 flex items-center gap-4 md:gap-6 lg:gap-8 rounded-2xl bg-white/5 border border-blue-400/40 shadow-lg shadow-blue-900/20 px-4 md:px-6 lg:px-8 xl:px-10 py-3 xl:py-4 min-h-0">
-
         <!-- 左：姓名 + 傷停計時 -->
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-3 flex-wrap">
-            <span class="text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-black text-white leading-tight truncate">
+            <span
+              class="text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-black text-white leading-tight truncate">
               {{ match.bluePlayer.name }}
             </span>
             <!-- 傷停（6.6）-->
@@ -138,27 +172,49 @@
               <span
                 class="flex items-center gap-2 text-2xl md:text-3xl xl:text-4xl font-black text-amber-400 shrink-0 bg-amber-500/10 border border-amber-400/50 rounded-xl px-3 py-1"
                 [class.injury-pulse]="blueInjuryActive()">
-                <div class="w-7 h-7 md:w-9 md:h-9 xl:w-10 xl:h-10 bg-white rounded shrink-0 p-1">
-                  <div class="w-full h-full bg-red-600" style="clip-path: polygon(33% 0%,67% 0%,67% 33%,100% 33%,100% 67%,67% 67%,67% 100%,33% 100%,33% 67%,0% 67%,0% 33%,33% 33%)"></div>
+                <div
+                  class="w-7 h-7 md:w-9 md:h-9 xl:w-10 xl:h-10 bg-white rounded shrink-0 p-1">
+                  <div
+                    class="w-full h-full bg-red-600"
+                    style="
+                      clip-path: polygon(
+                        33% 0%,
+                        67% 0%,
+                        67% 33%,
+                        100% 33%,
+                        100% 67%,
+                        67% 67%,
+                        67% 100%,
+                        33% 100%,
+                        33% 67%,
+                        0% 67%,
+                        0% 33%,
+                        33% 33%
+                      );
+                    "></div>
                 </div>
                 {{ displayBlueInjuryTimer() }}
               </span>
             }
           </div>
-          <div class="text-white/60 text-base md:text-xl lg:text-2xl xl:text-3xl font-semibold mt-1 truncate">
+          <div
+            class="text-white/60 text-base md:text-xl lg:text-2xl xl:text-3xl font-semibold mt-1 truncate">
             {{ match.bluePlayer.teamName }}
           </div>
         </div>
 
         <!-- 右：亮牌列（6.2 — 無數字分數 6.3）-->
         <div class="flex flex-col gap-3 xl:gap-4 shrink-0 items-end">
-
           <!-- 犯規牌列 -->
           <div class="flex flex-col items-end gap-1.5">
-            <div class="text-white/40 text-xs md:text-sm xl:text-base">犯規</div>
-            <div class="flex gap-1.5 md:gap-2 xl:gap-2.5 min-h-[3rem] md:min-h-[4rem] xl:min-h-[5rem] items-center">
+            <div class="text-white/40 text-xs md:text-sm xl:text-base">
+              犯規
+            </div>
+            <div
+              class="flex gap-1.5 md:gap-2 xl:gap-2.5 min-h-[3rem] md:min-h-[4rem] xl:min-h-[5rem] items-center">
               @for (c of cardRange(foulCount().blue); track c) {
-                <div class="aspect-[2/3] bg-yellow-400 rounded-md shadow-lg shadow-yellow-500/40 w-8 md:w-10 xl:w-12 2xl:w-14"></div>
+                <div
+                  class="aspect-[2/3] bg-yellow-400 rounded-md shadow-lg shadow-yellow-500/40 w-8 md:w-10 xl:w-12 2xl:w-14"></div>
               }
               @if (foulCount().blue === 0) {
                 <div class="text-white/20 text-sm">—</div>
@@ -168,10 +224,15 @@
 
           <!-- 擊倒牌列 -->
           <div class="flex flex-col items-end gap-1.5">
-            <div class="text-white/40 text-xs md:text-sm xl:text-base">擊倒</div>
-            <div class="flex gap-1.5 md:gap-2 xl:gap-2.5 min-h-[3rem] md:min-h-[4rem] xl:min-h-[5rem] items-center">
+            <div class="text-white/40 text-xs md:text-sm xl:text-base">
+              紅方倒地
+            </div>
+            <div
+              class="flex gap-1.5 md:gap-2 xl:gap-2.5 min-h-[3rem] md:min-h-[4rem] xl:min-h-[5rem] items-center">
               @for (c of cardRange(knockdownCount().blue); track c) {
-                <div class="aspect-[2/3] bg-yellow-400 rounded-md shadow-lg shadow-yellow-500/40 w-8 md:w-10 xl:w-12 2xl:w-14"></div>
+                <fa-icon
+                  [icon]="faPersonFalling"
+                  class="text-3xl md:text-4xl xl:text-5xl text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.7)]" />
               }
               @if (knockdownCount().blue === 0) {
                 <div class="text-white/20 text-sm">—</div>
@@ -182,21 +243,24 @@
       </div>
 
       <!-- 計時器列 -->
-      <div class="shrink-0 flex justify-end items-center px-2 py-1 gap-4 md:gap-6">
+      <div
+        class="shrink-0 flex justify-end items-center px-2 py-1 gap-4 md:gap-6">
         @if (timerPaused() && timerRemaining() > 0 && !matchResult()) {
-          <div class="text-5xl md:text-6xl xl:text-7xl font-mono font-bold text-yellow-400">
+          <div
+            class="text-5xl md:text-6xl xl:text-7xl font-mono font-bold text-yellow-400">
             ⏸
           </div>
         }
         <div
           class="text-6xl md:text-8xl lg:text-9xl xl:text-[10rem] 2xl:text-[12rem] font-mono font-bold tracking-widest"
           [class.text-red-400]="timerRemaining() <= 30 && !timerPaused()"
-          [class.text-yellow-400]="timerRemaining() <= 60 && timerRemaining() > 30"
+          [class.text-yellow-400]="
+            timerRemaining() <= 60 && timerRemaining() > 30
+          "
           [class.text-white]="timerRemaining() > 60">
           {{ displayTimer() }}
         </div>
       </div>
-
     </div>
   }
 </div>

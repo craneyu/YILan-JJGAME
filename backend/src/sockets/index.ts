@@ -257,4 +257,10 @@ export const broadcast = {
   contactWinner(eventId: string, data: object) {
     getIO().to(eventId).emit("match:contact-winner", data);
   },
+  contactReset(eventId: string, data: object) {
+    getIO().to(eventId).emit("match:contact-reset", data);
+  },
+  contactCancelWinner(eventId: string, data: object) {
+    getIO().to(eventId).emit("match:contact-cancel-winner", data);
+  },
 };

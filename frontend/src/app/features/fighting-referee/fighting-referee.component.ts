@@ -138,6 +138,14 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
     groupMatchesByCategory(this.fightingMatches()),
   );
 
+  // ── 批次清空 ──
+  batchMode = signal(false);
+  selectedIds = signal<Set<string>>(new Set());
+  allSelected = computed(() =>
+    this.fightingMatches().length > 0 &&
+    this.fightingMatches().every((m) => this.selectedIds().has(m._id)),
+  );
+
   displayTimer = computed(() => {
     const s = this.timerRemaining();
     const m = Math.floor(s / 60);
@@ -987,6 +995,64 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
 
   backToSportSelect(): void {
     this.router.navigate(["/referee"]);
+  }
+
+  // ──────────────────────────────────────────────────────────
+  // 批次清空
+  // ──────────────────────────────────────────────────────────
+
+  toggleBatchMode(): void {
+    this.batchMode.update((v) => !v);
+    this.selectedIds.set(new Set());
+  }
+
+  toggleSelect(matchId: string): void {
+    this.selectedIds.update((s) => {
+      const next = new Set(s);
+      next.has(matchId) ? next.delete(matchId) : next.add(matchId);
+      return next;
+    });
+  }
+
+  toggleSelectAll(): void {
+    if (this.allSelected()) {
+      this.selectedIds.set(new Set());
+    } else {
+      this.selectedIds.set(new Set(this.fightingMatches().map((m) => m._id)));
+    }
+  }
+
+  confirmBatchReset(): void {
+    const ids = [...this.selectedIds()];
+    if (ids.length === 0) return;
+
+    Swal.fire({
+      icon: "warning",
+      title: `確認清空 ${ids.length} 場次的成績？`,
+      text: "所有計分將歸零，場次恢復為待開始。",
+      showCancelButton: true,
+      confirmButtonText: "確認清空",
+      cancelButtonText: "取消",
+      background: "#1e293b",
+      color: "#fff",
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#6b7280",
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+      const eid = this.eventId();
+      this.api
+        .patch<{ success: boolean }>(`/events/${eid}/matches/batch-reset`, { matchIds: ids })
+        .subscribe({
+          next: () => {
+            this.batchMode.set(false);
+            this.selectedIds.set(new Set());
+            this.loadMatches();
+          },
+          error: () => {
+            Swal.fire({ icon: "error", title: "清空失敗", toast: true, position: "top-end", showConfirmButton: false, timer: 2000 });
+          },
+        });
+    });
   }
 
   toggleFullscreen(): void {

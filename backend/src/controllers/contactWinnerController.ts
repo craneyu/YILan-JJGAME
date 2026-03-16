@@ -3,7 +3,7 @@ import Match from "../models/Match";
 import { broadcast } from "../sockets/index";
 
 type Side = "red" | "blue";
-type ContactMethod = "submission" | "knockdown" | "foul-dq";
+type ContactMethod = "submission" | "knockdown" | "foul-dq" | "effective-attack" | "decision";
 
 /**
  * PATCH /api/v1/contact-winner
@@ -24,7 +24,7 @@ export async function contactWinner(req: Request, res: Response): Promise<void> 
     res.status(400).json({ success: false, error: "winner 須為 red 或 blue" });
     return;
   }
-  if (!["submission", "knockdown", "foul-dq"].includes(method)) {
+  if (!["submission", "knockdown", "foul-dq", "effective-attack", "decision"].includes(method)) {
     res.status(400).json({ success: false, error: "無效的 method" });
     return;
   }
@@ -39,7 +39,7 @@ export async function contactWinner(req: Request, res: Response): Promise<void> 
     return;
   }
 
-  // Map contact method to existing MatchMethod enum
+  // Map contact method to MatchMethod enum
   const matchMethod = method === "foul-dq" ? "dq" : method;
 
   match.status = "completed";

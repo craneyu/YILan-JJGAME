@@ -7,6 +7,7 @@ import {
   deleteMatch,
   clearMatches,
 } from "../controllers/matchController";
+import { batchResetMatches } from "../controllers/batchResetMatchesController";
 import { verifyToken, requireRole } from "../middleware/auth";
 
 const router = Router({ mergeParams: true });
@@ -23,6 +24,12 @@ router.post(
   verifyToken,
   requireRole("admin"),
   bulkCreateMatches,
+);
+router.patch(
+  "/:eventId/matches/batch-reset",
+  verifyToken,
+  requireRole("admin", "match_referee"),
+  batchResetMatches,
 );
 router.patch(
   "/:eventId/matches/:matchId",

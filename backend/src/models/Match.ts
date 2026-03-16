@@ -9,7 +9,7 @@ export type MatchStatus =
   | "shido-dq-pending"
   | "completed";
 export type MatchWinner = "red" | "blue";
-export type MatchMethod = "judge" | "submission" | "dq" | "full-ippon" | "shido-dq";
+export type MatchMethod = "judge" | "submission" | "dq" | "full-ippon" | "shido-dq" | "knockdown" | "effective-attack" | "decision";
 
 export interface IMatchPlayer {
   name: string;
@@ -103,7 +103,7 @@ const MatchResultSchema = new Schema<IMatchResult>(
     winner: { type: String, enum: ["red", "blue"], required: true },
     method: {
       type: String,
-      enum: ["judge", "submission", "dq", "full-ippon", "shido-dq"],
+      enum: ["judge", "submission", "dq", "full-ippon", "shido-dq", "knockdown", "effective-attack", "decision"],
       required: true,
     },
   },

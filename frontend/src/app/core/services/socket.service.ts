@@ -515,4 +515,12 @@ export class SocketService {
   get contactWinner$(): Observable<{ matchId: string; winner: "red" | "blue"; method: string }> {
     return fromEvent(this.socket, "match:contact-winner");
   }
+
+  get contactReset$(): Observable<{ matchId: string }> {
+    return fromEvent(this.socket, "match:contact-reset");
+  }
+
+  get contactCancelWinner$(): Observable<{ matchId: string }> {
+    return fromEvent(this.socket, "match:contact-cancel-winner");
+  }
 }
