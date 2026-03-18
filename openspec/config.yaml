@@ -164,6 +164,7 @@ context: |
   cd jju-package && ./start.sh      — 離線部署（載入映像並啟動，保留資料庫資料）
 locale: tw
 tdd: true
+parallel_tasks: true
 audit: true
 
 rules:

@@ -12,7 +12,7 @@ echo ""
 
 # 重新建構最新映像
 echo "[1/4] 重新建構映像（確保包含最新程式碼）..."
-docker compose up --build -d
+docker compose build
 echo "      映像建構完成"
 
 # 建立暫存目錄

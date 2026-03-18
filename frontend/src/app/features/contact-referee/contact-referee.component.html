@@ -251,10 +251,10 @@
             }
           </div>
 
-          <!-- 黃金分鐘 -->
+          <!-- 黃金加時 -->
           <div class="flex items-center gap-2">
             <div class="text-xs text-white/40 text-right">
-              黃金分鐘<br />
+              黃金加時<br />
               <span class="text-yellow-400 font-bold"
                 >{{ goldenMinuteCount() }}/2</span
               >
@@ -268,7 +268,7 @@
               [disabled]="!canGoldenMinute() || !!declaredWinner()"
               (click)="triggerGoldenMinute()">
               <fa-icon [icon]="faStar" />
-              黃金分鐘
+              黃金加時
             </button>
           </div>
         </div>
