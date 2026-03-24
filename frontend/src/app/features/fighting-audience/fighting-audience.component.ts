@@ -124,6 +124,32 @@ export class FightingAudienceComponent implements OnInit, OnDestroy {
   private redOsaeKomiInterval: ReturnType<typeof setInterval> | null = null;
   private blueOsaeKomiInterval: ReturnType<typeof setInterval> | null = null;
 
+  // 主計時歸零鈴聲
+  private previousTimerValue = -1;
+  private readonly timerBellEffect = effect(() => {
+    const current = this.timerRemaining();
+    if (this.previousTimerValue > 0 && current === 0) {
+      new Audio('assets/sounds/whistle.mp3').play().catch(() => {});
+    }
+    this.previousTimerValue = current;
+  });
+
+  // OSAE KOMI 歸零短音
+  private previousRedOsaeKomi = -1;
+  private previousBlueOsaeKomi = -1;
+  private readonly osaeKomiBellEffect = effect(() => {
+    const red = this.redOsaeKomiRemaining();
+    const blue = this.blueOsaeKomiRemaining();
+    if (this.previousRedOsaeKomi > 0 && red === 0) {
+      new Audio('assets/sounds/bell-short.mp3').play().catch(() => {});
+    }
+    if (this.previousBlueOsaeKomi > 0 && blue === 0) {
+      new Audio('assets/sounds/bell-short.mp3').play().catch(() => {});
+    }
+    this.previousRedOsaeKomi = red;
+    this.previousBlueOsaeKomi = blue;
+  });
+
   displayTimer = computed(() => {
     const s = this.timerRemaining();
     const m = Math.floor(s / 60);

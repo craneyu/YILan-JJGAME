@@ -4,6 +4,7 @@ import {
   OnDestroy,
   signal,
   computed,
+  effect,
   inject,
   ChangeDetectionStrategy,
 } from "@angular/core";
@@ -71,6 +72,16 @@ export class NeWazaAudienceComponent implements OnInit, OnDestroy {
   blueInjuryRemaining = signal(120);
   private redInjuryInterval: ReturnType<typeof setInterval> | null = null;
   private blueInjuryInterval: ReturnType<typeof setInterval> | null = null;
+
+  // 主計時歸零鈴聲
+  private previousTimerValue = -1;
+  private readonly timerBellEffect = effect(() => {
+    const current = this.timerRemaining();
+    if (this.previousTimerValue > 0 && current === 0) {
+      new Audio('assets/sounds/whistle.mp3').play().catch(() => {});
+    }
+    this.previousTimerValue = current;
+  });
 
   displayTimer = computed(() => {
     const s = this.timerRemaining();

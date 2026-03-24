@@ -4,6 +4,7 @@ import {
   OnDestroy,
   signal,
   computed,
+  effect,
   inject,
   ChangeDetectionStrategy,
 } from "@angular/core";
@@ -104,6 +105,16 @@ export class ContactAudienceComponent implements OnInit, OnDestroy {
     }
     const method = WINNER_METHOD_LABEL[r.method] ?? r.method;
     return `${winnerSide} ${method}`;
+  });
+
+  // 主計時歸零鈴聲
+  private previousTimerValue = -1;
+  private readonly timerBellEffect = effect(() => {
+    const current = this.timerRemaining();
+    if (this.previousTimerValue > 0 && current === 0) {
+      new Audio('assets/sounds/whistle.mp3').play().catch(() => {});
+    }
+    this.previousTimerValue = current;
   });
 
   cardRange(count: number): number[] {
