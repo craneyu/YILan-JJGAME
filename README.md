@@ -59,12 +59,13 @@
 | ---------- | ------------------------------------------------------------ |
 | 對打       | IPPON / WAZA-ARI 得分，SHIDO 警告累積，CHUI 中度犯規，DQ 失格 |
 | 寢技       | OSAE-KOMI 壓制計時，WAZA-ARI / IPPON 計分，傷停計時         |
-| 格鬥       | 格鬥計分板，獨立計分邏輯                                     |
+| 格鬥       | 亮牌計分、擊倒、黃金分鐘、犯規管理                           |
 
 **裁判功能**：
 - 主裁判（對打/寢技）：即時加/扣分、PART 分計分（+1/+2/+3）、傷停、警告、犯規
+- 主裁判（格鬥）：亮牌計分、擊倒記錄、黃金分鐘倒數
 - 空白鍵快捷鍵：計時器暫停/繼續
-- 觀眾端：WAZA-ARI、SHIDO、CHUI 燈號即時同步
+- 觀眾端：WAZA-ARI、SHIDO、CHUI 燈號即時同步、OSAE KOMI 放大倒數顯示（含 15 格進度條與歸零蜂鳴音效）
 
 ---
 
@@ -186,13 +187,18 @@ PORT=3000
 | `/creative/scoring`       | 創意演武：計分裁判                     |
 | `/creative/sequence`      | 創意演武：賽序裁判                     |
 | `/creative/audience`      | 創意演武：觀眾顯示                     |
+| `/referee`                | 對打競技：裁判選擇頁                   |
 | `/fighting-referee`       | 對打：主裁判                           |
 | `/fighting-audience`      | 對打：觀眾顯示                         |
 | `/ne-waza-referee`        | 寢技：主裁判                           |
 | `/ne-waza-audience`       | 寢技：觀眾顯示                         |
-| `/contact-audience`       | 格鬥計分：觀眾顯示                     |
-| `/admin`                  | 管理員後台（演武項目）                 |
-| `/admin/matches/:type`    | 管理員後台（對打 / 寢技場次管理）      |
+| `/contact-referee`        | 格鬥：主裁判                           |
+| `/contact-audience`       | 格鬥：觀眾顯示                         |
+| `/audience-select`        | 觀眾端：競技項目選擇頁                 |
+| `/admin`                  | 管理員後台                             |
+| `/admin/events/:id/kata`  | 管理員：演武賽事管理                   |
+| `/admin/events/:id/matches/:type` | 管理員：對打/寢技/格鬥場次管理  |
+| `/admin/judges`           | 管理員：裁判帳號管理                   |
 
 ---
 
@@ -216,7 +222,10 @@ YILan-JJGAME/
 │       │   ├── fighting-audience/        # 對打：觀眾
 │       │   ├── ne-waza-referee/          # 寢技：主裁判
 │       │   ├── ne-waza-audience/         # 寢技：觀眾
+│       │   ├── contact-referee/          # 格鬥：主裁判
 │       │   ├── contact-audience/         # 格鬥：觀眾
+│       │   ├── referee-landing/          # 對打競技：裁判選擇頁
+│       │   ├── audience-sport-selector/  # 觀眾：競技項目選擇頁
 │       │   ├── match-referee/            # 場次裁判（通用）
 │       │   └── match-audience/           # 場次觀眾（通用）
 │       └── core/
@@ -230,13 +239,13 @@ YILan-JJGAME/
 │       ├── routes/                       # API 路由
 │       ├── sockets/                      # Socket.IO 廣播處理
 │       └── middleware/                   # JWT 驗證中介層
-├── SPEC/
-│   └── SPEC-v6.md                        # 完整系統規格書
+├── SPEC/                                # 系統規格書
 ├── openspec/                             # Spec-Driven Development 規格
 │   ├── specs/                            # 各功能規格文件
 │   └── changes/archive/                  # 已完成變更歸檔
 ├── docker-compose.yml
-├── package-docker.sh                     # 便攜包打包腳本
+├── package-docker.sh                     # MacBook 離線打包腳本
+├── package-synology.sh                   # Synology NAS 部署打包腳本
 └── README.md
 ```
 
@@ -295,10 +304,19 @@ YILan-JJGAME/
 
 ### 對打項目
 
-| 事件             | 說明                               |
-| ---------------- | ---------------------------------- |
-| `match:updated`  | 比賽狀態更新（得分、計時、判決）   |
-| `match:ended`    | 比賽結束                           |
+| 事件                      | 說明                               |
+| ------------------------- | ---------------------------------- |
+| `match:started`           | 比賽開始                           |
+| `match:foul-updated`      | 得分 / 犯規更新（WAZA-ARI、SHIDO、CHUI、PART）|
+| `match:timer-updated`     | 計時器更新（剩餘秒數、暫停狀態）   |
+| `match:ended`             | 比賽結束（勝方、勝利方式）         |
+| `match:full-ippon`        | FULL IPPON 觸發（全螢幕覆蓋提示） |
+| `match:winner-preview`    | 裁判預判勝方                       |
+| `match:scores-reset`      | 重設比賽分數                       |
+| `osae-komi:started`       | OSAE KOMI 壓制開始（含倒數秒數）  |
+| `osae-komi:ended`         | OSAE KOMI 壓制結束                |
+| `injury:started`          | 傷停計時開始                       |
+| `injury:ended`            | 傷停計時結束                       |
 
 ---
 
@@ -347,6 +365,10 @@ cd frontend && npx tsc --noEmit
 
 # 前端正式建置
 cd frontend && npm run build
+
+# 打包離線部署包
+./package-docker.sh              # MacBook 便攜包
+./package-synology.sh            # Synology NAS 部署包
 ```
 
 ---
