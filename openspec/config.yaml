@@ -162,10 +162,6 @@ context: |
   cd frontend && npm run build      — 前端生產建置（輸出 dist/jju-frontend/）
   ./package-docker.sh               — 打包 Docker 映像為可攜式 jju-docker.tar.gz
   cd jju-package && ./start.sh      — 離線部署（載入映像並啟動，保留資料庫資料）
-locale: tw
-tdd: true
-parallel_tasks: true
-audit: true
 
 rules:
   proposal:

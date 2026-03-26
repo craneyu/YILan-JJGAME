@@ -102,7 +102,7 @@ export class FightingAudienceComponent implements OnInit, OnDestroy {
       }
       this.previousBlueParts = [...blue] as [number, number, number];
     }
-  }, { allowSignalWrites: true });
+  });
 
   fullIpponOverlay = signal(false);
   redChuiCount = signal(0);
