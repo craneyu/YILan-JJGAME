@@ -124,6 +124,11 @@ export class FightingAudienceComponent implements OnInit, OnDestroy {
   private redOsaeKomiInterval: ReturnType<typeof setInterval> | null = null;
   private blueOsaeKomiInterval: ReturnType<typeof setInterval> | null = null;
 
+  // OSAE KOMI 進度條（15 格）
+  progressBarSegments = Array.from({ length: 15 }, (_, i) => i);
+  redOsaeKomiFilledSegments = computed(() => Math.min(15, this.redOsaeKomiRemaining()));
+  blueOsaeKomiFilledSegments = computed(() => Math.min(15, this.blueOsaeKomiRemaining()));
+
   // 主計時歸零鈴聲
   private previousTimerValue = -1;
   private readonly timerBellEffect = effect(() => {
@@ -134,21 +139,12 @@ export class FightingAudienceComponent implements OnInit, OnDestroy {
     this.previousTimerValue = current;
   });
 
-  // OSAE KOMI 歸零短音
-  private previousRedOsaeKomi = -1;
-  private previousBlueOsaeKomi = -1;
-  private readonly osaeKomiBellEffect = effect(() => {
-    const red = this.redOsaeKomiRemaining();
-    const blue = this.blueOsaeKomiRemaining();
-    if (this.previousRedOsaeKomi > 0 && red === 0) {
-      new Audio('assets/sounds/bell-short.mp3').play().catch(() => {});
-    }
-    if (this.previousBlueOsaeKomi > 0 && blue === 0) {
-      new Audio('assets/sounds/bell-short.mp3').play().catch(() => {});
-    }
-    this.previousRedOsaeKomi = red;
-    this.previousBlueOsaeKomi = blue;
-  });
+  // OSAE KOMI 自然歸零音效（由 interval 歸零時直接觸發，不依賴 effect 比對）
+  private playOsaeKomiBuzzer(): void {
+    const a = new Audio('assets/sounds/buzzer-loud.wav');
+    a.volume = 1.0;
+    a.play().catch(() => {});
+  }
 
   displayTimer = computed(() => {
     const s = this.timerRemaining();
@@ -327,7 +323,11 @@ export class FightingAudienceComponent implements OnInit, OnDestroy {
           this.redOsaeKomiInterval = setInterval(() => {
             const nv = Math.max(0, this.redOsaeKomiRemaining() - 1);
             this.redOsaeKomiRemaining.set(nv);
-            if (nv <= 0) { this.clearRedOsaeKomiInterval(); this.redOsaeKomiActive.set(false); }
+            if (nv <= 0) {
+              this.clearRedOsaeKomiInterval();
+              this.redOsaeKomiActive.set(false);
+              this.playOsaeKomiBuzzer();
+            }
           }, 1000);
         } else {
           this.clearBlueOsaeKomiInterval();
@@ -336,7 +336,11 @@ export class FightingAudienceComponent implements OnInit, OnDestroy {
           this.blueOsaeKomiInterval = setInterval(() => {
             const nv = Math.max(0, this.blueOsaeKomiRemaining() - 1);
             this.blueOsaeKomiRemaining.set(nv);
-            if (nv <= 0) { this.clearBlueOsaeKomiInterval(); this.blueOsaeKomiActive.set(false); }
+            if (nv <= 0) {
+              this.clearBlueOsaeKomiInterval();
+              this.blueOsaeKomiActive.set(false);
+              this.playOsaeKomiBuzzer();
+            }
           }, 1000);
         }
       }),
@@ -346,8 +350,21 @@ export class FightingAudienceComponent implements OnInit, OnDestroy {
       this.socket.osaeKomiEnded$.subscribe((e: OsaeKomiEndedEvent) => {
         const m = this.activeMatch();
         if (!m || m._id !== e.matchId) return;
-        if (e.side === "red") { this.clearRedOsaeKomiInterval(); this.redOsaeKomiActive.set(false); }
-        else { this.clearBlueOsaeKomiInterval(); this.blueOsaeKomiActive.set(false); }
+        // 如果觀眾端 interval 仍在跑且 remaining <= 1，代表即將自然歸零
+        // → 視為自然完成，播放音效後再清理
+        if (e.side === "red") {
+          if (this.redOsaeKomiInterval && this.redOsaeKomiRemaining() <= 1) {
+            this.playOsaeKomiBuzzer();
+          }
+          this.clearRedOsaeKomiInterval();
+          this.redOsaeKomiActive.set(false);
+        } else {
+          if (this.blueOsaeKomiInterval && this.blueOsaeKomiRemaining() <= 1) {
+            this.playOsaeKomiBuzzer();
+          }
+          this.clearBlueOsaeKomiInterval();
+          this.blueOsaeKomiActive.set(false);
+        }
       }),
     );
   }

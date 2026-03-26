@@ -115,23 +115,35 @@
                 </span>
               </span>
             }
-            @if (redOsaeKomiActive()) {
-              <span
-                class="flex flex-col items-center font-black text-yellow-300 shrink-0 bg-yellow-500/15 border border-yellow-400/50 rounded-xl px-3 py-1 animate-pulse leading-tight">
-                <span class="text-2xl md:text-3xl">{{
-                  displayRedOsaeKomi()
-                }}</span>
-                <span class="text-sm md:text-base tracking-widest"
-                  >OSAE KOMI</span
-                >
-              </span>
-            }
           </div>
           <div
             class="text-white/60 text-base md:text-xl lg:text-2xl xl:text-3xl 2xl:text-4xl font-semibold mt-1 truncate">
             {{ match.redPlayer.teamName }}
           </div>
         </div>
+
+        <!-- 中左：OSAE KOMI（放大獨立區塊） -->
+        @if (redOsaeKomiActive()) {
+          <div
+            class="flex flex-col items-center justify-center font-black text-yellow-300 shrink-0 bg-yellow-500/15 border border-yellow-400/50 rounded-xl px-6 py-3 animate-pulse leading-tight">
+            <span class="text-6xl md:text-8xl">{{
+              displayRedOsaeKomi()
+            }}</span>
+            <span class="text-xl md:text-2xl tracking-widest"
+              >OSAE KOMI</span
+            >
+            <!-- 15 格進度條 -->
+            <div class="flex gap-1 mt-2 min-w-[200px] md:min-w-[280px]">
+              @for (i of progressBarSegments; track i) {
+                <div
+                  class="flex-1 h-4 md:h-5 rounded-sm transition-colors"
+                  [class.bg-yellow-400]="i < redOsaeKomiFilledSegments()"
+                  [class.bg-white/10]="i >= redOsaeKomiFilledSegments()">
+                </div>
+              }
+            </div>
+          </div>
+        }
 
         <!-- 中：WAZA-ARI + SHIDO + CHUI -->
         <div
@@ -248,23 +260,35 @@
                 </span>
               </span>
             }
-            @if (blueOsaeKomiActive()) {
-              <span
-                class="flex flex-col items-center font-black text-yellow-300 shrink-0 bg-yellow-500/15 border border-yellow-400/50 rounded-xl px-3 py-1 animate-pulse leading-tight">
-                <span class="text-2xl md:text-3xl">{{
-                  displayBlueOsaeKomi()
-                }}</span>
-                <span class="text-sm md:text-base tracking-widest"
-                  >OSAE KOMI</span
-                >
-              </span>
-            }
           </div>
           <div
             class="text-white/60 text-base md:text-xl lg:text-2xl xl:text-3xl 2xl:text-4xl font-semibold mt-1 truncate">
             {{ match.bluePlayer.teamName }}
           </div>
         </div>
+
+        <!-- 中左：OSAE KOMI（放大獨立區塊） -->
+        @if (blueOsaeKomiActive()) {
+          <div
+            class="flex flex-col items-center justify-center font-black text-yellow-300 shrink-0 bg-yellow-500/15 border border-yellow-400/50 rounded-xl px-6 py-3 animate-pulse leading-tight">
+            <span class="text-6xl md:text-8xl">{{
+              displayBlueOsaeKomi()
+            }}</span>
+            <span class="text-xl md:text-2xl tracking-widest"
+              >OSAE KOMI</span
+            >
+            <!-- 15 格進度條 -->
+            <div class="flex gap-1 mt-2 min-w-[200px] md:min-w-[280px]">
+              @for (i of progressBarSegments; track i) {
+                <div
+                  class="flex-1 h-4 md:h-5 rounded-sm transition-colors"
+                  [class.bg-yellow-400]="i < blueOsaeKomiFilledSegments()"
+                  [class.bg-white/10]="i >= blueOsaeKomiFilledSegments()">
+                </div>
+              }
+            </div>
+          </div>
+        }
 
         <!-- 中：WAZA-ARI + SHIDO + CHUI -->
         <div
