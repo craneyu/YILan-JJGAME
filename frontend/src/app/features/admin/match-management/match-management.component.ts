@@ -27,7 +27,8 @@ import { AuthService } from "../../../core/services/auth.service";
 import Swal from "sweetalert2";
 import * as XLSX from "xlsx";
 import { ApiService } from "../../../core/services/api.service";
-import { Match } from "../../../core/models/match.model";
+import { Match, MatchCategory } from "../../../core/models/match.model";
+import { groupMatchesByCategory } from "../../../core/utils/match-grouping";
 
 const SWAL_DARK = { background: "#1e293b", color: "#fff" } as const;
 
@@ -39,10 +40,16 @@ interface EventItem {
   venue?: string;
 }
 
-interface GroupedMatches {
+interface WeightGroupExpanded {
   weightClass: string;
   matches: Match[];
   expanded: boolean;
+}
+
+interface CategoryGroupExpanded {
+  category: MatchCategory;
+  label: string;
+  weightGroups: WeightGroupExpanded[];
 }
 
 interface EditState {
@@ -95,29 +102,29 @@ export class MatchManagementComponent implements OnInit {
   selectedMatchIds = signal<Set<string>>(new Set());
 
   typeLabel = computed(() => TYPE_LABEL[this.matchType()] ?? this.matchType());
+  sortMode = signal<'weight' | 'order'>('weight');
 
   allSelected = computed(() => {
     const all = this.matches();
     return all.length > 0 && all.every((m) => this.selectedMatchIds().has(m._id));
   });
 
-  groupedMatches = computed((): GroupedMatches[] => {
-    const map = new Map<string, Match[]>();
-    for (const m of this.matches()) {
-      const key = m.weightClass || "未分類";
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(m);
-    }
-    const groups: GroupedMatches[] = [];
-    for (const [weightClass, matches] of map) {
-      groups.push({
-        weightClass,
-        matches: [...matches].sort((a, b) => a.scheduledOrder - b.scheduledOrder),
+  groupedMatches = computed((): CategoryGroupExpanded[] => {
+    const categories = groupMatchesByCategory(this.matches());
+    return categories.map(cat => ({
+      category: cat.category,
+      label: cat.label,
+      weightGroups: cat.weightGroups.map(wg => ({
+        weightClass: wg.weightClass,
+        matches: wg.matches,
         expanded: true,
-      });
-    }
-    return groups.sort((a, b) => a.weightClass.localeCompare(b.weightClass));
+      })),
+    }));
   });
+
+  sortedByOrder = computed(() =>
+    [...this.matches()].sort((a, b) => a.scheduledOrder - b.scheduledOrder),
+  );
 
   ngOnInit(): void {
     const type = this.route.snapshot.params["matchType"] as string;
@@ -248,7 +255,7 @@ export class MatchManagementComponent implements OnInit {
     }
   }
 
-  toggleGroup(group: GroupedMatches): void {
+  toggleGroup(group: WeightGroupExpanded): void {
     group.expanded = !group.expanded;
     this.matches.set([...this.matches()]);
   }

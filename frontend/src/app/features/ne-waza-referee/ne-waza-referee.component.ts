@@ -138,11 +138,17 @@ export class NeWazaRefereeComponent implements OnInit, OnDestroy {
   dqPending = signal<"red" | "blue" | null>(null);
   judgeWinner = signal<"red" | "blue" | null>(null);
 
+  // ── 排序模式 ──
+  sortMode = signal<'weight' | 'order'>('order');
+
   // ── 計算屬性 ──
   eventId = computed(() => this.auth.user()?.eventId ?? "");
   neWazaMatches = computed(() => this.matches().filter((m) => m.matchType === this.sportType));
   groupedMatches = computed<CategoryGroup[]>(() =>
     groupMatchesByCategory(this.neWazaMatches()),
+  );
+  sortedByOrder = computed(() =>
+    [...this.neWazaMatches()].sort((a, b) => a.scheduledOrder - b.scheduledOrder),
   );
 
   displayTimer = computed(() => {

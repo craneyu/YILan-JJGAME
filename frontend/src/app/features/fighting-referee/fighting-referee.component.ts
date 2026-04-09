@@ -131,11 +131,17 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
   judgeWinner = signal<"red" | "blue" | null>(null);
   dqPending = signal<"red" | "blue" | null>(null);
 
+  // ── 排序模式 ──
+  sortMode = signal<'weight' | 'order'>('order');
+
   // ── 計算屬性 ──
   eventId = computed(() => this.auth.user()?.eventId ?? "");
   fightingMatches = computed(() => this.matches().filter((m) => m.matchType === "fighting"));
   groupedMatches = computed<CategoryGroup[]>(() =>
     groupMatchesByCategory(this.fightingMatches()),
+  );
+  sortedByOrder = computed(() =>
+    [...this.fightingMatches()].sort((a, b) => a.scheduledOrder - b.scheduledOrder),
   );
 
   // ── 批次清空 ──

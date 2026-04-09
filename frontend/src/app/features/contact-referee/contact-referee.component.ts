@@ -115,10 +115,16 @@ export class ContactRefereeComponent implements OnInit, OnDestroy {
   // ── 勝負判決 ──
   declaredWinner = signal<'red' | 'blue' | null>(null);
 
+  // ── 排序模式 ──
+  sortMode = signal<'weight' | 'order'>('order');
+
   // ── 計算屬性 ──
   eventId = computed(() => this.auth.user()?.eventId ?? '');
   contactMatches = computed(() => this.matches().filter((m) => m.matchType === 'contact'));
   groupedMatches = computed<CategoryGroup[]>(() => groupMatchesByCategory(this.contactMatches()));
+  sortedByOrder = computed(() =>
+    [...this.contactMatches()].sort((a, b) => a.scheduledOrder - b.scheduledOrder),
+  );
 
   displayTimer = computed(() => {
     const s = this.timerRemaining();
