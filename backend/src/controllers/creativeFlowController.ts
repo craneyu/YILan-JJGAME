@@ -5,7 +5,7 @@ import CreativePenalty from '../models/CreativePenalty';
 import Team from '../models/Team';
 import Event from '../models/Event';
 import { broadcast } from '../sockets/index';
-import { sortTeams } from '../utils/teamSort';
+import { sortTeams, resolveCategoryOrder } from '../utils/teamSort';
 
 export async function openScoring(req: Request, res: Response): Promise<void> {
   const { eventId, teamId } = req.body;
@@ -84,7 +84,7 @@ export async function nextTeam(req: Request, res: Response): Promise<void> {
     CreativeScore.find({ eventId }).lean(),
   ]);
 
-  const categoryOrder = event?.categoryOrder ?? ['female', 'male', 'mixed'];
+  const categoryOrder = resolveCategoryOrder(event, 'Show');
   const sortedTeams = sortTeams(allTeams, categoryOrder);
 
   // 計算已完賽隊伍（有 5 筆評分即視為完賽）

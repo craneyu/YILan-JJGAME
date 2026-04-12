@@ -12,3 +12,18 @@ export function sortTeams<T extends { category: string; order: number }>(
     return a.order - b.order;
   });
 }
+
+/** 依競賽類型取得有效的組別順序：優先使用該類型專屬欄位，否則回退到舊的 categoryOrder */
+export function resolveCategoryOrder(
+  event: {
+    categoryOrder?: string[];
+    categoryOrderDuo?: string[];
+    categoryOrderShow?: string[];
+  } | null | undefined,
+  type: 'Duo' | 'Show'
+): string[] {
+  const specific = type === 'Duo' ? event?.categoryOrderDuo : event?.categoryOrderShow;
+  if (specific && specific.length > 0) return specific;
+  if (event?.categoryOrder && event.categoryOrder.length > 0) return event.categoryOrder;
+  return ['female', 'male', 'mixed'];
+}

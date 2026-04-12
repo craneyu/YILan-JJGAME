@@ -10,7 +10,7 @@ import WrongAttack from "../models/WrongAttack";
 import CreativeScore from "../models/CreativeScore";
 import CreativePenalty from "../models/CreativePenalty";
 import { calculateActionScores, CalculatedScore } from "../utils/scoring";
-import { sortTeams } from "../utils/teamSort";
+import { sortTeams, resolveCategoryOrder } from "../utils/teamSort";
 
 export async function listEvents(req: Request, res: Response): Promise<void> {
   // open=true：只回傳 pending / active（排除 closed），供登入頁觀眾使用
@@ -247,13 +247,11 @@ export async function getEventSummary(
 
   const teamFilter: Record<string, unknown> = { eventId };
   const qType = req.query["competitionType"];
-  if (qType === "Show") teamFilter["competitionType"] = "Show";
+  const effectiveType: "Duo" | "Show" = qType === "Show" ? "Show" : "Duo";
+  if (effectiveType === "Show") teamFilter["competitionType"] = "Show";
   else teamFilter["competitionType"] = { $ne: "Show" }; // 預設排除 Show 隊伍
   const allTeams = await Team.find(teamFilter);
-  const teams = sortTeams(
-    allTeams,
-    event.categoryOrder ?? ["female", "male", "mixed"],
-  );
+  const teams = sortTeams(allTeams, resolveCategoryOrder(event, effectiveType));
   const gameState = await GameState.findOne({ eventId });
 
   let vrScore = null;
@@ -363,12 +361,13 @@ export async function getEventRankings(
   const eventId = req.params.id;
 
   const eventDoc = await Event.findById(eventId).lean();
-  const categoryOrder = eventDoc?.categoryOrder ?? ["female", "male", "mixed"];
   // 可選過濾：只回傳指定競賽類型的隊伍排名；預設只回傳 Duo（向後相容）
   const teamFilter: Record<string, unknown> = { eventId };
   const qType = req.query["competitionType"];
-  if (qType === "Show") teamFilter["competitionType"] = "Show";
+  const effectiveType: "Duo" | "Show" = qType === "Show" ? "Show" : "Duo";
+  if (effectiveType === "Show") teamFilter["competitionType"] = "Show";
   else teamFilter["competitionType"] = { $ne: "Show" }; // 預設排除 Show 隊伍（含舊資料無欄位者）
+  const categoryOrder = resolveCategoryOrder(eventDoc, effectiveType);
   const rawTeams = await Team.find(teamFilter).lean();
   const teams = sortTeams(rawTeams, categoryOrder);
   const allScores = await Score.find({ eventId }).lean();
