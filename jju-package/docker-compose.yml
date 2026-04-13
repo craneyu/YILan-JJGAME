@@ -1,0 +1,37 @@
+services:
+  frontend:
+    image: yilan-jju-frontend
+    platform: linux/arm64
+    ports:
+      - "4200:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  backend:
+    image: yilan-jju-backend
+    platform: linux/arm64
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/jju
+      - JWT_SECRET=jju_dev_secret_key
+      - PORT=3000
+      - NODE_ENV=production
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:7
+    platform: linux/arm64
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  mongo_data:
