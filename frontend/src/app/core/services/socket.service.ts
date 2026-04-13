@@ -228,6 +228,10 @@ export class SocketService {
   constructor() {
     this.socket = io(environment.socketUrl || window.location.origin, {
       transports: ["websocket"],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: Infinity,
     });
   }
 

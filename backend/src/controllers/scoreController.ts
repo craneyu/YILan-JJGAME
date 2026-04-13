@@ -26,15 +26,24 @@ export async function submitScore(req: Request, res: Response): Promise<void> {
   }
 
   // 儲存評分（唯一索引防重複）
-  const score = await Score.create({
-    eventId,
-    teamId,
-    round,
-    actionNo,
-    judgeId: user.userId,
-    judgeNo: user.judgeNo,
-    items,
-  });
+  let score;
+  try {
+    score = await Score.create({
+      eventId,
+      teamId,
+      round,
+      actionNo,
+      judgeId: user.userId,
+      judgeNo: user.judgeNo,
+      items,
+    });
+  } catch (err: any) {
+    if (err.code === 11000) {
+      res.status(409).json({ success: false, error: '已提交過評分，無法重複送出' });
+      return;
+    }
+    throw err;
+  }
 
   // 廣播「已送出」
   broadcast.scoreSubmitted(eventId, {

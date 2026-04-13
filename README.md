@@ -195,7 +195,8 @@ PORT=3000
 | `/contact-referee`        | 格鬥：主裁判                           |
 | `/contact-audience`       | 格鬥：觀眾顯示                         |
 | `/audience-select`        | 觀眾端：競技項目選擇頁                 |
-| `/admin`                  | 管理員後台                             |
+| `/admin/events`            | 管理員：賽事列表                       |
+| `/admin/events/:id`        | 管理員：競技項目選擇                   |
 | `/admin/events/:id/kata`  | 管理員：演武賽事管理                   |
 | `/admin/events/:id/matches/:type` | 管理員：對打/寢技/格鬥場次管理  |
 | `/admin/judges`           | 管理員：裁判帳號管理                   |
@@ -226,7 +227,6 @@ YILan-JJGAME/
 │       │   ├── contact-audience/         # 格鬥：觀眾
 │       │   ├── referee-landing/          # 對打競技：裁判選擇頁
 │       │   ├── audience-sport-selector/  # 觀眾：競技項目選擇頁
-│       │   ├── match-referee/            # 場次裁判（通用）
 │       │   └── match-audience/           # 場次觀眾（通用）
 │       └── core/
 │           ├── services/                 # API、Socket、Auth 服務
@@ -234,11 +234,13 @@ YILan-JJGAME/
 │           └── utils/                    # 場次分組等工具函式
 ├── backend/
 │   └── src/
-│       ├── controllers/                  # 業務邏輯
-│       ├── models/                       # Mongoose 資料模型
-│       ├── routes/                       # API 路由
+│       ├── controllers/                  # 業務邏輯（19 個 controller）
+│       ├── models/                       # Mongoose 資料模型（12 個 model）
+│       ├── routes/                       # API 路由（14 個路由檔）
 │       ├── sockets/                      # Socket.IO 廣播處理
-│       └── middleware/                   # JWT 驗證中介層
+│       ├── middleware/                   # JWT 驗證中介層
+│       ├── seeds/                        # 初始帳號 & 資料遷移
+│       └── utils/                        # 計分演算法、排序工具
 ├── SPEC/                                # 系統規格書
 ├── openspec/                             # Spec-Driven Development 規格
 │   ├── specs/                            # 各功能規格文件
@@ -270,19 +272,29 @@ YILan-JJGAME/
 | `POST`     | `/api/v1/creative-scores`               | 創意演武：送出評分     |
 | `POST`     | `/api/v1/creative-flow/...`             | 創意演武：流程控制     |
 
-### 對打
+### 對打 / 寢技 / 格鬥
 
-| 方法       | 路徑                              | 說明                 |
-| ---------- | --------------------------------- | -------------------- |
-| `GET/POST` | `/api/v1/matches`                 | 場次管理             |
-| `POST`     | `/api/v1/match-scores`            | 記錄得分 / 警告      |
-| `GET`      | `/api/v1/matches/:id/score-log`   | 得分紀錄查詢         |
+| 方法       | 路徑                                          | 說明                              |
+| ---------- | --------------------------------------------- | --------------------------------- |
+| `GET/POST` | `/api/v1/events/:id/matches`                  | 場次管理                          |
+| `POST`     | `/api/v1/events/:id/matches/bulk`             | 批次建立場次                      |
+| `PATCH`    | `/api/v1/events/:id/matches/:matchId`         | 更新場次                          |
+| `POST`     | `/api/v1/match-scores`                        | 記錄得分                          |
+| `POST`     | `/api/v1/match-scores/part`                   | 記錄 PART 分數（+1/+2/+3）       |
+| `POST`     | `/api/v1/match-scores/foul`                   | 記錄犯規（SHIDO/CHUI/DQ）        |
+| `PATCH`    | `/api/v1/match-scores/duration`               | 設定比賽時長                      |
+| `POST`     | `/api/v1/match-scores/reset`                  | 重設比賽分數                      |
+| `PATCH`    | `/api/v1/contact/action`                      | 格鬥：記錄動作（亮牌/擊倒）      |
+| `PATCH`    | `/api/v1/contact/winner`                      | 格鬥：宣告勝方                    |
 
 ### 通用
 
-| 方法   | 路徑               | 說明   |
-| ------ | ------------------ | ------ |
-| `POST` | `/api/v1/auth/login` | 登入 |
+| 方法       | 路徑                     | 說明               |
+| ---------- | ------------------------ | ------------------ |
+| `POST`     | `/api/v1/auth/login`     | 登入               |
+| `POST`     | `/api/v1/auth/select-event` | 選擇賽事（取得新 JWT） |
+| `GET`      | `/api/v1/backup`         | 下載資料庫備份（管理員） |
+| `GET`      | `/health`                | 健康檢查           |
 
 ---
 
@@ -302,21 +314,47 @@ YILan-JJGAME/
 | `team:abstained`         | 設定棄權                           |
 | `team:abstain-cancelled` | 取消棄權                           |
 
-### 對打項目
+### 創意演武項目
+
+| 事件                              | 說明                                   |
+| --------------------------------- | -------------------------------------- |
+| `creative:scoring-opened`         | 賽序裁判開放評分                       |
+| `creative-score:submitted`        | 計分裁判送出創意演武評分               |
+| `creative-score:calculated`       | 全數裁判送出，計算完成                 |
+| `creative:team-changed`           | 換組                                   |
+| `creative:team-abstained`         | 設定棄權                               |
+| `creative:team-abstain-cancelled` | 取消棄權                               |
+| `timer:started` / `timer:stopped` | 計時器開始 / 停止                      |
+| `penalty:updated`                 | 懲罰扣分更新                           |
+
+### 對打 / 寢技項目
 
 | 事件                      | 說明                               |
 | ------------------------- | ---------------------------------- |
 | `match:started`           | 比賽開始                           |
-| `match:foul-updated`      | 得分 / 犯規更新（WAZA-ARI、SHIDO、CHUI、PART）|
+| `match:score-updated`     | 得分更新                           |
+| `match:foul-updated`      | 犯規更新（SHIDO、CHUI）           |
 | `match:timer-updated`     | 計時器更新（剩餘秒數、暫停狀態）   |
 | `match:ended`             | 比賽結束（勝方、勝利方式）         |
 | `match:full-ippon`        | FULL IPPON 觸發（全螢幕覆蓋提示） |
+| `match:shido-dq`          | SHIDO 累積失格                     |
 | `match:winner-preview`    | 裁判預判勝方                       |
 | `match:scores-reset`      | 重設比賽分數                       |
 | `osae-komi:started`       | OSAE KOMI 壓制開始（含倒數秒數）  |
 | `osae-komi:ended`         | OSAE KOMI 壓制結束                |
 | `injury:started`          | 傷停計時開始                       |
 | `injury:ended`            | 傷停計時結束                       |
+
+### 格鬥項目
+
+| 事件                         | 說明                             |
+| ---------------------------- | -------------------------------- |
+| `contact:foul-updated`       | 犯規更新                         |
+| `contact:knockdown-updated`  | 擊倒更新                         |
+| `contact:golden-minute`      | 黃金分鐘啟動                     |
+| `contact:winner`             | 宣告勝方                         |
+| `contact:cancel-winner`      | 取消勝方宣告                     |
+| `contact:reset`              | 重設格鬥比賽                     |
 
 ---
 

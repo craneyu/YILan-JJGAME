@@ -32,7 +32,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**柔術競賽演武計分平台** (Judo Kata Scoring Platform) - A comprehensive online scoring system for traditional judo (kata) competitions.
+**柔術競賽線上即時計分平台** (Judo Competition Online Scoring Platform) - A comprehensive real-time scoring system for judo competitions supporting multiple sport types: Duo kata (雙人演武), Creative kata (創意演武), Fighting (對打), Ne-Waza (寢技), and Contact (格鬥).
 
 See `SPEC/SPEC.md` for the complete system specification.
 
@@ -51,15 +51,27 @@ See `SPEC/SPEC.md` for the complete system specification.
 4. MongoDB stores events, teams, scores, VR scores with full score history
 
 ### Key Real-time Events (Socket.IO)
+
+**Kata (Duo) Events:**
 - `action:opened` - Sequence judge opens a motion for scoring
-- `score:submitted` - A judge submits their score
-- `score:calculated` - All 5 judges submitted, calculated result broadcasted
-- `wrong-attack:updated` - VR judge marks/unmarks a motion as wrong attack (no score)
-- `vr:submitted` - VR judge submits diversity scores (throw & ground variety per series)
-- `group:changed` - Switch to next team (carries `nextTeamId`, `round`)
-- `round:changed` - Move to next round (series A→B→C)
-- `team:abstained` - Sequence judge marks team as abstained (skip VR scoring)
-- `team:abstain-cancelled` - Cancel abstention, re-enable VR scoring
+- `score:submitted` / `score:calculated` - Judge score submission & calculation
+- `wrong-attack:updated` - VR judge marks/unmarks wrong attack
+- `vr:submitted` - VR diversity scores
+- `group:changed` / `round:changed` - Flow control
+- `team:abstained` / `team:abstain-cancelled` - Abstention
+
+**Creative Kata Events:**
+- `creative:scoring-opened` / `creative-score:submitted` / `creative-score:calculated`
+- `creative:team-changed` / `creative:team-abstained` / `creative:team-abstain-cancelled`
+- `timer:started` / `timer:stopped` / `penalty:updated`
+
+**Match (Fighting/Ne-Waza/Contact) Events:**
+- `match:started` / `match:ended` / `match:score-updated` / `match:timer-updated`
+- `match:foul-updated` / `match:full-ippon` / `match:shido-dq`
+- `match:winner-preview` / `match:winner-preview-cancelled` / `match:scores-reset`
+- `osae-komi:started` / `osae-komi:ended` / `injury:started` / `injury:ended`
+- `contact:foul-updated` / `contact:knockdown-updated` / `contact:golden-minute`
+- `contact:winner` / `contact:cancel-winner` / `contact:reset`
 
 ## Development Commands
 
@@ -144,7 +156,7 @@ cd frontend && npm run build
 docker compose up --build -d
 ```
 
-## Codebase Structure (Planned)
+## Codebase Structure
 
 ```
 Yilan-jju/
@@ -153,26 +165,51 @@ Yilan-jju/
 ├── frontend/
 │   ├── src/
 │   │   ├── app/
-│   │   │   ├── layouts/           # (computed, vr, sequence, audience)
-│   │   │   ├── services/          # Socket.IO, API, State Management (Signal)
-│   │   │   └── shared/            # Shared components (buttons, cards, etc.)
-│   │   ├── styles.css             # Tailwind 4.x with @theme
+│   │   │   ├── features/          # Feature components (see below)
+│   │   │   │   ├── admin/         # Admin dashboard + sub-components
+│   │   │   │   ├── login/
+│   │   │   │   ├── scoring-judge/ / vr-judge/ / sequence-judge/
+│   │   │   │   ├── audience/ / audience-sport-selector/
+│   │   │   │   ├── creative-scoring-judge/ / creative-sequence-judge/ / creative-audience/
+│   │   │   │   ├── fighting-referee/ / fighting-audience/
+│   │   │   │   ├── ne-waza-referee/ / ne-waza-audience/
+│   │   │   │   ├── contact-referee/ / contact-audience/
+│   │   │   │   ├── referee-landing/ / match-audience/
+│   │   │   │   └── match-management/ / judge-management/
+│   │   │   ├── core/
+│   │   │   │   ├── services/      # ApiService, AuthService, SocketService
+│   │   │   │   ├── guards/        # Role-based route guards
+│   │   │   │   ├── interceptors/  # JWT auth interceptor
+│   │   │   │   ├── models/        # TypeScript interfaces (match.model.ts)
+│   │   │   │   └── utils/         # match-grouping.ts
+│   │   │   ├── app.routes.ts      # All route definitions with lazy loading
+│   │   │   └── app.config.ts      # Angular providers
+│   │   ├── styles.css             # Tailwind 4.x with @theme + glassmorphism utilities
 │   │   └── main.ts
 │   ├── angular.json
-│   ├── tailwind.config.ts         # (if needed, else use @theme in CSS)
+│   ├── postcss.config.json        # @tailwindcss/postcss (JSON format, not .js)
+│   ├── proxy.conf.json            # Dev proxy → localhost:3000
+│   ├── Dockerfile
 │   └── package.json
 ├── backend/
 │   ├── src/
-│   │   ├── routes/                # Express routes (events, teams, scores, flow)
-│   │   ├── controllers/           # Business logic
-│   │   ├── models/                # Mongoose schemas (Event, Team, Score, VRScore)
-│   │   ├── middleware/            # JWT auth, error handling
-│   │   ├── sockets/               # Socket.IO event handlers
-│   │   └── index.ts               # Express + Socket.IO server
-│   ├── .env
+│   │   ├── routes/                # 14 route files (auth, events, teams, scores, flow, matches, etc.)
+│   │   ├── controllers/           # 19 controller files
+│   │   ├── models/                # 12 Mongoose models (User, Event, Team, Score, VRScore,
+│   │   │                          #   Match, MatchScoreLog, GameState, WrongAttack,
+│   │   │                          #   CreativeScore, CreativePenalty, CreativeGameState)
+│   │   ├── middleware/            # auth.ts (JWT + role), errorHandler.ts
+│   │   ├── sockets/               # Socket.IO broadcast handlers
+│   │   ├── seeds/                 # initialUsers.ts, migrateEventTypes.ts
+│   │   ├── utils/                 # scoring.ts, creativeScoring.ts, teamSort.ts
+│   │   └── index.ts               # Express + Socket.IO server entry
+│   ├── .env.example
 │   ├── package.json
 │   └── Dockerfile
+├── openspec/                      # Spectra SDD specs & archived changes
 ├── docker-compose.yml
+├── package-docker.sh              # MacBook offline portable package script
+├── package-synology.sh            # Synology NAS deployment script
 └── CLAUDE.md                      # This file
 ```
 
@@ -189,13 +226,13 @@ Yilan-jju/
 
 ### Backend
 - **RESTful API**: All endpoints under `/api/v1` prefix
-- **JWT Roles**: 5 roles enforce permissions (scoring_judge, vr_judge, sequence_judge, admin, audience)
+- **JWT Roles**: 6 roles enforce permissions (scoring_judge, vr_judge, sequence_judge, match_referee, admin, audience)
   - No token expiration (LAN-only, logout = close browser)
 - **Socket.IO Broadcasting**: Join event room on connect, broadcast to all clients in `eventId`
-- **Score Calculation**: Middleware processes dropped high/low scores server-side
+- **Score Calculation**: Utils process dropped high/low scores server-side
 
 ### Database
-- **Collections**: events, teams, scores, vr_scores, users
+- **Collections**: users, events, teams, scores, vr_scores, wrong_attacks, game_states, matches, match_score_logs, creative_scores, creative_penalties, creative_game_states
 - **Indexes**: Ensure unique player names per event, eventId/teamId for filtering
 - **Persistence**: MongoDB volume `mongo_data` persists across container rebuilds
 
@@ -223,6 +260,13 @@ After all motions in a series complete, VR Judge evaluates:
 - **地板技多樣性** (Ground technique variety): 0, 1, or 2 points
 - **Max per series**: 4 points (2 + 2)
 - Tracked separately per series: VR_A, VR_B, VR_C in rankings
+
+### Creative Kata Scoring
+Each of 5 judges submits technical (0–9.5) and artistic (0–9.5) scores:
+1. Drop highest and lowest for both technical & artistic
+2. Sum middle 3 judges
+3. Apply penalty deductions (overtime, undertime, props, attacks)
+4. Final = max(0, technicalTotal + artisticTotal - penalties)
 
 ## Critical UI States
 
@@ -252,37 +296,57 @@ After all motions in a series complete, VR Judge evaluates:
 
 ## Common Development Tasks
 
-### Adding a New Scoring Judge Role Feature
-1. Create new Standalone component in `frontend/src/app/layouts/scoring-judge-v2/`
-2. Inject `EventService` and `SocketService` to listen for `action:opened`, `group:changed`
-3. Use Signal to track current motion, judge selections, submission state
-4. POST to `/api/v1/scores` on confirm, listen for `score:calculated` broadcast
-5. Backend: Extend `POST /scores` controller to handle new logic, emit recalculated event
+### Adding a New Feature Component
+1. Create new Standalone component in `frontend/src/app/features/<feature-name>/`
+2. Inject `ApiService` and `SocketService` for data and real-time events
+3. Use Angular Signals to track state, `computed()` for derived values
+4. Add route in `app.routes.ts` with appropriate `roleGuard()`
+5. Backend: Add route file in `routes/`, controller in `controllers/`, register in `index.ts`
 
-### Running a Single Judge Test Session
-1. Start Docker Compose: `docker compose up`
-2. Open 7 browser tabs (5 scoring judges, 1 VR, 1 sequence, 1 audience) to `http://localhost:4200`
-3. Login as different roles (roles selected via UI form)
-4. Sequence judge opens motion → scoring judges enable → submit → real-time sync
-5. Check audience panel updates without refresh
+### Running a Kata Judge Test Session
+1. Start services: `docker compose up` or manual startup
+2. Open browser tabs to `http://localhost:4200`:
+   - 5 scoring judges (`judge1`–`judge5`), 1 VR (`vr`), 1 sequence (`seq`), 1 audience (`audience`)
+3. Each user logs in → selects event → enters respective interface
+4. Sequence judge opens motion → scoring judges score → real-time sync to audience
+
+### Running a Match (Fighting/Ne-Waza/Contact) Test Session
+1. Start services, open browser tabs:
+   - 1 match referee (`match1`), 1 audience
+2. Admin creates matches in management panel
+3. Referee controls timer, scores, fouls; audience sees real-time updates
 
 ### Debugging Socket.IO Events
-1. Backend: Add `console.log()` in socket handlers (`src/sockets/scoreHandler.ts`)
-2. Frontend: Use `SocketService.debug$` or browser DevTools console
-3. Verify event payloads in Network tab (WS frames)
-4. Check MongoDB via `mongosh` to confirm persistence
+1. Backend: Add `console.log()` in socket handlers (`src/sockets/index.ts`)
+2. Frontend: Check browser DevTools console or Network tab (WS frames)
+3. Check MongoDB via `mongosh` to confirm persistence
 
 ## Integration Notes
 
 ### API Endpoints
-- **Event Management**: `GET/POST /api/v1/events`, `PATCH /api/v1/events/:id`, `DELETE /api/v1/events/:id`
-- **Teams**: `GET/POST /api/v1/events/:id/teams`, `PATCH /api/v1/events/:id/teams/:teamId`
-- **Scores**: `POST /api/v1/scores`, `GET /api/v1/events/:id/scores`, `GET /api/v1/scores/my-round`, `GET /api/v1/scores/mine`
-- **VR Scores**: `POST /api/v1/vr-scores` (per series: throwVariety, groundVariety)
-- **Wrong Attacks**: `POST /api/v1/wrong-attacks` (toggle mark on completed motion)
-- **Rankings**: `GET /api/v1/events/:id/rankings` (includes actionDetails per motion, vrDetails per series per team)
-- **Flow Control**: `POST /api/v1/flow/open-action`, `POST /api/v1/flow/next-group`, `POST /api/v1/flow/abstain`
-- All authenticated endpoints require `Authorization: Bearer <JWT>`
+
+**Auth**: `POST /api/v1/auth/login`, `/register`, `/register-initial`, `/select-event`, `GET /users`, `PATCH /users/:userId/*`, `DELETE /users/:userId`
+
+**Events**: `GET/POST /api/v1/events`, `PATCH/DELETE /api/v1/events/:id`, `GET /events/:id/rankings`, `GET /events/:id/creative-rankings`, `GET /events/:id/summary`, `DELETE /events/:id/scores`
+
+**Teams**: `GET/POST /api/v1/events/:id/teams`, `POST /teams/import`, `POST /teams/batch-delete`, `POST /teams/batch-order`, `PATCH/DELETE /teams/:teamId`
+
+**Kata Scoring**: `POST /api/v1/scores`, `GET /scores/mine`, `GET /scores/my-round`
+**VR Scores**: `POST /api/v1/vr-scores`
+**Wrong Attacks**: `POST/GET /api/v1/wrong-attacks`
+**Kata Flow**: `POST /api/v1/flow/open-action`, `/next-group`, `/abstain`, `/cancel-abstain`, `GET /flow/state/:eventId`
+
+**Creative Scoring**: `POST/GET /api/v1/creative-scores`
+**Creative Flow**: `POST /api/v1/creative/flow/open-scoring`, `/confirm-scores`, `/next-team`, `/start-timer`, `/stop-timer`, `/pause-timer`, `/resume-timer`, `/reset-timer`, `/abstain`, `/abstain-cancel`
+**Creative Penalties**: `POST/GET /api/v1/creative/penalties`
+
+**Matches**: `GET/POST /api/v1/events/:id/matches`, `POST /matches/bulk`, `PATCH/DELETE /matches/:matchId`, `PATCH /matches/batch-reset`
+**Match Scores**: `POST /api/v1/match-scores`, `/reset`, `/part`, `/foul`, `PATCH /duration`, `/timer-adjust`
+**Contact**: `PATCH /api/v1/contact/action`, `/winner`, `/cancel-winner`
+
+**Backup**: `GET /api/v1/backup`
+
+All authenticated endpoints require `Authorization: Bearer <JWT>`
 
 ### Environment & Secrets
 - **Backend** `.env`: `MONGO_URI`, `JWT_SECRET`, `NODE_ENV`
@@ -290,9 +354,9 @@ After all motions in a series complete, VR Judge evaluates:
 - Development: Use `.env.local` (git-ignored)
 
 ### Teams Import (Admin Feature)
-- **Format**: `Team Name, Member 1, Member 2, Category` (e.g., "Red Team, 張三, 李四, male")
+- **Format**: Excel (.xlsx) or CSV with columns: 隊伍名稱/team, 隊員一/member1, 隊員二/member2, 組別/category
 - **Validation**: Check duplicate member names per event, report conflicts with SweetAlert2
-- **Implementation**: Use `papaparse` for CSV, upload via file input, POST to bulk teams endpoint
+- **Implementation**: Backend uses `xlsx` + `csv-parser` for parsing, `multer` for file upload
 
 ### Results Export (Admin Feature - Post-Event)
 - **Per-category Excel (.xlsx)**: Each category gets separate file with:
@@ -310,19 +374,17 @@ After all motions in a series complete, VR Judge evaluates:
 
 ## Current Feature Status
 
-### ✅ Completed
-- **Phase 1**: Core scoring (3 rounds, 5 judges, audience display)
-- **Phase 2**: Admin import (Excel/CSV), team management, round/group configuration
-- **Phase 3**: VR judge diversity scoring (per series), wrong attack marking
+### Completed
+- **Kata Duo**: 5-judge scoring, VR diversity, wrong attack, abstention, 3 rounds (A/B/C), audience display
+- **Creative Kata**: Independent scoring pipeline, timer, penalties, abstention
+- **Fighting**: IPPON/WAZA-ARI/SHIDO/CHUI scoring, timer, FULL IPPON trigger, winner preview
+- **Ne-Waza**: OSAE-KOMI hold-down timer (with progress bar + buzzer), injury timer, scoring
+- **Contact**: Card-based scoring, knockdowns, golden minute, fouls, winner declaration
+- **Admin**: Event/team/match management, Excel/CSV import, batch operations, judge account management
 - **Result Export**: Per-category Excel (detailed PART scores) & PDF (printable + signature)
-- **UI Enhancements**: Fullscreen mode (audience, judges), category labels (MALE/FEMALE/MIXED), per-category rankings
-- **Deployment**: Docker Compose (dev) + Portable package (MacBook/offline deployment)
-
-### 🔮 Future Enhancements
-- **Phase 4**: Tournament mode (bracket, finals, live leaderboard)
-- **Video Markup**: Replay with judge notes/timestamps
-- **Mobile Judge Interface**: Tablet-optimized scoring layouts
-- **Advanced Analytics**: Team performance trends, judge consistency analysis
+- **UI**: Glassmorphism design, fullscreen mode, per-category rankings, sport selector
+- **Deployment**: Docker Compose, MacBook portable package, Synology NAS deployment
+- **Database Backup**: Admin can download full DB backup
 
 ## Important Implementation Notes
 
