@@ -75,6 +75,7 @@ export interface CreativeScoringOpenedEvent {
   teamName: string;
   members: string[];
   category: string;
+  tier?: 'EL' | 'EM' | 'EH' | 'JH' | 'SH' | 'OPEN' | 'ELEM' | null;
 }
 
 export interface CreativePenaltyItem {

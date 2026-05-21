@@ -166,6 +166,12 @@ export class AudienceComponent implements OnInit, OnDestroy {
     return false;
   });
 
+  // 國小組（EL/EM/EH）無 VR 評分
+  hideVrt = computed(() => {
+    const team = this.currentTeam();
+    return team ? isElementaryTier(team.tier) : false;
+  });
+
   categoryRank = computed(() => {
     const team = this.currentTeam();
     if (!team) return null;

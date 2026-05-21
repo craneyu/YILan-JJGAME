@@ -29,6 +29,7 @@ interface VRSummaryResponse {
   success: boolean;
   data: {
     event: { name: string; meetingType?: 'sports-day' | 'tournament' };
+    singleTeamGroups?: Record<string, boolean>;
     teams: TeamInfo[];
     gameState: {
       currentTeamId?: string;
@@ -59,6 +60,7 @@ export class VrJudgeComponent implements OnInit, OnDestroy {
   eventId = signal('');
   eventName = signal('');
   meetingType = signal<'sports-day' | 'tournament'>('sports-day');
+  singleTeamGroups = signal<Record<string, boolean>>({});
   teams = signal<TeamInfo[]>([]);
   currentTeam = signal<TeamInfo | null>(null);
   currentRound = signal(1);
@@ -78,11 +80,18 @@ export class VrJudgeComponent implements OnInit, OnDestroy {
 
   allActionsDone = computed(() => this.actionStatuses().every((a) => a.done));
   allSelected = computed(() => this.throwVariety() !== null && this.groundVariety() !== null);
+  isSingleTeamGroup = computed(() => {
+    const team = this.currentTeam();
+    if (!team) return false;
+    const key = `${team.category}:${team.tier ?? 'none'}`;
+    return this.singleTeamGroups()[key] === true;
+  });
   roundLabel = computed(() => {
     const team = this.currentTeam();
     if (!team) return '';
     const cat = team.category.toUpperCase();
     const tierLabel = team.tier ? ` ${team.tier}` : '';
+    if (this.isSingleTeamGroup()) return `${cat}${tierLabel}`;
     return `${cat}${tierLabel} R${this.currentRound()}-G${this.groupIndex()}`;
   });
   seriesLabel = computed(() => ['A', 'B', 'C'][this.currentRound() - 1] ?? 'A');
@@ -172,6 +181,7 @@ export class VrJudgeComponent implements OnInit, OnDestroy {
 
       this.eventName.set(event.name);
       this.meetingType.set(event.meetingType ?? 'sports-day');
+      this.singleTeamGroups.set(res.data.singleTeamGroups ?? {});
       this.teams.set(teams);
 
       if (gameState?.currentTeamAbstained) {
@@ -191,7 +201,7 @@ export class VrJudgeComponent implements OnInit, OnDestroy {
 
       // 初始化動作狀態，還原已完成與錯誤攻擊標記
       const series = ['A', 'B', 'C'][gameState.currentRound - 1] ?? 'A';
-      const count = team.category === 'male' ? 4 : 3;
+      const count = this.getMotionCount(team);
       this.actionStatuses.set(
         Array.from({ length: count }, (_, i) => {
           const actionNo = `${series}${i + 1}`;
@@ -227,6 +237,15 @@ export class VrJudgeComponent implements OnInit, OnDestroy {
         wrongAttack: false,
       }))
     );
+  }
+
+  private getMotionCount(team: { category: string; tier?: string | null }): number {
+    // 錦標賽各分級動作數：EL=1, EM=2, EH=3, JH/SH/OPEN 依性別組（男=4，女/混=3）
+    const tier = team.tier;
+    if (tier === 'EL') return 1;
+    if (tier === 'EM') return 2;
+    if (tier === 'EH') return 3;
+    return team.category === 'male' ? 4 : 3;
   }
 
   // Toggle 錯誤攻擊（只有已完成的動作才可操作）

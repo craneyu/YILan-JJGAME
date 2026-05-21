@@ -41,6 +41,7 @@ export async function openScoring(req: Request, res: Response): Promise<void> {
     teamName: team.name,
     members: team.members,
     category: team.category,
+    tier: team.tier ?? null,
   });
 
   res.json({ success: true, message: '評分已開放' });
@@ -181,6 +182,7 @@ export async function getCreativeState(req: Request, res: Response): Promise<voi
   let currentTeamName: string | undefined;
   let currentMembers: string[] | undefined;
   let currentCategory: string | undefined;
+  let currentTier: string | null | undefined;
 
   if (state?.currentTeamId) {
     const team = await Team.findById(state.currentTeamId).lean();
@@ -188,8 +190,9 @@ export async function getCreativeState(req: Request, res: Response): Promise<voi
       currentTeamName = team.name;
       currentMembers = team.members;
       currentCategory = team.category;
+      currentTier = team.tier ?? null;
     }
   }
 
-  res.json({ success: true, data: { ...state, currentTeamName, currentMembers, currentCategory, isAbstained: state?.isAbstained ?? false } });
+  res.json({ success: true, data: { ...state, currentTeamName, currentMembers, currentCategory, currentTier, isAbstained: state?.isAbstained ?? false } });
 }

@@ -34,6 +34,17 @@ const PENALTY_LABEL: Record<string, string> = {
 
 const CATEGORY_LABEL: Record<string, string> = { male: '男子組', female: '女子組', mixed: '混合組' };
 
+type TeamTier = 'EL' | 'EM' | 'EH' | 'JH' | 'SH' | 'OPEN' | 'ELEM' | null;
+const TIER_LABEL: Record<string, string> = {
+  EL: '國小低年級',
+  EM: '國小中年級',
+  EH: '國小高年級',
+  JH: '青少年國中組',
+  SH: '青少年高中組',
+  OPEN: '公開組',
+  ELEM: '國小組',
+};
+
 @Component({
   selector: 'app-creative-audience',
   standalone: true,
@@ -113,7 +124,13 @@ export class CreativeAudienceComponent implements OnInit, OnDestroy {
   currentTeamName = signal<string>('');
   currentMembers = signal<string[]>([]);
   currentCategory = signal<string>('');
-  currentCategoryLabel = computed(() => CATEGORY_LABEL[this.currentCategory()] ?? this.currentCategory());
+  currentTier = signal<TeamTier>(null);
+  currentCategoryLabel = computed(() => {
+    const cat = CATEGORY_LABEL[this.currentCategory()] ?? this.currentCategory();
+    const tier = this.currentTier();
+    if (!tier) return cat;
+    return `${cat} ｜ ${TIER_LABEL[tier] ?? tier}`;
+  });
 
   readonly penaltyLabel = PENALTY_LABEL;
   faExpand = faExpand;
@@ -143,6 +160,7 @@ export class CreativeAudienceComponent implements OnInit, OnDestroy {
         this.currentTeamName.set(evt.teamName);
         this.currentMembers.set(evt.members ?? []);
         this.currentCategory.set(evt.category ?? '');
+        this.currentTier.set((evt.tier ?? null) as TeamTier);
         // 不重置計時器：計時狀態由 timerStarted$/timerStopped$ 管理
         // 開放評分時保留已停止的計時結果供觀眾查看
         this.calculatedResult.set(null);
@@ -253,6 +271,7 @@ loadState(eventId: string): void {
       currentTeamName?: string;
       currentMembers?: string[];
       currentCategory?: string;
+      currentTier?: TeamTier;
       status: string;
       timerElapsedMs?: number;
       timerStartedAt?: string;
@@ -269,11 +288,13 @@ loadState(eventId: string): void {
         this.currentTeamName.set(s.currentTeamName ?? '');
         this.currentMembers.set(s.currentMembers ?? []);
         this.currentCategory.set(s.currentCategory ?? '');
+        this.currentTier.set(s.currentTier ?? null);
       } else {
         this.currentTeamId.set(null);
         this.currentTeamName.set('');
         this.currentMembers.set([]);
         this.currentCategory.set('');
+        this.currentTier.set(null);
       }
 
       this.isAbstained.set(s.isAbstained ?? false);
@@ -332,6 +353,7 @@ loadState(eventId: string): void {
     this.currentTeamName.set('');
     this.currentMembers.set([]);
     this.currentCategory.set('');
+    this.currentTier.set(null);
     this.isAbstained.set(false);
   }
 

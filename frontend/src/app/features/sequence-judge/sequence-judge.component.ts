@@ -180,7 +180,14 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
     () => this.judgeStatuses().filter((j) => j.submitted).length,
   );
   seriesLabel = computed(() => ["A", "B", "C"][this.currentRound() - 1] ?? "A");
-  roundLabel = computed(() => `R${this.currentRound()}-G${this.groupIndex()}`);
+  roundLabel = computed(() => {
+    const team = this.currentTeam();
+    if (!team) return `R${this.currentRound()}-G${this.groupIndex()}`;
+    const cat = team.category.toUpperCase();
+    const tierLabel = team.tier ? ` ${team.tier}` : '';
+    if (this.isCurrentSingleTeamGroup()) return `${cat}${tierLabel}`;
+    return `${cat}${tierLabel} R${this.currentRound()}-G${this.groupIndex()}`;
+  });
   allActionsDone = computed(
     () =>
       this.actionProgress().length > 0 &&

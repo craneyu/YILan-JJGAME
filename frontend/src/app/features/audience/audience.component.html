@@ -69,7 +69,9 @@
           @for (action of seriesActions(); track action) {
             <th class="px-3 py-2 text-white/60 font-medium text-sm">{{ action }}</th>
           }
-          <th class="px-3 py-2 text-white/60 font-medium text-sm">VRT</th>
+          @if (!hideVrt()) {
+            <th class="px-3 py-2 text-white/60 font-medium text-sm">VRT</th>
+          }
           <th class="px-3 py-2 text-blue-300 font-bold text-sm">TOT</th>
         </tr>
       </thead>
@@ -92,9 +94,11 @@
               </div>
             </td>
           }
-          <td class="px-3 py-3">
-            <span class="text-white font-bold text-xl">{{ vrt() ?? '-' }}</span>
-          </td>
+          @if (!hideVrt()) {
+            <td class="px-3 py-3">
+              <span class="text-white font-bold text-xl">{{ vrt() ?? '-' }}</span>
+            </td>
+          }
           <td class="px-3 py-3 bg-blue-500/20 rounded-lg">
             <span class="text-blue-300 font-bold text-2xl">{{ tot() }}</span>
           </td>
