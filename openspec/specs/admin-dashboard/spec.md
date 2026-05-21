@@ -127,58 +127,61 @@ code:
 ---
 ### Requirement: Admin can view creative embu rankings
 
-The admin SHALL be able to view rankings for both Duo and Show competition types within a single event card. Rankings SHALL be grouped by category (male/female/mixed) within each competition type section. Export buttons (Excel and PDF) SHALL be available per category per competition type.
+The admin SHALL be able to view rankings for both Duo and Show competition types within a single event card.
+
+For sports-day events, rankings SHALL be grouped by `category` (male/female/mixed) within each competition type section. Export buttons (Excel and PDF) SHALL be available per category per competition type.
+
+For tournament events (where `Event.meetingType === "tournament"`), Show rankings SHALL be grouped by `(category, tier)` rather than `category` alone, mirroring the existing Duo behavior. Each `(category, tier)` group SHALL be ranked independently — teams in `(female, EL)` are ranked separately from teams in `(female, OPEN)`. Export buttons (Excel and PDF) SHALL be available per `(category, tier)` group.
+
+The `GET /api/v1/events/:id/creative-rankings` endpoint SHALL include `tier: string | null` in each returned ranking entry. For sports-day events (or teams without a tier value), `tier` SHALL be `null`.
 
 #### Scenario: Admin views Duo rankings in unified event
 
 - **WHEN** the admin opens the Duo rankings section of a unified event
 - **THEN** teams with `competitionType: 'Duo'` SHALL be ranked by total score descending within each category
 
-#### Scenario: Admin views Show rankings in unified event
+#### Scenario: Admin views Show rankings in sports-day event
 
-- **WHEN** the admin opens the Show rankings section of a unified event
-- **THEN** teams with `competitionType: 'Show'` SHALL be ranked by `finalScore` descending within each category, using the creative scoring formula
+- **WHEN** the admin opens the Show rankings section of a sports-day event
+- **THEN** teams with `competitionType: 'Show'` SHALL be ranked by `finalScore` descending within each `category` only
+- **AND** each ranking entry's `tier` field SHALL be `null`
+
+#### Scenario: Admin views Show rankings in tournament event with multiple tiers
+
+- **GIVEN** a tournament event with Show teams in `(female, EL)`, `(female, OPEN)`, and `(male, JH)`
+- **WHEN** the admin opens the Show rankings section
+- **THEN** the UI SHALL display three separate ranking groups, one per `(category, tier)` pair
+- **AND** each group SHALL show its own rank 1, 2, 3… computed independently
+- **AND** each group label SHALL display both category and tier (e.g., `女子組 ｜ 國小低年級組`)
+
+#### Scenario: Single team in a (category, tier) group still receives rank 1
+
+- **GIVEN** a tournament event with exactly one Show team in `(male, KID)` (no other teams in the same tier)
+- **WHEN** the admin opens the Show rankings section
+- **THEN** that team SHALL appear in a `男子組 ｜ 幼兒組` group with rank 1
+
+#### Scenario: Show export button is provided per (category, tier) group in tournament
+
+- **GIVEN** a tournament event with Show teams in `(female, EL)` and `(female, OPEN)`
+- **WHEN** the admin views the Show rankings section
+- **THEN** the UI SHALL provide an Excel export button for each `(category, tier)` group (two buttons in this example)
+- **AND** clicking `(female, EL)` export SHALL produce a file named `女子組_國小低年級.xlsx` containing only the female EL teams
+- **AND** clicking `(female, OPEN)` export SHALL produce a file named `女子組_公開組.xlsx` containing only the female OPEN teams
+
+#### Scenario: Show export in sports-day event keeps single-file-per-category
+
+- **GIVEN** a sports-day event with Show teams across male, female, mixed
+- **WHEN** the admin clicks the Show Excel export button for the female category
+- **THEN** the system SHALL produce a single file `女子組.xlsx` containing all female Show teams, matching pre-change behavior
 
 
 <!-- @trace
-source: unified-event-management
-updated: 2026-03-04
+source: creative-rankings-tier-split
+updated: 2026-05-21
 code:
-  - backend/src/models/CreativeGameState.ts
-  - backend/src/routes/creativeScores.ts
-  - frontend/src/app/features/creative-scoring-judge/creative-scoring-judge.component.html
-  - frontend/src/app/app.routes.ts
-  - backend/src/controllers/creativeTimerController.ts
-  - frontend/src/app/features/admin/admin.component.ts
-  - frontend/src/app/core/services/socket.service.ts
-  - backend/src/routes/creativePenalties.ts
-  - backend/src/routes/creativeFlow.ts
   - backend/src/controllers/creativeRankingsController.ts
-  - backend/src/models/Event.ts
-  - backend/src/models/CreativePenalty.ts
-  - frontend/src/app/features/login/login.component.html
-  - SPEC/SPEC-v3.md
-  - backend/src/routes/events.ts
-  - frontend/src/app/features/creative-audience/creative-audience.component.html
-  - backend/src/sockets/index.ts
-  - frontend/src/app/features/login/login.component.ts
-  - backend/src/controllers/creativeFlowController.ts
-  - SPEC/SPEC-v2.md
-  - backend/src/utils/creativeScoring.ts
-  - backend/src/controllers/creativeScoreController.ts
-  - backend/src/seeds/migrateEventTypes.ts
-  - frontend/src/app/features/creative-sequence-judge/creative-sequence-judge.component.ts
-  - backend/src/models/Team.ts
   - frontend/src/app/features/admin/admin.component.html
-  - frontend/src/app/features/creative-audience/creative-audience.component.ts
-  - frontend/src/app/features/creative-sequence-judge/creative-sequence-judge.component.html
-  - backend/src/controllers/creativePenaltyController.ts
-  - backend/src/models/CreativeScore.ts
-  - frontend/src/app/core/services/auth.service.ts
-  - backend/src/index.ts
-  - backend/src/controllers/teamController.ts
-  - frontend/src/app/features/creative-scoring-judge/creative-scoring-judge.component.ts
-  - backend/src/controllers/eventController.ts
+  - frontend/src/app/features/admin/admin.component.ts
 -->
 
 ---
