@@ -35,21 +35,21 @@
         <p class="text-white/40 text-sm text-center py-4">尚無隊伍資料</p>
       } @else {
         <div class="space-y-3">
-          @for (group of groupedTeams(); track group.category) {
+          @for (group of groupedTeams(); track group.label) {
             <!-- 組別標題（可收放） -->
             <div>
               <button
                 class="w-full flex items-center justify-between px-1 mb-1 py-0.5 rounded hover:bg-white/5 transition-colors"
-                (click)="toggleGroup(group.category)">
+                (click)="toggleGroup(group.label)">
                 <span class="text-white/60 text-xs font-semibold uppercase tracking-wider">
                   {{ group.label }}（{{ group.teams.length }} 隊）
                 </span>
                 <fa-icon
-                  [icon]="isGroupCollapsed(group.category) ? faChevronRight : faChevronDown"
+                  [icon]="isGroupCollapsed(group.label) ? faChevronRight : faChevronDown"
                   class="text-white/40 text-xs">
                 </fa-icon>
               </button>
-              @if (!isGroupCollapsed(group.category)) {
+              @if (!isGroupCollapsed(group.label)) {
                 <div class="space-y-1">
                   @for (team of group.teams; track team._id) {
                     <button

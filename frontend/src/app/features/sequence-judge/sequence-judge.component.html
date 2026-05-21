@@ -71,7 +71,7 @@
           <p class="text-white/40 text-sm text-center py-4">尚無隊伍資料</p>
         } @else {
           <div class="space-y-3">
-            @for (group of groupedTeams(); track group.category) {
+            @for (group of groupedTeams(); track group.label) {
               <div>
                 <p
                   class="text-white/60 text-xs font-semibold uppercase tracking-wider mb-1 px-1">

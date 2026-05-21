@@ -70,6 +70,15 @@ interface ScoreResult {
 
 const CATEGORY_ORDER: Record<string, number> = { female: 0, male: 1, mixed: 2 };
 const CATEGORY_LABEL: Record<string, string> = { male: '男子組', female: '女子組', mixed: '混合組' };
+const TIER_LABEL: Record<string, string> = {
+  EL: '國小低年級',
+  EM: '國小中年級',
+  EH: '國小高年級',
+  JH: '青少年國中組',
+  SH: '青少年高中組',
+  OPEN: '公開組',
+  ELEM: '國小組',
+};
 const PENALTY_TYPE_LABEL: Record<string, string> = {
   overtime: '超時',
   undertime: '未達時間',
@@ -131,12 +140,36 @@ export class CreativeSequenceJudgeComponent implements OnInit, OnDestroy {
 
   // 隊伍依組別分群（含標籤）
   groupedTeams = computed(() => {
+    const isTournament = this.meetingType() === 'tournament';
+
+    if (isTournament) {
+      // 錦標賽：依 (tier, category) 群組，群組順序為 Excel 列首現順序
+      const byOrder = [...this.teams()].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      const groupMap = new Map<
+        string,
+        { category: string; tier: TeamTier | null; label: string; teams: TeamItem[] }
+      >();
+      for (const team of byOrder) {
+        const tier = (team.tier ?? null) as TeamTier | null;
+        const key = `${tier ?? 'none'}:${team.category}`;
+        if (!groupMap.has(key)) {
+          const catLabel = CATEGORY_LABEL[team.category] ?? team.category;
+          const tierLabel = tier ? TIER_LABEL[tier] ?? tier : '';
+          const label = tier ? `${tierLabel} ｜ ${catLabel}` : catLabel;
+          groupMap.set(key, { category: team.category, tier, label, teams: [team] });
+        } else {
+          groupMap.get(key)!.teams.push(team);
+        }
+      }
+      return [...groupMap.values()];
+    }
+
     const sorted = this.sortedTeams();
-    const groups: { category: string; label: string; teams: TeamItem[] }[] = [];
+    const groups: { category: string; tier: TeamTier | null; label: string; teams: TeamItem[] }[] = [];
     for (const team of sorted) {
       const last = groups[groups.length - 1];
       if (!last || last.category !== team.category) {
-        groups.push({ category: team.category, label: CATEGORY_LABEL[team.category] ?? team.category, teams: [team] });
+        groups.push({ category: team.category, tier: null, label: CATEGORY_LABEL[team.category] ?? team.category, teams: [team] });
       } else {
         last.teams.push(team);
       }

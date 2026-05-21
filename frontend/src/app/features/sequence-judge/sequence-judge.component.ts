@@ -112,6 +112,15 @@ const CATEGORY_LABEL: Record<string, string> = {
   female: "女子組",
   mixed: "混合組",
 };
+const TIER_LABEL: Record<string, string> = {
+  EL: "國小低年級",
+  EM: "國小中年級",
+  EH: "國小高年級",
+  JH: "青少年國中組",
+  SH: "青少年高中組",
+  OPEN: "公開組",
+  ELEM: "國小組",
+};
 
 @Component({
   selector: "app-sequence-judge",
@@ -183,10 +192,10 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
   roundLabel = computed(() => {
     const team = this.currentTeam();
     if (!team) return `R${this.currentRound()}-G${this.groupIndex()}`;
-    const cat = team.category.toUpperCase();
-    const tierLabel = team.tier ? ` ${team.tier}` : '';
+    const cat = CATEGORY_LABEL[team.category] ?? team.category;
+    const tierLabel = team.tier ? ` ｜ ${TIER_LABEL[team.tier] ?? team.tier}` : '';
     if (this.isCurrentSingleTeamGroup()) return `${cat}${tierLabel}`;
-    return `${cat}${tierLabel} R${this.currentRound()}-G${this.groupIndex()}`;
+    return `${cat}${tierLabel}　R${this.currentRound()}-G${this.groupIndex()}`;
   });
   allActionsDone = computed(
     () =>
@@ -227,18 +236,47 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
   isEventComplete = computed(() => this.gameStatus() === "event_complete");
 
   groupedTeams = computed(() => {
+    const isTournament = this.meetingType() === "tournament";
+
+    if (isTournament) {
+      // 錦標賽：依 (tier, category) 分群，群組順序為 Excel 列首現順序，
+      // 群內 team.order 升冪。對齊後端 buildTournamentGroups 與 nextGroup 流程。
+      const byOrder = [...this.teams()].sort(
+        (a, b) => (a.order ?? 0) - (b.order ?? 0),
+      );
+      const groupMap = new Map<
+        string,
+        { category: string; tier: TeamTier | null; label: string; teams: TeamInfo[] }
+      >();
+      for (const team of byOrder) {
+        const tier = (team.tier ?? null) as TeamTier | null;
+        const key = `${tier ?? "none"}:${team.category}`;
+        if (!groupMap.has(key)) {
+          const catLabel = CATEGORY_LABEL[team.category] ?? team.category;
+          const tierLabel = tier ? TIER_LABEL[tier] ?? tier : "";
+          const label = tier ? `${tierLabel} ｜ ${catLabel}` : catLabel;
+          groupMap.set(key, { category: team.category, tier, label, teams: [team] });
+        } else {
+          groupMap.get(key)!.teams.push(team);
+        }
+      }
+      return [...groupMap.values()];
+    }
+
+    // 運動會：依既有 category 主排序
     const sorted = [...this.teams()].sort((a, b) => {
       const catDiff =
         (CATEGORY_ORDER[a.category] ?? 99) - (CATEGORY_ORDER[b.category] ?? 99);
       if (catDiff !== 0) return catDiff;
       return (a.order ?? 0) - (b.order ?? 0);
     });
-    const groups: { category: string; label: string; teams: TeamInfo[] }[] = [];
+    const groups: { category: string; tier: TeamTier | null; label: string; teams: TeamInfo[] }[] = [];
     for (const team of sorted) {
       const last = groups[groups.length - 1];
       if (!last || last.category !== team.category) {
         groups.push({
           category: team.category,
+          tier: null,
           label: CATEGORY_LABEL[team.category] ?? team.category,
           teams: [team],
         });
