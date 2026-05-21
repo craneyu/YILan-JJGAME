@@ -4,6 +4,19 @@ context: |
   ## 專案概覽
   柔術競賽演武計分平台——支援多組別、多系列的柔術競賽即時計分系統，部署於區域網路（LAN），透過 Docker Compose 在 MacBook 離線運行，提供計分裁判、VR 裁判、賽序裁判、觀眾顯示、管理員等五種角色介面。
   
+  ## LLM 行為準則（基於 Andrej Karpathy 原則）
+    llm-behavior:
+      - 實施前先列出假設與前提條件，不確定就問，不要自行腦補需求細節
+      - 若任務存在多種解讀方式，列出所有選項讓使用者選擇，不默默選擇其中一種
+      - 存在更簡單的方案時，應主動提出並質疑當前方向的必要性
+      - 只寫需求要求的功能，不加未要求的抽象層、靈活性、可配置性或防禦性錯誤處理
+      - "自問：「資深工程師會說這太複雜嗎？」— 若是，簡化後再提交"
+      - 只修改與任務直接相關的程式碼，不順便「改進」相鄰的 code、註解或格式
+      - 不重構沒有壞的東西，配合既有程式碼風格，即使個人偏好不同
+      - 發現無關的死 code 應提及但不刪除，自己的修改導致的孤立 code 則須清除
+      - "驗證標準：每行改動都應能直接追溯到使用者的要求，無法追溯的改動不該存在"
+      - 將任務轉化為可驗證的成功標準，用測試循環驗證直到達成目標
+  
   ## 技術棧
   前端：Angular 20.0.0（Standalone + OnPush，無 NgModule）、TypeScript 5.8.0（strict 嚴格模式）
   狀態管理：Angular Signals（signal<T>、computed()、effect()）——無 NgRx
@@ -162,7 +175,6 @@ context: |
   cd frontend && npm run build      — 前端生產建置（輸出 dist/jju-frontend/）
   ./package-docker.sh               — 打包 Docker 映像為可攜式 jju-docker.tar.gz
   cd jju-package && ./start.sh      — 離線部署（載入映像並啟動，保留資料庫資料）
-
 rules:
   proposal:
     - 必須包含「動機與背景」、「方案描述」、「Non-goals（不做什麼）」三個段落
