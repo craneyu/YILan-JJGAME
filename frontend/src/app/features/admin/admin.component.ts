@@ -29,6 +29,9 @@ import { ApiService } from "../../core/services/api.service";
 import { AuthService } from "../../core/services/auth.service";
 import { ActivatedRoute, Router } from "@angular/router";
 
+type MeetingType = "sports-day" | "tournament";
+type TeamTier = "EL" | "EM" | "EH" | "JH" | "SH" | "OPEN" | "ELEM";
+
 interface EventItem {
   _id: string;
   name: string;
@@ -39,6 +42,7 @@ interface EventItem {
   categoryOrderDuo?: string[];
   categoryOrderShow?: string[];
   competitionTypes?: ("Duo" | "Show")[];
+  meetingType?: MeetingType;
 }
 
 interface CreativeRankingItem {
@@ -86,22 +90,39 @@ interface RankingItem {
   name: string;
   members: string[];
   category: string;
+  tier?: TeamTier | null;
   seriesA: number;
-  vrScoreA: number;
+  vrScoreA?: number;
   seriesB: number;
-  vrScoreB: number;
+  vrScoreB?: number;
   seriesC: number;
-  vrScoreC: number;
+  vrScoreC?: number;
   total: number;
   rank?: number;
   actionDetails: Record<string, ActionDetail>;
-  vrDetails: Record<string, VrDetail>;
+  vrDetails?: Record<string, VrDetail>;
 }
 
 interface CategoryRanking {
+  groupKey: string; // `${category}:${tier ?? 'none'}`
   category: string;
+  tier: TeamTier | null;
   label: string;
   items: (RankingItem & { rank: number })[];
+}
+
+const TIER_LABEL: Record<TeamTier, string> = {
+  EL: "國小低年級",
+  EM: "國小中年級",
+  EH: "國小高年級",
+  JH: "青少年國中組",
+  SH: "青少年高中組",
+  OPEN: "公開組",
+  ELEM: "國小組",
+};
+const TIER_ORDER: TeamTier[] = ["EL", "EM", "EH", "JH", "SH", "OPEN", "ELEM"];
+function isElementaryTier(tier: TeamTier | null | undefined): boolean {
+  return tier === "EL" || tier === "EM" || tier === "EH";
 }
 
 @Component({
@@ -121,6 +142,11 @@ export class AdminComponent implements OnInit {
   selectedEvent = signal<EventItem | null>(null);
   teams = signal<TeamItem[]>([]);
 
+  // 錦標賽偵測：影響匯入欄位需求 + 匯出拆分邏輯
+  isTournament = computed(
+    () => this.selectedEvent()?.meetingType === "tournament",
+  );
+
   // 新增隊伍表單
   newTeam = {
     name: "",
@@ -128,8 +154,11 @@ export class AdminComponent implements OnInit {
     member2: "",
     category: "male" as "male" | "female" | "mixed",
     order: 1,
+    tier: "" as "" | TeamTier,
   };
   showAddTeam = signal(false);
+  readonly tierOptions = TIER_ORDER;
+  readonly tierLabel = TIER_LABEL;
 
   // 編輯隊伍
   editingTeamId = signal<string | null>(null);
@@ -175,23 +204,43 @@ export class AdminComponent implements OnInit {
       this.selectedEvent(),
       "Duo",
     );
-    const byCategory: Record<string, RankingItem[]> = {};
+    const isTournament = this.isTournament();
+
+    // 依 (category, tier) 分群；sports-day 時 tier=null 將整 category 視為單一群組
+    const byGroup: Record<string, { category: string; tier: TeamTier | null; items: RankingItem[] }> = {};
     for (const item of this.rankings()) {
-      if (!byCategory[item.category]) byCategory[item.category] = [];
-      byCategory[item.category].push(item);
+      const tier = (item.tier ?? null) as TeamTier | null;
+      const key = isTournament ? `${item.category}:${tier ?? "none"}` : `${item.category}:none`;
+      if (!byGroup[key]) byGroup[key] = { category: item.category, tier: isTournament ? tier : null, items: [] };
+      byGroup[key].items.push(item);
     }
-    return categoryOrder
-      .filter((cat) => (byCategory[cat]?.length ?? 0) > 0)
-      .map((cat) => {
-        const sorted = [...(byCategory[cat] || [])].sort(
-          (a, b) => b.total - a.total,
-        );
-        return {
-          category: cat,
-          label: this.categoryLabel(cat),
-          items: sorted.map((item, idx) => ({ ...item, rank: idx + 1 })),
-        };
-      });
+
+    // 排序：先 category（依設定），再 tier（依固定順序）
+    const groupKeys = Object.keys(byGroup).sort((aKey, bKey) => {
+      const a = byGroup[aKey];
+      const b = byGroup[bKey];
+      const catA = categoryOrder.indexOf(a.category);
+      const catB = categoryOrder.indexOf(b.category);
+      const catDiff = (catA === -1 ? 999 : catA) - (catB === -1 ? 999 : catB);
+      if (catDiff !== 0) return catDiff;
+      const tierA = a.tier ? TIER_ORDER.indexOf(a.tier) : -1;
+      const tierB = b.tier ? TIER_ORDER.indexOf(b.tier) : -1;
+      return tierA - tierB;
+    });
+
+    return groupKeys.map((key) => {
+      const { category, tier, items } = byGroup[key];
+      const sorted = [...items].sort((a, b) => b.total - a.total);
+      const catLabel = this.categoryLabel(category);
+      const label = tier ? `${catLabel} × ${TIER_LABEL[tier]}` : catLabel;
+      return {
+        groupKey: key,
+        category,
+        tier,
+        label,
+        items: sorted.map((item, idx) => ({ ...item, rank: idx + 1 })),
+      };
+    });
   });
 
   // 依競賽類型分群的隊伍 computed signals
@@ -325,6 +374,18 @@ export class AdminComponent implements OnInit {
       });
       return;
     }
+    // 錦標賽必填 tier；運動會可留空
+    if (this.isTournament() && !this.newTeam.tier) {
+      Swal.fire({
+        icon: "warning",
+        title: "錦標賽隊伍必須選擇分級",
+        toast: true,
+        position: "top-end",
+        showConfirmButton: false,
+        timer: 2000,
+      });
+      return;
+    }
     this.api
       .post<{ success: boolean; data: TeamItem }>(
         `/events/${event._id}/teams`,
@@ -333,6 +394,7 @@ export class AdminComponent implements OnInit {
           members,
           category: this.newTeam.category,
           order: this.newTeam.order,
+          ...(this.isTournament() && this.newTeam.tier && { tier: this.newTeam.tier }),
         },
       )
       .subscribe({
@@ -347,6 +409,7 @@ export class AdminComponent implements OnInit {
               member2: "",
               category: "male",
               order: this.teams().length + 1,
+              tier: "",
             };
             this.showAddTeam.set(false);
             Swal.fire({
@@ -629,6 +692,49 @@ export class AdminComponent implements OnInit {
   }
 
   // ── 匯入 ──────────────────────────────────────────────
+  downloadTeamImportTemplate(competitionType: "Duo" | "Show"): void {
+    const isTournament = this.isTournament();
+    const headers = isTournament
+      ? ["隊伍名稱", "隊員一姓名", "隊員二姓名", "組別", "分級"]
+      : ["隊伍名稱", "隊員一姓名", "隊員二姓名", "組別"];
+
+    // 範例列：tournament 多提供 tier 範例
+    const examples = isTournament
+      ? [
+          ["範例A", "選手一", "選手二", "男子組", "EL"],
+          ["範例B", "選手三", "選手四", "女子組", "JH"],
+          ["範例C", "選手五", "選手六", "混合組", "OPEN"],
+        ]
+      : [
+          ["範例A", "選手一", "選手二", "男子組"],
+          ["範例B", "選手三", "選手四", "女子組"],
+        ];
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...examples]);
+    XLSX.utils.book_append_sheet(wb, ws, "Teams");
+
+    // 第二張提示頁（tournament 才加入分級對照表）
+    if (isTournament) {
+      const tierGuide = [
+        ["分級代碼", "中文名稱", "適用項目"],
+        ["EL", "國小低年級", "傳統演武 / 創意演武"],
+        ["EM", "國小中年級", "傳統演武 / 創意演武"],
+        ["EH", "國小高年級", "傳統演武 / 創意演武"],
+        ["JH", "青少年國中組", "傳統演武 / 創意演武 / 寢技"],
+        ["SH", "青少年高中組", "傳統演武 / 創意演武 / 寢技"],
+        ["OPEN", "公開組", "傳統演武 / 創意演武 / 寢技"],
+        ["ELEM", "國小組（寢技專用）", "寢技"],
+      ];
+      const wsGuide = XLSX.utils.aoa_to_sheet(tierGuide);
+      XLSX.utils.book_append_sheet(wb, wsGuide, "分級對照");
+    }
+
+    const label = competitionType === "Show" ? "創意演武" : "雙人演武";
+    const suffix = isTournament ? "錦標賽" : "運動會";
+    XLSX.writeFile(wb, `${suffix}_${label}_隊伍匯入範本.xlsx`);
+  }
+
   importFile(event: Event): void {
     this.importFileForType(event, "Duo");
   }
@@ -1021,23 +1127,42 @@ ${sectionsHtml}
     setTimeout(() => win.print(), 600);
   }
 
-  exportExcel(category: string): void {
+  exportExcel(groupKey: string): void {
     const event = this.selectedEvent();
     if (!event || this.rankings().length === 0) return;
 
-    const groups = this.rankingsByCat().filter((g) => g.category === category);
-    if (groups.length === 0) return;
+    const group = this.rankingsByCat().find((g) => g.groupKey === groupKey);
+    if (!group) return;
 
-    const group = groups[0];
-    const actionCount = group.category === "male" ? 4 : 3;
-    const seriesCfg: { s: string; parts: number }[] = [
+    // 依 tier 決定每系列動作數
+    // - 國小低/中年級：見下方 hideC 處理（無 C 系列）
+    // - 國小高年級：每系列 3 動作（無 C4）
+    // - 男子組 JH/OPEN/sports-day：4 動作
+    // - 女子/混合 JH/OPEN/sports-day：3 動作
+    const tier = group.tier;
+    const isElementary = isElementaryTier(tier);
+    const hideVR = isElementary; // 國小組（EL/EM/EH）省略 VR 欄位
+    const hideC = tier === "EL" || tier === "EM"; // EL/EM 沒有 C 系列
+    const actionCount = isElementary
+      ? tier === "EL"
+        ? 1
+        : tier === "EM"
+          ? 2
+          : 3 // EH
+      : group.category === "male"
+        ? 4
+        : 3;
+    const allSeries: { s: string; parts: number }[] = [
       { s: "A", parts: 4 },
       { s: "B", parts: 4 },
       { s: "C", parts: 5 },
     ];
+    const seriesCfg = hideC ? allSeries.filter((x) => x.s !== "C") : allSeries;
 
-    // 固定 10 欄：動作 | P1 | P2 | P3 | P4 | P5 | 動作小計 | VR投技 | VR寢技 | 系列合計
-    const COL = 10;
+    // 欄位數依是否含 VR 動態：
+    // 含 VR：動作 | P1..P5 | 動作小計 | VR投技 | VR寢技 | 系列合計 = 10 欄
+    // 不含 VR：動作 | P1..P5 | 動作小計 | 系列合計 = 8 欄
+    const COL = hideVR ? 8 : 10;
     const rows: (string | number)[][] = [];
     const merges: {
       s: { r: number; c: number };
@@ -1072,19 +1197,23 @@ ${sectionsHtml}
       ]);
       merge(0, COL - 1);
 
-      // ── 欄位標題 ──
-      rows.push([
-        "動作",
-        "P1",
-        "P2",
-        "P3",
-        "P4",
-        "P5",
-        "動作小計",
-        "VR投技",
-        "VR寢技",
-        "系列合計",
-      ]);
+      // ── 欄位標題 ──（含 VR vs 不含 VR）
+      if (hideVR) {
+        rows.push(["動作", "P1", "P2", "P3", "P4", "P5", "動作小計", "系列合計"]);
+      } else {
+        rows.push([
+          "動作",
+          "P1",
+          "P2",
+          "P3",
+          "P4",
+          "P5",
+          "動作小計",
+          "VR投技",
+          "VR寢技",
+          "系列合計",
+        ]);
+      }
 
       for (const { s, parts } of seriesCfg) {
         // 各動作細項
@@ -1102,39 +1231,59 @@ ${sectionsHtml}
                 : "",
             );
           }
-          r.push(d?.total ?? 0, "", "", "");
+          // 動作小計 + 後續欄位（依 hideVR 決定欄數）
+          r.push(d?.total ?? 0);
+          if (hideVR) {
+            r.push(""); // 系列合計欄留空（在系列合計列填）
+          } else {
+            r.push("", "", ""); // VR投技、VR寢技、系列合計欄
+          }
           rows.push(r);
         }
 
         // 系列合計列
-        const vr: VrDetail = (item.vrDetails ?? {})[s] ?? {
-          throwVariety: 0,
-          groundVariety: 0,
-        };
         const motionTotal =
           s === "A" ? item.seriesA : s === "B" ? item.seriesB : item.seriesC;
-        const seriesVr =
-          s === "A" ? item.vrScoreA : s === "B" ? item.vrScoreB : item.vrScoreC;
-        rows.push([
-          `${s} 系列合計`,
-          "",
-          "",
-          "",
-          "",
-          "",
-          motionTotal,
-          vr.throwVariety,
-          vr.groundVariety,
-          motionTotal + seriesVr,
-        ]);
-        merge(0, 5);
+        if (hideVR) {
+          rows.push([`${s} 系列合計`, "", "", "", "", "", motionTotal, motionTotal]);
+          merge(0, 5);
+        } else {
+          const vr: VrDetail = (item.vrDetails ?? {})[s] ?? {
+            throwVariety: 0,
+            groundVariety: 0,
+          };
+          const seriesVr =
+            s === "A"
+              ? (item.vrScoreA ?? 0)
+              : s === "B"
+                ? (item.vrScoreB ?? 0)
+                : (item.vrScoreC ?? 0);
+          rows.push([
+            `${s} 系列合計`,
+            "",
+            "",
+            "",
+            "",
+            "",
+            motionTotal,
+            vr.throwVariety,
+            vr.groundVariety,
+            motionTotal + seriesVr,
+          ]);
+          merge(0, 5);
+        }
 
         rows.push([]); // 系列間空白
       }
 
       // 總分列
-      rows.push(["總分", "", "", "", "", "", "", "", "", item.total]);
-      merge(0, 8);
+      if (hideVR) {
+        rows.push(["總分", "", "", "", "", "", "", item.total]);
+        merge(0, 6);
+      } else {
+        rows.push(["總分", "", "", "", "", "", "", "", "", item.total]);
+        merge(0, 8);
+      }
 
       rows.push([]);
       rows.push([]); // 隊伍間雙空行
@@ -1142,29 +1291,55 @@ ${sectionsHtml}
 
     const ws = XLSX.utils.aoa_to_sheet(rows);
     ws["!merges"] = merges;
-    ws["!cols"] = [
-      { wch: 16 },
-      { wch: 5 },
-      { wch: 5 },
-      { wch: 5 },
-      { wch: 5 },
-      { wch: 5 },
-      { wch: 8 },
-      { wch: 7 },
-      { wch: 7 },
-      { wch: 9 },
-    ];
+    if (hideVR) {
+      ws["!cols"] = [
+        { wch: 16 },
+        { wch: 5 },
+        { wch: 5 },
+        { wch: 5 },
+        { wch: 5 },
+        { wch: 5 },
+        { wch: 8 },
+        { wch: 9 },
+      ];
+    } else {
+      ws["!cols"] = [
+        { wch: 16 },
+        { wch: 5 },
+        { wch: 5 },
+        { wch: 5 },
+        { wch: 5 },
+        { wch: 5 },
+        { wch: 8 },
+        { wch: 7 },
+        { wch: 7 },
+        { wch: 9 },
+      ];
+    }
 
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, group.label);
-    XLSX.writeFile(wb, `${event.name}_${group.label}_成績明細.xlsx`);
+    // 工作表名稱限制 31 字元，避免特殊字元
+    const safeSheetName = group.label.replace(/[/\\?*\[\]:]/g, "_").slice(0, 31);
+    XLSX.utils.book_append_sheet(wb, ws, safeSheetName);
+    // 檔名：sports-day = {event}_{category}_成績明細.xlsx；tournament = {event}_{category}_{tier}_成績明細.xlsx
+    const filenameSuffix = group.tier
+      ? `${this.categoryLabel(group.category)}_${TIER_LABEL[group.tier]}`
+      : this.categoryLabel(group.category);
+    XLSX.writeFile(wb, `${event.name}_${filenameSuffix}_成績明細.xlsx`);
   }
 
-  printPdf(category: string): void {
+  printPdf(groupKey: string): void {
     const event = this.selectedEvent();
     if (!event || this.rankings().length === 0) return;
 
-    const groups = this.rankingsByCat().filter((g) => g.category === category);
+    const group = this.rankingsByCat().find((g) => g.groupKey === groupKey);
+    if (!group) return;
+
+    const tier = group.tier;
+    const isElementary = isElementaryTier(tier);
+    const hideVR = isElementary;
+    const hideC = tier === "EL" || tier === "EM";
+
     const medalText = (rank: number) =>
       rank === 1 ? "金" : rank === 2 ? "銀" : rank === 3 ? "銅" : String(rank);
     const medalStyle = (rank: number) =>
@@ -1184,48 +1359,63 @@ ${sectionsHtml}
             ? "background:#fff7ed"
             : "";
 
-    let sectionsHtml = "";
-    let isFirst = true;
-    for (const group of groups) {
-      const breakCls = isFirst ? "" : ' class="pb"';
-      isFirst = false;
-      sectionsHtml += `
-        <section${breakCls}>
+    // 動態欄位標題列
+    const headerCells: string[] = ["名次", "隊伍名稱", "隊員"];
+    headerCells.push("A動作");
+    if (!hideVR) headerCells.push("A_VR");
+    headerCells.push("A合計");
+    headerCells.push("B動作");
+    if (!hideVR) headerCells.push("B_VR");
+    headerCells.push("B合計");
+    if (!hideC) {
+      headerCells.push("C動作");
+      if (!hideVR) headerCells.push("C_VR");
+      headerCells.push("C合計");
+    }
+    headerCells.push("總分");
+
+    const renderRow = (item: RankingItem & { rank: number }): string => {
+      const cells: string[] = [];
+      cells.push(
+        `<td style="text-align:center;${medalStyle(item.rank)}">${medalText(item.rank)}</td>`,
+      );
+      cells.push(`<td>${item.name}</td>`);
+      cells.push(`<td style="color:#555">${item.members.join(" / ")}</td>`);
+      const va = item.vrScoreA ?? 0;
+      const vb = item.vrScoreB ?? 0;
+      const vc = item.vrScoreC ?? 0;
+      // A
+      cells.push(`<td>${item.seriesA}</td>`);
+      if (!hideVR) cells.push(`<td style="color:#1a6b3a">${va}</td>`);
+      cells.push(`<td><b>${item.seriesA + va}</b></td>`);
+      // B
+      cells.push(`<td>${item.seriesB}</td>`);
+      if (!hideVR) cells.push(`<td style="color:#1a6b3a">${vb}</td>`);
+      cells.push(`<td><b>${item.seriesB + vb}</b></td>`);
+      // C
+      if (!hideC) {
+        cells.push(`<td>${item.seriesC}</td>`);
+        if (!hideVR) cells.push(`<td style="color:#1a6b3a">${vc}</td>`);
+        cells.push(`<td><b>${item.seriesC + vc}</b></td>`);
+      }
+      cells.push(
+        `<td style="font-weight:${item.rank <= 3 ? "bold" : "normal"}">${item.total}</td>`,
+      );
+      return `<tr style="${rowStyle(item.rank)}">${cells.join("")}</tr>`;
+    };
+
+    const sectionsHtml = `
+        <section>
           <h2>${group.label}</h2>
           <table>
             <thead>
-              <tr>
-                <th>名次</th><th>隊伍名稱</th><th>隊員</th>
-                <th>A動作</th><th>A_VR</th><th>A合計</th>
-                <th>B動作</th><th>B_VR</th><th>B合計</th>
-                <th>C動作</th><th>C_VR</th><th>C合計</th>
-                <th>總分</th>
-              </tr>
+              <tr>${headerCells.map((h) => `<th>${h}</th>`).join("")}</tr>
             </thead>
             <tbody>
-              ${group.items
-                .map(
-                  (item) => `
-                <tr style="${rowStyle(item.rank)}">
-                  <td style="text-align:center;${medalStyle(item.rank)}">${medalText(item.rank)}</td>
-                  <td>${item.name}</td><td style="color:#555">${item.members.join(" / ")}</td>
-                  <td>${item.seriesA}</td>
-                  <td style="color:#1a6b3a">${item.vrScoreA}</td>
-                  <td><b>${item.seriesA + item.vrScoreA}</b></td>
-                  <td>${item.seriesB}</td>
-                  <td style="color:#1a6b3a">${item.vrScoreB}</td>
-                  <td><b>${item.seriesB + item.vrScoreB}</b></td>
-                  <td>${item.seriesC}</td>
-                  <td style="color:#1a6b3a">${item.vrScoreC}</td>
-                  <td><b>${item.seriesC + item.vrScoreC}</b></td>
-                  <td style="font-weight:${item.rank <= 3 ? "bold" : "normal"}">${item.total}</td>
-                </tr>`,
-                )
-                .join("")}
+              ${group.items.map(renderRow).join("")}
             </tbody>
           </table>
         </section>`;
-    }
 
     const win = window.open("", "_blank");
     if (!win) {

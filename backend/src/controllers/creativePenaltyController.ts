@@ -1,7 +1,10 @@
 import { Request, Response } from 'express';
 import CreativePenalty, { PenaltyType, PENALTY_DEDUCTIONS } from '../models/CreativePenalty';
 import CreativeScore from '../models/CreativeScore';
+import Team from '../models/Team';
+import Event from '../models/Event';
 import { calculateCreativeScore } from '../utils/creativeScoring';
+import { isElementaryTier } from '../utils/tournament';
 import { broadcast } from '../sockets/index';
 
 export async function updatePenalties(req: Request, res: Response): Promise<void> {
@@ -23,10 +26,21 @@ export async function updatePenalties(req: Request, res: Response): Promise<void
     }
   }
 
+  // 國小組（EL/EM/EH）於 tournament 賽會時，超時/不足時間不扣分 — 後端過濾掉這兩種類型
+  const [team, eventDoc] = await Promise.all([
+    Team.findById(teamId).lean(),
+    Event.findById(eventId).lean(),
+  ]);
+  const isTournamentElementary =
+    eventDoc?.meetingType === 'tournament' && isElementaryTier(team?.tier);
+  const effectiveTypes: PenaltyType[] = isTournamentElementary
+    ? requestedTypes.filter((t) => t !== 'overtime' && t !== 'undertime')
+    : requestedTypes;
+
   // 刪除現有違例，重新寫入
   await CreativePenalty.deleteMany({ eventId, teamId });
 
-  const toInsert = requestedTypes.map((penaltyType) => ({
+  const toInsert = effectiveTypes.map((penaltyType) => ({
     eventId,
     teamId,
     penaltyType,

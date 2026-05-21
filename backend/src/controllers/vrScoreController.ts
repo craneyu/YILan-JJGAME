@@ -3,6 +3,8 @@ import VRScore from '../models/VRScore';
 import Score from '../models/Score';
 import GameState from '../models/GameState';
 import Team from '../models/Team';
+import Event from '../models/Event';
+import { isElementaryTier } from '../utils/tournament';
 import { broadcast } from '../sockets/index';
 
 // 取得某系列應有的動作數量
@@ -31,6 +33,17 @@ export async function submitVRScore(req: Request, res: Response): Promise<void> 
     res.status(404).json({ success: false, error: '隊伍不存在' });
     return;
   }
+
+  // 錦標賽國小組（EL/EM/EH）不接受 VR 評分
+  const eventDoc = await Event.findById(eventId).lean();
+  if (eventDoc?.meetingType === 'tournament' && isElementaryTier(team.tier)) {
+    res.status(400).json({
+      success: false,
+      error: 'Elementary tier teams do not receive VR scoring',
+    });
+    return;
+  }
+
   const actionCount = getActionCount(round, team.category);
   const series = getSeriesLetter(round);
 

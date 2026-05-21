@@ -104,6 +104,14 @@
                   class="hidden"
                   (change)="importFileForType($event, 'Duo')" />
               </label>
+              <button
+                type="button"
+                class="glass-btn text-xs flex items-center gap-1"
+                (click)="downloadTeamImportTemplate('Duo')"
+                [title]="isTournament() ? '下載含分級欄位的錦標賽範本' : '下載運動會範本'">
+                <fa-icon [icon]="faFileArrowUp" class="rotate-180"></fa-icon>
+                範本
+              </button>
             }
             @if (
               (selectedEvent()!.competitionTypes ?? ["Duo"]).includes("Show")
@@ -118,6 +126,14 @@
                   class="hidden"
                   (change)="importFileForType($event, 'Show')" />
               </label>
+              <button
+                type="button"
+                class="glass-btn text-xs flex items-center gap-1"
+                (click)="downloadTeamImportTemplate('Show')"
+                [title]="isTournament() ? '下載含分級欄位的錦標賽範本' : '下載運動會範本'">
+                <fa-icon [icon]="faFileArrowUp" class="rotate-180"></fa-icon>
+                範本
+              </button>
             }
             <button
               class="primary-btn text-sm flex items-center gap-1"
@@ -125,6 +141,14 @@
               <fa-icon [icon]="faPlus"></fa-icon> 新增
             </button>
           </div>
+
+          <!-- 錦標賽匯入欄位需求說明 -->
+          @if (isTournament()) {
+            <div class="bg-purple-500/10 border border-purple-400/30 rounded-xl px-3 py-2 mb-3 text-xs text-purple-200/90">
+              <span class="font-semibold">錦標賽匯入需求：</span>
+              Excel/CSV 必須包含「<b>分級</b>」欄位（接受 EL / EM / EH / JH / SH / OPEN / ELEM 或對應中文名稱）。請先下載「範本」確認格式。
+            </div>
+          }
         }
 
         <!-- 組別順序設定 -->
@@ -322,6 +346,16 @@
                 placeholder="賽程場次"
                 class="bg-white/10 text-white border border-white/30 rounded-lg px-3 py-2 outline-none focus:border-blue-400" />
             </div>
+            @if (isTournament()) {
+              <select
+                [(ngModel)]="newTeam.tier"
+                class="w-full bg-white/10 text-white border border-white/30 rounded-lg px-3 py-2 outline-none focus:border-purple-400">
+                <option value="" class="bg-slate-800">— 選擇分級 *</option>
+                @for (t of tierOptions; track t) {
+                  <option [value]="t" class="bg-slate-800">{{ tierLabel[t] }}（{{ t }}）</option>
+                }
+              </select>
+            }
             <div class="flex gap-2">
               <button class="primary-btn flex-1" (click)="addTeam()">
                 確認新增
@@ -700,7 +734,7 @@
             <p class="text-white/40 text-center py-6">尚無成績資料</p>
           } @else {
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              @for (group of rankingsByCat(); track group.category) {
+              @for (group of rankingsByCat(); track group.groupKey) {
                 <div class="bg-white/5 border border-white/10 rounded-xl p-4">
                   <!-- 組別標題 -->
                   <div class="flex items-center gap-2 mb-3">
@@ -723,14 +757,14 @@
                     <div class="flex items-center gap-1.5 ml-auto">
                       <button
                         class="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 border border-emerald-400/30 hover:border-emerald-300/50 rounded-lg px-2 py-0.5 transition-colors"
-                        (click)="exportExcel(group.category)"
+                        (click)="exportExcel(group.groupKey)"
                         title="匯出 Excel">
                         <fa-icon [icon]="faDownload" class="text-xs"></fa-icon>
                         Excel
                       </button>
                       <button
                         class="flex items-center gap-1 text-xs text-rose-400 hover:text-rose-300 border border-rose-400/30 hover:border-rose-300/50 rounded-lg px-2 py-0.5 transition-colors"
-                        (click)="printPdf(group.category)"
+                        (click)="printPdf(group.groupKey)"
                         title="列印 PDF">
                         <fa-icon [icon]="faDownload" class="text-xs"></fa-icon>
                         PDF

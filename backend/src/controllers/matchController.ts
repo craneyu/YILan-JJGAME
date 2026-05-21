@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
-import Match, { MatchStatus } from "../models/Match";
+import Match, { MatchStatus, MatchTier } from "../models/Match";
+import Event from "../models/Event";
+import { getNeWazaDefaultDurationSeconds } from "../utils/tournament";
 
 const VALID_TRANSITIONS: Record<MatchStatus, MatchStatus[]> = {
   pending: ["in-progress"],
@@ -23,6 +25,7 @@ export async function createMatch(req: Request, res: Response): Promise<void> {
   const {
     matchType,
     category,
+    tier,
     weightClass,
     round,
     matchNo,
@@ -30,6 +33,7 @@ export async function createMatch(req: Request, res: Response): Promise<void> {
     bluePlayer,
     isBye,
     scheduledOrder,
+    matchDuration,
   } = req.body;
 
   if (
@@ -46,10 +50,32 @@ export async function createMatch(req: Request, res: Response): Promise<void> {
     return;
   }
 
+  // 錦標賽寢技必須帶 tier；同時依 tier 套用預設比賽時長
+  const eventDoc = await Event.findById(eventId).lean();
+  const isTournamentNeWaza =
+    eventDoc?.meetingType === "tournament" && matchType === "ne-waza";
+
+  if (isTournamentNeWaza && !tier) {
+    res.status(400).json({
+      success: false,
+      error: "錦標賽寢技場次必須指定 tier（ELEM / JH / OPEN）",
+    });
+    return;
+  }
+
+  // 計算預設時長：若呼叫端未指定且為錦標賽寢技，套用 tier 對應預設值
+  const resolvedDuration =
+    matchDuration !== undefined
+      ? matchDuration
+      : isTournamentNeWaza && tier
+        ? getNeWazaDefaultDurationSeconds(tier as MatchTier)
+        : undefined; // 留空讓 schema default (180) 套用
+
   const match = await Match.create({
     eventId,
     matchType,
     category,
+    tier: isTournamentNeWaza ? tier : null,
     weightClass,
     round,
     matchNo,
@@ -57,6 +83,7 @@ export async function createMatch(req: Request, res: Response): Promise<void> {
     bluePlayer,
     isBye: isBye ?? false,
     scheduledOrder,
+    ...(resolvedDuration !== undefined && { matchDuration: resolvedDuration }),
   });
   res.status(201).json({ success: true, data: match });
 }
@@ -105,7 +132,29 @@ export async function bulkCreateMatches(
     return;
   }
 
-  const docs = rows.map((r) => ({ ...r, eventId }));
+  // 錦標賽寢技：依每筆 tier 套用對應預設時長（呼叫端已帶 matchDuration 時不覆寫）
+  const eventDoc = await Event.findById(eventId).lean();
+  const isTournament = eventDoc?.meetingType === "tournament";
+
+  const docs = rows.map((r) => {
+    const matchType = r["matchType"];
+    const tier = r["tier"] as string | undefined;
+    const userDuration = r["matchDuration"];
+    let resolvedDuration = userDuration;
+    if (
+      isTournament &&
+      matchType === "ne-waza" &&
+      userDuration === undefined &&
+      tier
+    ) {
+      resolvedDuration = getNeWazaDefaultDurationSeconds(tier as MatchTier);
+    }
+    return {
+      ...r,
+      eventId,
+      ...(resolvedDuration !== undefined && { matchDuration: resolvedDuration }),
+    };
+  });
   const created = await Match.insertMany(docs);
   res.status(201).json({ success: true, count: created.length, data: created });
 }

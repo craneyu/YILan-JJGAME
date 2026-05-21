@@ -48,6 +48,29 @@
           placeholder="場地"
           class="w-full bg-white/10 text-white border border-white/30 rounded-lg px-3 py-2 outline-none focus:border-blue-400 placeholder:text-white/30" />
         <div>
+          <p class="text-white/50 text-xs mb-2">賽會類型</p>
+          <div class="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              class="py-2 px-2 rounded-lg text-sm font-medium border transition-all text-center"
+              [class]="newEvent.meetingType === 'sports-day'
+                ? 'bg-blue-500/30 border-blue-400/60 text-blue-200'
+                : 'bg-white/5 border-white/20 text-white/50 hover:bg-white/10'"
+              (click)="newEvent.meetingType = 'sports-day'">
+              宜蘭縣運動會
+            </button>
+            <button
+              type="button"
+              class="py-2 px-2 rounded-lg text-sm font-medium border transition-all text-center"
+              [class]="newEvent.meetingType === 'tournament'
+                ? 'bg-purple-500/30 border-purple-400/60 text-purple-200'
+                : 'bg-white/5 border-white/20 text-white/50 hover:bg-white/10'"
+              (click)="newEvent.meetingType = 'tournament'">
+              宜蘭縣柔術錦標賽
+            </button>
+          </div>
+        </div>
+        <div>
           <p class="text-white/50 text-xs mb-2">運動項目（可複選，至少選一）</p>
           <div class="grid grid-cols-3 gap-2 sm:grid-cols-5">
             @for (opt of sportOptions; track opt.value) {
@@ -142,6 +165,13 @@
                   @if (event.venue) {
                     <span class="text-white/40 text-xs">{{ event.venue }}</span>
                   }
+                  <span
+                    class="text-xs px-1.5 py-0.5 rounded-full border"
+                    [class]="event.meetingType === 'tournament'
+                      ? 'bg-purple-500/20 border-purple-400/30 text-purple-200'
+                      : 'bg-blue-500/20 border-blue-400/30 text-blue-200'">
+                    {{ event.meetingType === 'tournament' ? '錦標賽' : '運動會' }}
+                  </span>
                   @for (sport of (event.includedSports ?? []); track sport) {
                     <span class="text-xs px-1.5 py-0.5 rounded-full border bg-white/10 border-white/20 text-white/70">
                       {{ getSportLabel(sport) }}

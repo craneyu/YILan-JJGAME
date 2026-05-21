@@ -33,13 +33,22 @@ import {
 } from "../../core/services/socket.service";
 import { Router } from "@angular/router";
 
+type TeamTier = 'EL' | 'EM' | 'EH' | 'JH' | 'SH' | 'OPEN' | 'ELEM' | null;
+
 interface TeamInfo {
   _id: string;
   name: string;
   members: string[];
   category: string;
   order: number;
+  tier?: TeamTier;
 }
+
+const ELEMENTARY_MOTIONS: Record<'EL' | 'EM' | 'EH', Record<'A' | 'B' | 'C', readonly string[]>> = {
+  EL: { A: ['A1'], B: ['B1'], C: [] },
+  EM: { A: ['A1', 'A2'], B: ['B1', 'B2'], C: [] },
+  EH: { A: ['A1', 'A2', 'A3'], B: ['B1', 'B2', 'B3'], C: ['C1', 'C2', 'C3'] },
+};
 
 interface JudgeStatus {
   judgeNo: number;
@@ -76,7 +85,8 @@ interface JudgeScoreEntry {
 interface SummaryResponse {
   success: boolean;
   data: {
-    event: { name: string; competitionTypes?: ("Duo" | "Show")[] };
+    event: { name: string; competitionTypes?: ("Duo" | "Show")[]; meetingType?: 'sports-day' | 'tournament' };
+    singleTeamGroups?: Record<string, boolean>;
     teams: TeamInfo[];
     gameState: {
       currentTeamId?: string;
@@ -120,6 +130,7 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
   // 基本狀態
   eventId = signal("");
   eventName = signal("");
+  meetingType = signal<'sports-day' | 'tournament'>('sports-day');
   teams = signal<TeamInfo[]>([]);
   currentTeam = signal<TeamInfo | null>(null);
   currentRound = signal(1);
@@ -127,6 +138,22 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
   currentActionNo = signal<string | null>(null);
   actionOpen = signal(false);
   gameStatus = signal<string>("idle");
+  singleTeamGroups = signal<Record<string, boolean>>({});
+
+  // 當前隊伍是否屬於單隊組別（tournament 才會為 true）
+  isCurrentSingleTeamGroup = computed(() => {
+    const team = this.currentTeam();
+    if (!team || this.meetingType() !== 'tournament') return false;
+    const key = `${team.category}:${team.tier ?? 'none'}`;
+    return this.singleTeamGroups()[key] === true;
+  });
+
+  // 當前隊伍是否為國小組（EL/EM/EH）
+  isCurrentElementary = computed(() => {
+    const team = this.currentTeam();
+    if (!team || this.meetingType() !== 'tournament') return false;
+    return team.tier === 'EL' || team.tier === 'EM' || team.tier === 'EH';
+  });
 
   // 裁判狀態
   judgeStatuses = signal<JudgeStatus[]>(
@@ -180,8 +207,16 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
       this.nextPendingAction() !== null &&
       !this.teamAbstained(),
   );
-  // 可換組：VR已送出 或 棄權
-  canNextGroup = computed(() => this.vrSubmitted() || this.teamAbstained());
+  // 可換組：依 tier 與群組狀態
+  // - 國小組（EL/EM/EH）無 VR：完成所有動作（actionProgress 全 done）或棄權即可
+  // - 多輪 tier（EH/JH/SH/OPEN/sports-day）：當前 round 的動作完成 + VR 送出（或棄權）即可
+  // - 單隊組別亦遵循上述規則（移除原本「永遠停用」的 guard，配合 backend D10 自動推進到下一群組）
+  canNextGroup = computed(() => {
+    if (this.isCurrentElementary()) {
+      return this.allActionsDone() || this.teamAbstained();
+    }
+    return this.vrSubmitted() || this.teamAbstained();
+  });
   isEventComplete = computed(() => this.gameStatus() === "event_complete");
 
   groupedTeams = computed(() => {
@@ -437,6 +472,8 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
         } = res.data;
 
         this.eventName.set(event.name);
+        this.meetingType.set(event.meetingType ?? 'sports-day');
+        this.singleTeamGroups.set(res.data.singleTeamGroups ?? {});
         if (event.competitionTypes?.length) {
           this.auth.setEventCompetitionTypes(event.competitionTypes);
         }
@@ -592,11 +629,28 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
   }
 
   private initActionProgress(team: TeamInfo, round: number): void {
-    const series = ["A", "B", "C"][round - 1] ?? "A";
-    const count = team.category === "male" ? 4 : 3;
+    const series = (["A", "B", "C"][round - 1] ?? "A") as 'A' | 'B' | 'C';
+    const isTournament = this.meetingType() === 'tournament';
+    let actionNos: string[];
+
+    if (isTournament && (team.tier === 'EL' || team.tier === 'EM')) {
+      // EL/EM 單輪連續流程：actionProgress 涵蓋整場 A+B 系列所有動作
+      // 同一隊伍上台依序評完才換下一隊
+      actionNos = [
+        ...ELEMENTARY_MOTIONS[team.tier].A,
+        ...ELEMENTARY_MOTIONS[team.tier].B,
+      ];
+    } else if (isTournament && team.tier === 'EH') {
+      // EH：每系列 3 動作，仍按 round 切換
+      actionNos = [...ELEMENTARY_MOTIONS.EH[series]];
+    } else {
+      const count = team.category === "male" ? 4 : 3;
+      actionNos = Array.from({ length: count }, (_, i) => `${series}${i + 1}`);
+    }
+
     this.actionProgress.set(
-      Array.from({ length: count }, (_, i) => ({
-        actionNo: `${series}${i + 1}`,
+      actionNos.map((actionNo) => ({
+        actionNo,
         status: "pending" as const,
       })),
     );
@@ -625,16 +679,21 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
     const pending = this.nextPendingAction();
     if (!pending || this.actionOpen() || !this.currentTeam()) return;
 
+    // 從 actionNo 第一個字母推算 round（A→1, B→2, C→3），讓 EL/EM 跨系列時也能正確 mapping
+    const seriesLetter = pending[0] as 'A' | 'B' | 'C';
+    const roundFromAction = seriesLetter === 'A' ? 1 : seriesLetter === 'B' ? 2 : 3;
+
     this.api
       .post<{ success: boolean }>("/flow/open-action", {
         eventId: this.eventId(),
         teamId: this.currentTeam()!._id,
-        round: this.currentRound(),
+        round: roundFromAction,
         actionNo: pending,
       })
       .subscribe({
         next: (res) => {
           if (res.success) {
+            this.currentRound.set(roundFromAction);
             this.currentActionNo.set(pending);
             this.actionOpen.set(true);
             this.judgeStatuses.set(

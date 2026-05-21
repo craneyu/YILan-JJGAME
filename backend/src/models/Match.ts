@@ -2,6 +2,7 @@ import mongoose, { Document, Schema } from "mongoose";
 
 export type MatchType = "ne-waza" | "fighting" | "contact";
 export type MatchCategory = "male" | "female" | "mixed";
+export type MatchTier = "ELEM" | "JH" | "SH" | "OPEN";
 export type MatchStatus =
   | "pending"
   | "in-progress"
@@ -47,6 +48,7 @@ export interface IMatch extends Document {
   eventId: mongoose.Types.ObjectId;
   matchType: MatchType;
   category: MatchCategory;
+  tier: MatchTier | null;
   weightClass: string;
   round: number;
   matchNo: number;
@@ -148,6 +150,11 @@ const MatchSchema = new Schema<IMatch>(
       type: String,
       enum: ["male", "female", "mixed"],
       required: true,
+    },
+    tier: {
+      type: String,
+      enum: ["ELEM", "JH", "SH", "OPEN", null],
+      default: null,
     },
     weightClass: { type: String, required: true },
     round: { type: Number, required: true, min: 1 },

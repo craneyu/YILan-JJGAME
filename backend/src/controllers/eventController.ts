@@ -11,6 +11,7 @@ import CreativeScore from "../models/CreativeScore";
 import CreativePenalty from "../models/CreativePenalty";
 import { calculateActionScores, CalculatedScore } from "../utils/scoring";
 import { sortTeams, resolveCategoryOrder } from "../utils/teamSort";
+import { isElementaryTier, groupKey } from "../utils/tournament";
 
 export async function listEvents(req: Request, res: Response): Promise<void> {
   // open=true：只回傳 pending / active（排除 closed），供登入頁觀眾使用
@@ -32,7 +33,7 @@ function derivedCompetitionTypes(sports: SportType[]): ('Duo' | 'Show')[] {
 }
 
 export async function createEvent(req: Request, res: Response): Promise<void> {
-  const { name, date, venue, includedSports } = req.body;
+  const { name, date, venue, includedSports, meetingType } = req.body;
   if (!name) {
     res.status(400).json({ success: false, error: "賽事名稱為必填" });
     return;
@@ -44,8 +45,19 @@ export async function createEvent(req: Request, res: Response): Promise<void> {
     res.status(400).json({ success: false, error: "請至少選擇一個運動項目" });
     return;
   }
+  const validMeetingType =
+    meetingType === "tournament" || meetingType === "sports-day"
+      ? meetingType
+      : "sports-day";
   const competitionTypes = derivedCompetitionTypes(sports);
-  const event = await Event.create({ name, date, venue, includedSports: sports, competitionTypes });
+  const event = await Event.create({
+    name,
+    date,
+    venue,
+    includedSports: sports,
+    competitionTypes,
+    meetingType: validMeetingType,
+  });
   // 根據啟用的競賽類型分別初始化賽程狀態
   const inits: Promise<unknown>[] = [];
   if (competitionTypes.includes("Duo"))
@@ -336,7 +348,21 @@ export async function getEventSummary(
   const eventInfo = {
     name: event.name,
     competitionTypes: event.competitionTypes ?? ["Duo"],
+    meetingType: event.meetingType ?? "sports-day",
   };
+
+  // 計算單隊組別 map（同一 (category, tier) 群組僅一隊報名時為 true）
+  // 用 effectiveType 範圍內的 teams 來計算（Duo 或 Show 各自獨立）
+  const groupCounts: Record<string, number> = {};
+  for (const team of teams) {
+    const key = groupKey(team.category, team.tier);
+    groupCounts[key] = (groupCounts[key] || 0) + 1;
+  }
+  const singleTeamGroups: Record<string, boolean> = {};
+  for (const [key, count] of Object.entries(groupCounts)) {
+    singleTeamGroups[key] = count === 1;
+  }
+
   res.json({
     success: true,
     data: {
@@ -350,6 +376,7 @@ export async function getEventSummary(
       completedActionJudgeScores,
       calculatedScores,
       wrongAttackActionNos,
+      singleTeamGroups,
     },
   });
 }
@@ -467,21 +494,31 @@ export async function getEventRankings(
   const result = teams.map((team) => {
     const teamId = String(team._id);
     const series = teamSeriesScore[teamId] ?? { A: 0, B: 0, C: 0 };
-    const vr = teamVrScore[teamId] ?? { A: 0, B: 0, C: 0 };
+    const tierIsElementary = isElementaryTier(team.tier);
+    const vr = tierIsElementary
+      ? { A: 0, B: 0, C: 0 }
+      : (teamVrScore[teamId] ?? { A: 0, B: 0, C: 0 });
     const total = series.A + vr.A + series.B + vr.B + series.C + vr.C;
-    return {
+    const base = {
       teamId,
       name: team.name,
       members: team.members,
       category: team.category,
+      tier: team.tier ?? null,
       seriesA: series.A,
-      vrScoreA: vr.A,
       seriesB: series.B,
-      vrScoreB: vr.B,
       seriesC: series.C,
-      vrScoreC: vr.C,
       total,
       actionDetails: teamActionDetails[teamId] ?? {},
+    };
+    if (tierIsElementary) {
+      return base;
+    }
+    return {
+      ...base,
+      vrScoreA: vr.A,
+      vrScoreB: vr.B,
+      vrScoreC: vr.C,
       vrDetails: teamVrDetails[teamId] ?? {},
     };
   });

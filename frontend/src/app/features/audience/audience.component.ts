@@ -18,15 +18,18 @@ interface ActionScore {
   wrongAttack?: boolean;
 }
 
+type TeamTier = 'EL' | 'EM' | 'EH' | 'JH' | 'SH' | 'OPEN' | 'ELEM' | null;
+
 interface TeamInfo {
   _id: string;
   name: string;
   members: string[];
   category: string;
+  tier?: TeamTier;
 }
 
 interface SummaryData {
-  event: { name: string; competitionTypes?: ('Duo' | 'Show')[] };
+  event: { name: string; competitionTypes?: ('Duo' | 'Show')[]; meetingType?: 'sports-day' | 'tournament' };
   teams: TeamInfo[];
   gameState: {
     currentTeamId?: string;
@@ -38,6 +41,7 @@ interface SummaryData {
   calculatedScores: ActionScore[];
   vrScore: { throwVariety: number; groundVariety: number } | null;
   wrongAttackActionNos?: string[];
+  singleTeamGroups?: Record<string, boolean>;
 }
 
 interface VRScoreData {
@@ -49,7 +53,17 @@ interface RankingItem {
   teamId: string;
   name: string;
   category: string;
+  tier?: TeamTier;
   total: number;
+}
+
+const ELEMENTARY_MOTIONS: Record<'EL' | 'EM' | 'EH', Record<'A' | 'B' | 'C', readonly string[]>> = {
+  EL: { A: ['A1'], B: ['B1'], C: [] },
+  EM: { A: ['A1', 'A2'], B: ['B1', 'B2'], C: [] },
+  EH: { A: ['A1', 'A2', 'A3'], B: ['B1', 'B2', 'B3'], C: ['C1', 'C2', 'C3'] },
+};
+function isElementaryTier(tier: TeamTier | undefined): tier is 'EL' | 'EM' | 'EH' {
+  return tier === 'EL' || tier === 'EM' || tier === 'EH';
 }
 
 @Component({
@@ -77,11 +91,13 @@ export class AudienceComponent implements OnInit, OnDestroy {
   eventId = signal('');
   eventName = signal('');
   eventCompetitionTypes = signal<('Duo' | 'Show')[]>([]);
+  meetingType = signal<'sports-day' | 'tournament'>('sports-day');
   teams = signal<TeamInfo[]>([]);
   currentTeam = signal<TeamInfo | null>(null);
   currentRound = signal(1);
   groupIndex = signal(1);
   currentActionNo = signal<string | null>(null);
+  singleTeamGroups = signal<Record<string, boolean>>({});
 
   actionScores = signal<ActionScore[]>([]);
   vrScore = signal<VRScoreData | null>(null);
@@ -91,10 +107,24 @@ export class AudienceComponent implements OnInit, OnDestroy {
   hasMultipleTypes = computed(() => this.eventCompetitionTypes().length > 1);
   series = computed(() => ['A', 'B', 'C'][this.currentRound() - 1] ?? 'A');
   isCseries = computed(() => this.series() === 'C');
+
+  isSingleTeamGroup = computed(() => {
+    const team = this.currentTeam();
+    if (!team) return false;
+    const key = `${team.category}:${team.tier ?? 'none'}`;
+    return this.singleTeamGroups()[key] === true;
+  });
+
   roundLabel = computed(() => {
     const team = this.currentTeam();
-    const cat = team ? team.category.toUpperCase() : '';
-    return `${cat} R${this.currentRound()}-G${this.groupIndex()}`;
+    if (!team) return '';
+    const cat = team.category.toUpperCase();
+    const tierLabel = team.tier ? ` ${team.tier}` : '';
+    // 單隊組別隱藏 R/G
+    if (this.isSingleTeamGroup()) {
+      return `${cat}${tierLabel}`;
+    }
+    return `${cat}${tierLabel} R${this.currentRound()}-G${this.groupIndex()}`;
   });
 
   totalScore = computed(() =>
@@ -116,19 +146,35 @@ export class AudienceComponent implements OnInit, OnDestroy {
   });
 
   seriesActions = computed(() => {
-    const s = this.series();
-    const count = this.currentTeam()?.category === 'male' ? 4 : 3;
+    const team = this.currentTeam();
+    const s = this.series() as 'A' | 'B' | 'C';
+    // Tournament 國小組（EL/EM/EH）依 tier 套用受限動作集
+    if (team && isElementaryTier(team.tier)) {
+      return [...ELEMENTARY_MOTIONS[team.tier][s]];
+    }
+    // Tournament JH/OPEN：女子組/混合組 3 動作；男子組 4 動作（沿用現有規則）
+    // Sports-day 沿用現有規則
+    const count = team?.category === 'male' ? 4 : 3;
     return Array.from({ length: count }, (_, i) => `${s}${i + 1}`);
+  });
+
+  // Tournament EL/EM 沒有 C 系列：當前 round=3 時 seriesActions 為空，標示需隱藏 C 欄
+  isCseriesHidden = computed(() => {
+    const team = this.currentTeam();
+    if (!team || !isElementaryTier(team.tier)) return false;
+    if (team.tier === 'EL' || team.tier === 'EM') return this.series() === 'C';
+    return false;
   });
 
   categoryRank = computed(() => {
     const team = this.currentTeam();
     if (!team) return null;
-    const sameCategory = [...this.rankings()]
-      .filter((r) => r.category === team.category)
+    // 排名群組依 (category, tier) 計算
+    const sameGroup = [...this.rankings()]
+      .filter((r) => r.category === team.category && (r.tier ?? null) === (team.tier ?? null))
       .sort((a, b) => b.total - a.total);
-    const rank = sameCategory.findIndex((r) => r.teamId === team._id) + 1;
-    return rank > 0 ? { rank, total: sameCategory.length } : null;
+    const rank = sameGroup.findIndex((r) => r.teamId === team._id) + 1;
+    return rank > 0 ? { rank, total: sameGroup.length } : null;
   });
 
   ngOnInit(): void {
@@ -232,7 +278,9 @@ export class AudienceComponent implements OnInit, OnDestroy {
 
       this.eventName.set(event.name);
       this.eventCompetitionTypes.set(event.competitionTypes ?? ['Duo']);
+      this.meetingType.set(event.meetingType ?? 'sports-day');
       this.teams.set(teams);
+      this.singleTeamGroups.set(res.data.singleTeamGroups ?? {});
 
       if (!gameState?.currentTeamId) return;
 

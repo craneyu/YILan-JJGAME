@@ -30,12 +30,15 @@ const ALL_PENALTIES: PenaltyType[] = ['overtime', 'undertime', 'props', 'attacks
 const MIN_MS = 90_000;
 const MAX_MS = 120_000;
 
+type TeamTier = 'EL' | 'EM' | 'EH' | 'JH' | 'SH' | 'OPEN' | 'ELEM' | null;
+
 interface TeamItem {
   _id: string;
   name: string;
   members: string[];
   category: string;
   order: number;
+  tier?: TeamTier;
   isFinished?: boolean;
   scoreSummary?: {
     technicalTotal: number;
@@ -92,6 +95,22 @@ export class CreativeSequenceJudgeComponent implements OnInit, OnDestroy {
   loading = signal(false);
   isFullscreen = signal(false);
   eventName = signal<string>('');
+  meetingType = signal<'sports-day' | 'tournament'>('sports-day');
+
+  // 錦標賽國小組（EL/EM/EH）不適用超時/不足時間罰則
+  isCurrentElementary = computed(() => {
+    const team = this.currentTeam();
+    if (!team || this.meetingType() !== 'tournament') return false;
+    return team.tier === 'EL' || team.tier === 'EM' || team.tier === 'EH';
+  });
+
+  // 罰則按鈕清單：國小組過濾掉 overtime / undertime
+  availablePenalties = computed<PenaltyType[]>(() => {
+    if (this.isCurrentElementary()) {
+      return ALL_PENALTIES.filter((p) => p !== 'overtime' && p !== 'undertime');
+    }
+    return ALL_PENALTIES;
+  });
 
   // 隊伍資訊 signals（計時畫面即時顯示，Timer view displays current team information in real-time）
   currentCategory = computed(() => {
@@ -657,9 +676,10 @@ export class CreativeSequenceJudgeComponent implements OnInit, OnDestroy {
   }
 
   private loadEventInfo(): void {
-    this.api.get<{ success: boolean; data: { event: { name: string; competitionTypes?: ('Duo' | 'Show')[] } } }>(`/events/${this.eventId}/summary`).subscribe((res) => {
+    this.api.get<{ success: boolean; data: { event: { name: string; competitionTypes?: ('Duo' | 'Show')[]; meetingType?: 'sports-day' | 'tournament' } } }>(`/events/${this.eventId}/summary`).subscribe((res) => {
       if (!res.success) return;
       this.eventName.set(res.data.event.name);
+      this.meetingType.set(res.data.event.meetingType ?? 'sports-day');
       if (res.data.event.competitionTypes?.length) {
         this.auth.setEventCompetitionTypes(res.data.event.competitionTypes);
       }

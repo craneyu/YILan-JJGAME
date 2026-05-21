@@ -707,3 +707,108 @@ code:
   - docker-compose.yml
   - frontend/src/app/app.routes.ts
 -->
+
+---
+### Requirement: Ne-Waza default match duration depends on tier under tournament events
+
+Under tournament events, Ne-Waza match creation SHALL apply a tier-dependent default match duration in seconds:
+
+| Tier | Default duration |
+| ---- | ---------------- |
+| ELEM | 120 seconds (2 minutes) |
+| JH   | 180 seconds (3 minutes) |
+| SH   | 180 seconds (3 minutes) |
+| OPEN | 300 seconds (5 minutes) |
+
+The referee SHALL be able to override the default before starting the match using the existing match duration setup UI. Under sports-day events, the existing default (180 seconds, with referee override) SHALL be preserved unchanged.
+
+#### Scenario: Tournament ELEM match defaults to 2 minutes
+
+- **WHEN** admin creates a Ne-Waza match for a tournament event with `tier: 'ELEM'`
+- **THEN** the persisted Match document SHALL have `matchDuration: 120` and the referee setup UI SHALL display "2:00" as the default
+
+#### Scenario: Tournament JH match defaults to 3 minutes
+
+- **WHEN** admin creates a Ne-Waza match for a tournament event with `tier: 'JH'`
+- **THEN** the persisted Match document SHALL have `matchDuration: 180` and the referee setup UI SHALL display "3:00"
+
+#### Scenario: Tournament SH match defaults to 3 minutes
+
+- **WHEN** admin creates a Ne-Waza match for a tournament event with `tier: 'SH'`
+- **THEN** the persisted Match document SHALL have `matchDuration: 180` and the referee setup UI SHALL display "3:00"
+
+#### Scenario: Tournament OPEN match defaults to 5 minutes
+
+- **WHEN** admin creates a Ne-Waza match for a tournament event with `tier: 'OPEN'`
+- **THEN** the persisted Match document SHALL have `matchDuration: 300` and the referee setup UI SHALL display "5:00"
+
+##### Example: tier to default duration mapping
+
+| Tier | Default `matchDuration` (seconds) | Display |
+| ---- | --------------------------------- | ------- |
+| ELEM | 120 | 2:00 |
+| JH   | 180 | 3:00 |
+| SH   | 180 | 3:00 |
+| OPEN | 300 | 5:00 |
+
+#### Scenario: Sports-day Ne-Waza match preserves existing default
+
+- **WHEN** admin creates a Ne-Waza match for a sports-day event (no tier)
+- **THEN** the persisted Match document SHALL have `matchDuration: 180` (existing default), unchanged from pre-change behavior
+
+#### Scenario: Referee overrides tier default
+
+- **WHEN** admin creates a tournament ELEM Ne-Waza match and the referee adjusts the duration to 90 seconds before starting
+- **THEN** the system SHALL persist the override and the match SHALL run for 90 seconds
+
+<!-- @trace
+source: jujitsu-tournament-expansion
+updated: 2026-05-20
+code:
+  - SPEC/錦標賽規格需求/SPEC-v3.md
+  - backend/src/controllers/flowController.ts
+  - .spectra.yaml
+  - backend/src/utils/teamSort.ts
+  - .github/prompts/spectra-commit.prompt.md
+  - .github/prompts/spectra-drift.prompt.md
+  - .github/skills/spectra-commit/SKILL.md
+  - backend/src/models/Match.ts
+  - CLAUDE.md
+  - frontend/src/app/features/admin/admin.component.ts
+  - backend/src/controllers/wrongAttackController.ts
+  - backend/src/models/Event.ts
+  - frontend/src/app/features/ne-waza-audience/ne-waza-audience.component.html
+  - frontend/src/app/features/sequence-judge/sequence-judge.component.ts
+  - .github/prompts/spectra-ingest.prompt.md
+  - .github/skills/spectra-discuss/SKILL.md
+  - .github/prompts/spectra-ask.prompt.md
+  - .github/prompts/spectra-archive.prompt.md
+  - .github/skills/spectra-drift/SKILL.md
+  - .github/skills/spectra-apply/SKILL.md
+  - frontend/src/app/features/admin/admin.component.html
+  - frontend/src/app/features/creative-sequence-judge/creative-sequence-judge.component.ts
+  - .github/skills/spectra-archive/SKILL.md
+  - frontend/src/app/features/admin/event-list/event-list.component.html
+  - frontend/src/app/features/audience/audience.component.ts
+  - backend/src/controllers/eventController.ts
+  - backend/src/models/Team.ts
+  - backend/src/controllers/vrScoreController.ts
+  - .github/prompts/spectra-discuss.prompt.md
+  - .github/prompts/spectra-debug.prompt.md
+  - .github/prompts/spectra-audit.prompt.md
+  - backend/src/controllers/teamController.ts
+  - .github/skills/spectra-ingest/SKILL.md
+  - backend/src/controllers/creativePenaltyController.ts
+  - frontend/src/app/features/vr-judge/vr-judge.component.html
+  - .github/skills/spectra-propose/SKILL.md
+  - backend/src/utils/tournament.ts
+  - frontend/src/app/features/vr-judge/vr-judge.component.ts
+  - .github/prompts/spectra-apply.prompt.md
+  - frontend/src/app/features/admin/event-list/event-list.component.ts
+  - backend/src/controllers/matchController.ts
+  - frontend/src/app/core/models/match.model.ts
+  - AGENTS.md
+  - .github/prompts/spectra-propose.prompt.md
+  - SPEC/錦標賽規格需求/SPEC-v2.md
+  - frontend/src/app/features/creative-sequence-judge/creative-sequence-judge.component.html
+-->

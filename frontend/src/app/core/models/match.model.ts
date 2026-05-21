@@ -20,11 +20,14 @@ export interface IIppons {
   p3: number;
 }
 
+export type MatchTier = 'ELEM' | 'JH' | 'OPEN';
+
 export interface Match {
   _id: string;
   eventId: string;
   matchType: MatchType;
   category: MatchCategory;
+  tier?: MatchTier | null;
   weightClass: string;
   round: number;
   matchNo: number;

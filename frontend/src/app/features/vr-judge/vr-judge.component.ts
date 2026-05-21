@@ -15,17 +15,20 @@ interface ActionStatus {
   wrongAttack: boolean;
 }
 
+type TeamTier = 'EL' | 'EM' | 'EH' | 'JH' | 'SH' | 'OPEN' | 'ELEM' | null;
+
 interface TeamInfo {
   _id: string;
   name: string;
   members: string[];
   category: string;
+  tier?: TeamTier;
 }
 
 interface VRSummaryResponse {
   success: boolean;
   data: {
-    event: { name: string };
+    event: { name: string; meetingType?: 'sports-day' | 'tournament' };
     teams: TeamInfo[];
     gameState: {
       currentTeamId?: string;
@@ -55,6 +58,7 @@ export class VrJudgeComponent implements OnInit, OnDestroy {
 
   eventId = signal('');
   eventName = signal('');
+  meetingType = signal<'sports-day' | 'tournament'>('sports-day');
   teams = signal<TeamInfo[]>([]);
   currentTeam = signal<TeamInfo | null>(null);
   currentRound = signal(1);
@@ -65,12 +69,21 @@ export class VrJudgeComponent implements OnInit, OnDestroy {
   submitted = signal(false);
   teamAbstained = signal(false);
 
+  // 錦標賽國小組（EL/EM/EH）不參與 VR 評分
+  isElementaryTeam = computed(() => {
+    const team = this.currentTeam();
+    if (!team || this.meetingType() !== 'tournament') return false;
+    return team.tier === 'EL' || team.tier === 'EM' || team.tier === 'EH';
+  });
+
   allActionsDone = computed(() => this.actionStatuses().every((a) => a.done));
   allSelected = computed(() => this.throwVariety() !== null && this.groundVariety() !== null);
   roundLabel = computed(() => {
     const team = this.currentTeam();
-    const cat = team ? team.category.toUpperCase() : '';
-    return `${cat} R${this.currentRound()}-G${this.groupIndex()}`;
+    if (!team) return '';
+    const cat = team.category.toUpperCase();
+    const tierLabel = team.tier ? ` ${team.tier}` : '';
+    return `${cat}${tierLabel} R${this.currentRound()}-G${this.groupIndex()}`;
   });
   seriesLabel = computed(() => ['A', 'B', 'C'][this.currentRound() - 1] ?? 'A');
 
@@ -158,6 +171,7 @@ export class VrJudgeComponent implements OnInit, OnDestroy {
       const { event, teams, gameState, completedActionNos, wrongAttackActionNos, vrScore } = res.data;
 
       this.eventName.set(event.name);
+      this.meetingType.set(event.meetingType ?? 'sports-day');
       this.teams.set(teams);
 
       if (gameState?.currentTeamAbstained) {

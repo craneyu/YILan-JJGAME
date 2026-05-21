@@ -168,3 +168,83 @@ code:
   - frontend/src/app/features/admin/admin.component.ts
   - frontend/src/app/features/login/login.component.html
 -->
+
+---
+### Requirement: Elementary tier teams exempt from creative time penalty
+
+Under tournament events, creative-embu time-based penalties (overtime and undertime, each -1 point) SHALL NOT apply to teams whose `tier` is `EL`, `EM`, or `EH`. Other penalty types (props usage, insufficient attacks, etc.) SHALL continue to apply unchanged for elementary tier teams. For sports-day events and for non-elementary tournament tiers (JH, OPEN), time-based penalties SHALL apply as in the existing behavior.
+
+The backend `creativeScoring` utility SHALL check the team's tier before applying the time-based deduction. The creative scoring judge interface SHALL hide or visually disable the "overtime" / "undertime" indicators when the active team's tier is elementary.
+
+#### Scenario: Elementary team performs overtime without penalty
+
+- **WHEN** a tournament event EL team performs creative embu for 2 minutes 30 seconds (30 seconds over the standard 2-minute limit) and the scoring judges submit their scores
+- **THEN** the calculated final score SHALL NOT include the -1 overtime deduction, and the audience display SHALL NOT show an overtime warning indicator
+
+##### Example: penalty matrix
+
+| Event type | Tier | Time penalty applies? | Other penalties? |
+| ---------- | ---- | --------------------- | ---------------- |
+| sports-day | (n/a) | Yes | Yes |
+| tournament | EL | No | Yes |
+| tournament | EM | No | Yes |
+| tournament | EH | No | Yes |
+| tournament | JH | Yes | Yes |
+| tournament | OPEN | Yes | Yes |
+
+#### Scenario: JH team in tournament still penalized for overtime
+
+- **WHEN** a tournament event JH team performs creative embu 30 seconds over the 2-minute limit
+- **THEN** the final score SHALL include the -1 overtime deduction (existing behavior preserved for non-elementary tournament tiers)
+
+<!-- @trace
+source: jujitsu-tournament-expansion
+updated: 2026-05-20
+code:
+  - SPEC/錦標賽規格需求/SPEC-v3.md
+  - backend/src/controllers/flowController.ts
+  - .spectra.yaml
+  - backend/src/utils/teamSort.ts
+  - .github/prompts/spectra-commit.prompt.md
+  - .github/prompts/spectra-drift.prompt.md
+  - .github/skills/spectra-commit/SKILL.md
+  - backend/src/models/Match.ts
+  - CLAUDE.md
+  - frontend/src/app/features/admin/admin.component.ts
+  - backend/src/controllers/wrongAttackController.ts
+  - backend/src/models/Event.ts
+  - frontend/src/app/features/ne-waza-audience/ne-waza-audience.component.html
+  - frontend/src/app/features/sequence-judge/sequence-judge.component.ts
+  - .github/prompts/spectra-ingest.prompt.md
+  - .github/skills/spectra-discuss/SKILL.md
+  - .github/prompts/spectra-ask.prompt.md
+  - .github/prompts/spectra-archive.prompt.md
+  - .github/skills/spectra-drift/SKILL.md
+  - .github/skills/spectra-apply/SKILL.md
+  - frontend/src/app/features/admin/admin.component.html
+  - frontend/src/app/features/creative-sequence-judge/creative-sequence-judge.component.ts
+  - .github/skills/spectra-archive/SKILL.md
+  - frontend/src/app/features/admin/event-list/event-list.component.html
+  - frontend/src/app/features/audience/audience.component.ts
+  - backend/src/controllers/eventController.ts
+  - backend/src/models/Team.ts
+  - backend/src/controllers/vrScoreController.ts
+  - .github/prompts/spectra-discuss.prompt.md
+  - .github/prompts/spectra-debug.prompt.md
+  - .github/prompts/spectra-audit.prompt.md
+  - backend/src/controllers/teamController.ts
+  - .github/skills/spectra-ingest/SKILL.md
+  - backend/src/controllers/creativePenaltyController.ts
+  - frontend/src/app/features/vr-judge/vr-judge.component.html
+  - .github/skills/spectra-propose/SKILL.md
+  - backend/src/utils/tournament.ts
+  - frontend/src/app/features/vr-judge/vr-judge.component.ts
+  - .github/prompts/spectra-apply.prompt.md
+  - frontend/src/app/features/admin/event-list/event-list.component.ts
+  - backend/src/controllers/matchController.ts
+  - frontend/src/app/core/models/match.model.ts
+  - AGENTS.md
+  - .github/prompts/spectra-propose.prompt.md
+  - SPEC/錦標賽規格需求/SPEC-v2.md
+  - frontend/src/app/features/creative-sequence-judge/creative-sequence-judge.component.html
+-->

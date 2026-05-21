@@ -283,3 +283,133 @@ code:
   - frontend/src/app/features/audience-sport-selector/audience-sport-selector.component.ts
   - frontend/src/app/features/referee-landing/referee-landing.component.ts
 -->
+
+---
+### Requirement: Event model includes competition type field
+
+The Event Mongoose model SHALL include a `competitionType` field of type string with allowed values `'sports-day'` or `'tournament'` and default value `'sports-day'`. The field SHALL be required at the schema level (with the default ensuring backward compatibility for existing documents).
+
+#### Scenario: Legacy event document loaded from database
+
+- **WHEN** an Event document persisted before this change is loaded via Mongoose
+- **THEN** the `competitionType` field SHALL resolve to `'sports-day'` through the schema default without requiring data migration
+
+#### Scenario: Tournament event creation persists field
+
+- **WHEN** `POST /api/v1/events` is called with `{ name: '柔術錦標賽 2026', competitionType: 'tournament' }`
+- **THEN** the persisted document SHALL contain `competitionType: 'tournament'`
+
+
+<!-- @trace
+source: jujitsu-tournament-expansion
+updated: 2026-05-20
+code:
+  - SPEC/錦標賽規格需求/SPEC-v3.md
+  - backend/src/controllers/flowController.ts
+  - .spectra.yaml
+  - backend/src/utils/teamSort.ts
+  - .github/prompts/spectra-commit.prompt.md
+  - .github/prompts/spectra-drift.prompt.md
+  - .github/skills/spectra-commit/SKILL.md
+  - backend/src/models/Match.ts
+  - CLAUDE.md
+  - frontend/src/app/features/admin/admin.component.ts
+  - backend/src/controllers/wrongAttackController.ts
+  - backend/src/models/Event.ts
+  - frontend/src/app/features/ne-waza-audience/ne-waza-audience.component.html
+  - frontend/src/app/features/sequence-judge/sequence-judge.component.ts
+  - .github/prompts/spectra-ingest.prompt.md
+  - .github/skills/spectra-discuss/SKILL.md
+  - .github/prompts/spectra-ask.prompt.md
+  - .github/prompts/spectra-archive.prompt.md
+  - .github/skills/spectra-drift/SKILL.md
+  - .github/skills/spectra-apply/SKILL.md
+  - frontend/src/app/features/admin/admin.component.html
+  - frontend/src/app/features/creative-sequence-judge/creative-sequence-judge.component.ts
+  - .github/skills/spectra-archive/SKILL.md
+  - frontend/src/app/features/admin/event-list/event-list.component.html
+  - frontend/src/app/features/audience/audience.component.ts
+  - backend/src/controllers/eventController.ts
+  - backend/src/models/Team.ts
+  - backend/src/controllers/vrScoreController.ts
+  - .github/prompts/spectra-discuss.prompt.md
+  - .github/prompts/spectra-debug.prompt.md
+  - .github/prompts/spectra-audit.prompt.md
+  - backend/src/controllers/teamController.ts
+  - .github/skills/spectra-ingest/SKILL.md
+  - backend/src/controllers/creativePenaltyController.ts
+  - frontend/src/app/features/vr-judge/vr-judge.component.html
+  - .github/skills/spectra-propose/SKILL.md
+  - backend/src/utils/tournament.ts
+  - frontend/src/app/features/vr-judge/vr-judge.component.ts
+  - .github/prompts/spectra-apply.prompt.md
+  - frontend/src/app/features/admin/event-list/event-list.component.ts
+  - backend/src/controllers/matchController.ts
+  - frontend/src/app/core/models/match.model.ts
+  - AGENTS.md
+  - .github/prompts/spectra-propose.prompt.md
+  - SPEC/錦標賽規格需求/SPEC-v2.md
+  - frontend/src/app/features/creative-sequence-judge/creative-sequence-judge.component.html
+-->
+
+---
+### Requirement: Event list distinguishes competition type
+
+The event list page SHALL render a visible label or badge on each event card indicating its competition type. The label SHALL read "運動會" for `sports-day` events and "錦標賽" for `tournament` events.
+
+#### Scenario: Event list shows tournament badge
+
+- **WHEN** the event list contains both sports-day and tournament events
+- **THEN** each event card SHALL display its respective competition type label, allowing admin to visually distinguish the two types
+
+<!-- @trace
+source: jujitsu-tournament-expansion
+updated: 2026-05-20
+code:
+  - SPEC/錦標賽規格需求/SPEC-v3.md
+  - backend/src/controllers/flowController.ts
+  - .spectra.yaml
+  - backend/src/utils/teamSort.ts
+  - .github/prompts/spectra-commit.prompt.md
+  - .github/prompts/spectra-drift.prompt.md
+  - .github/skills/spectra-commit/SKILL.md
+  - backend/src/models/Match.ts
+  - CLAUDE.md
+  - frontend/src/app/features/admin/admin.component.ts
+  - backend/src/controllers/wrongAttackController.ts
+  - backend/src/models/Event.ts
+  - frontend/src/app/features/ne-waza-audience/ne-waza-audience.component.html
+  - frontend/src/app/features/sequence-judge/sequence-judge.component.ts
+  - .github/prompts/spectra-ingest.prompt.md
+  - .github/skills/spectra-discuss/SKILL.md
+  - .github/prompts/spectra-ask.prompt.md
+  - .github/prompts/spectra-archive.prompt.md
+  - .github/skills/spectra-drift/SKILL.md
+  - .github/skills/spectra-apply/SKILL.md
+  - frontend/src/app/features/admin/admin.component.html
+  - frontend/src/app/features/creative-sequence-judge/creative-sequence-judge.component.ts
+  - .github/skills/spectra-archive/SKILL.md
+  - frontend/src/app/features/admin/event-list/event-list.component.html
+  - frontend/src/app/features/audience/audience.component.ts
+  - backend/src/controllers/eventController.ts
+  - backend/src/models/Team.ts
+  - backend/src/controllers/vrScoreController.ts
+  - .github/prompts/spectra-discuss.prompt.md
+  - .github/prompts/spectra-debug.prompt.md
+  - .github/prompts/spectra-audit.prompt.md
+  - backend/src/controllers/teamController.ts
+  - .github/skills/spectra-ingest/SKILL.md
+  - backend/src/controllers/creativePenaltyController.ts
+  - frontend/src/app/features/vr-judge/vr-judge.component.html
+  - .github/skills/spectra-propose/SKILL.md
+  - backend/src/utils/tournament.ts
+  - frontend/src/app/features/vr-judge/vr-judge.component.ts
+  - .github/prompts/spectra-apply.prompt.md
+  - frontend/src/app/features/admin/event-list/event-list.component.ts
+  - backend/src/controllers/matchController.ts
+  - frontend/src/app/core/models/match.model.ts
+  - AGENTS.md
+  - .github/prompts/spectra-propose.prompt.md
+  - SPEC/錦標賽規格需求/SPEC-v2.md
+  - frontend/src/app/features/creative-sequence-judge/creative-sequence-judge.component.html
+-->

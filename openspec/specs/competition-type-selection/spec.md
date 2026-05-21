@@ -235,3 +235,70 @@ code:
   - frontend/src/app/features/sequence-judge/sequence-judge.component.ts
   - frontend/src/app/features/creative-scoring-judge/creative-scoring-judge.component.ts
 -->
+
+---
+### Requirement: Event creation form offers competition type selection
+
+The Event creation form in the admin dashboard SHALL include a competition type selector with exactly two options: "宜蘭縣運動會" (`sports-day`, default) and "宜蘭縣柔術錦標賽" (`tournament`). The selection SHALL be persisted to the Event's `competitionType` field. The field SHALL NOT be editable after Event creation; admin SHALL create a new Event to change competition type.
+
+#### Scenario: Admin creates a tournament event from the event creation form
+
+- **WHEN** admin selects "宜蘭縣柔術錦標賽" in the competition type selector and submits the form
+- **THEN** the system SHALL persist `competitionType: 'tournament'` to the new Event document and the field SHALL be hidden or shown as read-only in subsequent edit forms
+
+#### Scenario: Existing event without competitionType displays as sports-day
+
+- **WHEN** admin opens the edit form for an existing Event that was created before this change
+- **THEN** the competition type SHALL be displayed as "宜蘭縣運動會" (read-only) and the underlying `competitionType` SHALL be persisted as `'sports-day'` on next save
+
+<!-- @trace
+source: jujitsu-tournament-expansion
+updated: 2026-05-20
+code:
+  - SPEC/錦標賽規格需求/SPEC-v3.md
+  - backend/src/controllers/flowController.ts
+  - .spectra.yaml
+  - backend/src/utils/teamSort.ts
+  - .github/prompts/spectra-commit.prompt.md
+  - .github/prompts/spectra-drift.prompt.md
+  - .github/skills/spectra-commit/SKILL.md
+  - backend/src/models/Match.ts
+  - CLAUDE.md
+  - frontend/src/app/features/admin/admin.component.ts
+  - backend/src/controllers/wrongAttackController.ts
+  - backend/src/models/Event.ts
+  - frontend/src/app/features/ne-waza-audience/ne-waza-audience.component.html
+  - frontend/src/app/features/sequence-judge/sequence-judge.component.ts
+  - .github/prompts/spectra-ingest.prompt.md
+  - .github/skills/spectra-discuss/SKILL.md
+  - .github/prompts/spectra-ask.prompt.md
+  - .github/prompts/spectra-archive.prompt.md
+  - .github/skills/spectra-drift/SKILL.md
+  - .github/skills/spectra-apply/SKILL.md
+  - frontend/src/app/features/admin/admin.component.html
+  - frontend/src/app/features/creative-sequence-judge/creative-sequence-judge.component.ts
+  - .github/skills/spectra-archive/SKILL.md
+  - frontend/src/app/features/admin/event-list/event-list.component.html
+  - frontend/src/app/features/audience/audience.component.ts
+  - backend/src/controllers/eventController.ts
+  - backend/src/models/Team.ts
+  - backend/src/controllers/vrScoreController.ts
+  - .github/prompts/spectra-discuss.prompt.md
+  - .github/prompts/spectra-debug.prompt.md
+  - .github/prompts/spectra-audit.prompt.md
+  - backend/src/controllers/teamController.ts
+  - .github/skills/spectra-ingest/SKILL.md
+  - backend/src/controllers/creativePenaltyController.ts
+  - frontend/src/app/features/vr-judge/vr-judge.component.html
+  - .github/skills/spectra-propose/SKILL.md
+  - backend/src/utils/tournament.ts
+  - frontend/src/app/features/vr-judge/vr-judge.component.ts
+  - .github/prompts/spectra-apply.prompt.md
+  - frontend/src/app/features/admin/event-list/event-list.component.ts
+  - backend/src/controllers/matchController.ts
+  - frontend/src/app/core/models/match.model.ts
+  - AGENTS.md
+  - .github/prompts/spectra-propose.prompt.md
+  - SPEC/錦標賽規格需求/SPEC-v2.md
+  - frontend/src/app/features/creative-sequence-judge/creative-sequence-judge.component.html
+-->

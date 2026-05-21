@@ -24,6 +24,7 @@ import { ApiService } from "../../../core/services/api.service";
 import { AuthService } from "../../../core/services/auth.service";
 
 export type SportType = "kata-duo" | "kata-show" | "ne-waza" | "fighting" | "contact";
+export type MeetingType = "sports-day" | "tournament";
 
 export const SPORT_OPTIONS: { value: SportType; label: string; color: string }[] = [
   { value: "kata-duo", label: "雙人演武", color: "blue" },
@@ -41,6 +42,7 @@ interface EventItem {
   status: string;
   includedSports?: SportType[];
   competitionTypes?: ("Duo" | "Show")[];
+  meetingType?: MeetingType;
 }
 
 @Component({
@@ -68,7 +70,7 @@ export class EventListComponent implements OnInit {
 
   events = signal<EventItem[]>([]);
   showCreateForm = signal(false);
-  newEvent = { name: "", date: "", venue: "" };
+  newEvent = { name: "", date: "", venue: "", meetingType: "sports-day" as MeetingType };
   newEventSports = signal<SportType[]>([]);
 
   // 編輯賽事
@@ -123,7 +125,7 @@ export class EventListComponent implements OnInit {
         next: (res) => {
           if (res.success) {
             this.events.update((e) => [res.data, ...e]);
-            this.newEvent = { name: "", date: "", venue: "" };
+            this.newEvent = { name: "", date: "", venue: "", meetingType: "sports-day" };
             this.newEventSports.set([]);
             this.showCreateForm.set(false);
             Swal.fire({ icon: "success", title: "賽事已建立", toast: true, position: "top-end", showConfirmButton: false, timer: 2000 });

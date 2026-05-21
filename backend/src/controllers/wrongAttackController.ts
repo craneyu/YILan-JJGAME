@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 import WrongAttack from '../models/WrongAttack';
 import Score from '../models/Score';
+import Team from '../models/Team';
+import Event from '../models/Event';
+import { isElementaryTier } from '../utils/tournament';
 import { broadcast } from '../sockets/index';
 import { calculateActionScores } from '../utils/scoring';
 
@@ -10,6 +13,19 @@ export async function toggleWrongAttack(req: Request, res: Response): Promise<vo
 
   if (!eventId || !teamId || !round || !actionNo) {
     res.status(400).json({ success: false, error: '請填寫所有必填欄位' });
+    return;
+  }
+
+  // 錦標賽國小組（EL/EM/EH）禁用錯誤攻擊標記
+  const [team, eventDoc] = await Promise.all([
+    Team.findById(teamId).lean(),
+    Event.findById(eventId).lean(),
+  ]);
+  if (eventDoc?.meetingType === 'tournament' && isElementaryTier(team?.tier)) {
+    res.status(400).json({
+      success: false,
+      error: 'Elementary tier teams do not support wrong-attack marking',
+    });
     return;
   }
 

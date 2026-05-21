@@ -1,5 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
+export type TeamTier = 'EL' | 'EM' | 'EH' | 'JH' | 'SH' | 'OPEN' | 'ELEM';
+
 export interface ITeam extends Document {
   eventId: mongoose.Types.ObjectId;
   name: string;
@@ -7,6 +9,7 @@ export interface ITeam extends Document {
   category: 'male' | 'female' | 'mixed';
   order: number;
   competitionType: 'Duo' | 'Show';
+  tier: TeamTier | null;
 }
 
 const TeamSchema = new Schema<ITeam>({
@@ -23,6 +26,11 @@ const TeamSchema = new Schema<ITeam>({
     type: String,
     enum: ['Duo', 'Show'],
     default: 'Duo',
+  },
+  tier: {
+    type: String,
+    enum: ['EL', 'EM', 'EH', 'JH', 'SH', 'OPEN', 'ELEM', null],
+    default: null,
   },
 });
 
