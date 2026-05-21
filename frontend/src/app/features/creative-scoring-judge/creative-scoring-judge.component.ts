@@ -62,7 +62,22 @@ export class CreativeScoringJudgeComponent implements OnInit, OnDestroy {
   );
 
   readonly categoryLabel: Record<string, string> = { male: '男子組', female: '女子組', mixed: '混合組' };
-  currentCategoryLabel = computed(() => this.categoryLabel[this.currentCategory()] ?? this.currentCategory());
+  readonly tierLabel: Record<string, string> = {
+    EL: '國小低年級',
+    EM: '國小中年級',
+    EH: '國小高年級',
+    JH: '青少年國中組',
+    SH: '青少年高中組',
+    OPEN: '公開組',
+    ELEM: '國小組',
+  };
+  currentTier = signal<string | null>(null);
+  currentCategoryLabel = computed(() => {
+    const cat = this.categoryLabel[this.currentCategory()] ?? this.currentCategory();
+    const tier = this.currentTier();
+    if (!tier) return cat;
+    return `${cat} ｜ ${this.tierLabel[tier] ?? tier}`;
+  });
 
   // 9-grid 整數鍵盤排列（1-9 上方，0 最後）
   readonly intButtons = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
@@ -109,6 +124,7 @@ export class CreativeScoringJudgeComponent implements OnInit, OnDestroy {
         this.currentTeamName.set(evt.teamName);
         this.currentMembers.set(evt.members ?? []);
         this.currentCategory.set(evt.category ?? '');
+        this.currentTier.set(evt.tier ?? null);
         this.technical.set({ intPart: null, decPart: 0 });
         this.artistic.set({ intPart: null, decPart: 0 });
         this.state.set('scoring');
@@ -193,6 +209,7 @@ export class CreativeScoringJudgeComponent implements OnInit, OnDestroy {
       currentTeamName?: string;
       currentMembers?: string[];
       currentCategory?: string;
+      currentTier?: string | null;
       isAbstained?: boolean;
     } }>(`/creative/flow/state/${eventId}`)
       .subscribe({
@@ -205,6 +222,7 @@ export class CreativeScoringJudgeComponent implements OnInit, OnDestroy {
             this.currentTeamName.set(data.currentTeamName ?? '');
             this.currentMembers.set(data.currentMembers ?? []);
             this.currentCategory.set(data.currentCategory ?? '');
+            this.currentTier.set(data.currentTier ?? null);
           }
 
           this.isAbstained.set(data.isAbstained ?? false);

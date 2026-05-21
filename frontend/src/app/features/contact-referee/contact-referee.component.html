@@ -166,7 +166,7 @@
           </button>
           <div class="flex-1 text-center">
             <div class="text-xl font-semibold text-white/70">
-              格鬥 {{ CATEGORY_LABEL[match.category] }} {{ match.weightClass }}
+              格鬥 {{ CATEGORY_LABEL[match.category] }}@if (match.tier) { ｜ {{ tierLabel(match.tier) }}} {{ match.weightClass }}
             </div>
             <div class="text-xs text-white/40 mt-0.5">
               <span class="text-white/40 ml-2"

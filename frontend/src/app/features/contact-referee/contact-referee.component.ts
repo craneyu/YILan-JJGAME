@@ -26,6 +26,7 @@ import {
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { SocketService } from '../../core/services/socket.service';
+import { tierLabel } from '../../core/utils/tierLabel';
 import { Match, MatchCategory, MatchStatus } from '../../core/models/match.model';
 import { CategoryGroup, groupMatchesByCategory } from '../../core/utils/match-grouping';
 
@@ -71,6 +72,8 @@ export class ContactRefereeComponent implements OnInit, OnDestroy {
   faCompress = faCompress;
   faStar = faStar;
   faPersonFalling = faPersonFalling;
+
+  tierLabel = tierLabel;
 
   // ── 視圖狀態 ──
   view = signal<'list' | 'scoring'>('list');

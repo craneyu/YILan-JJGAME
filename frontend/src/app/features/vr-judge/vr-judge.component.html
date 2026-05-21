@@ -93,7 +93,7 @@
           <div class="text-center">
             <fa-icon [icon]="faBan" class="text-white/30 text-5xl mb-3"></fa-icon>
             <p class="text-white/60 text-xl font-bold">此組別不需要 VR 評分</p>
-            <p class="text-white/40 text-sm mt-1">{{ currentTeam()!.tier }} 組（國小組）</p>
+            <p class="text-white/40 text-sm mt-1">{{ tierLabelOf(currentTeam()!.tier) }}</p>
             <p class="text-white/25 text-xs mt-2">請等待賽序裁判進行下一動作</p>
           </div>
         </div>

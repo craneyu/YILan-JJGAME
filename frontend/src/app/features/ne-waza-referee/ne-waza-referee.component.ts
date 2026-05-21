@@ -33,6 +33,7 @@ import {
   MatchMethod,
 } from "../../core/models/match.model";
 import { displayPlayerName } from "../../core/utils/matchDisplay";
+import { tierLabel } from "../../core/utils/tierLabel";
 import {
   CategoryGroup,
   groupMatchesByCategory,
@@ -159,6 +160,8 @@ export class NeWazaRefereeComponent implements OnInit, OnDestroy {
   displayBlue(m: Match) {
     return displayPlayerName(m.bluePlayer, m.blueSource);
   }
+
+  tierLabel = tierLabel;
 
   /** Bye 場次（藍方空白）直接判紅方勝完賽，不啟動計時器 */
   completeByeMatch(): void {

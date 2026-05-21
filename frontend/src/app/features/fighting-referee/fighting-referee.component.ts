@@ -25,6 +25,7 @@ import {
 import { ApiService } from "../../core/services/api.service";
 import { AuthService } from "../../core/services/auth.service";
 import { SocketService } from "../../core/services/socket.service";
+import { tierLabel } from "../../core/utils/tierLabel";
 // OsaeKomiStartedEvent, OsaeKomiEndedEvent are available but not directly used here
 import {
   Match,
@@ -70,6 +71,8 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
   faGavel = faGavel;
   faExpand = faExpand;
   faCompress = faCompress;
+
+  tierLabel = tierLabel;
 
   // ── 視圖狀態 ──
   view = signal<"list" | "scoring">("list");

@@ -29,6 +29,7 @@ import {
 import { ApiService } from "../../core/services/api.service";
 import { Match } from "../../core/models/match.model";
 import { displayPlayerName } from "../../core/utils/matchDisplay";
+import { tierLabel } from "../../core/utils/tierLabel";
 
 @Component({
   selector: "app-match-audience",
@@ -53,6 +54,8 @@ export class MatchAudienceComponent implements OnInit, OnDestroy {
   displayBlue(m: Match) {
     return displayPlayerName(m.bluePlayer, m.blueSource);
   }
+
+  tierLabel = tierLabel;
 
   eventId = signal("");
   activeMatch = signal<Match | null>(null);

@@ -25,6 +25,21 @@ interface TeamInfo {
   tier?: TeamTier;
 }
 
+const CATEGORY_LABEL: Record<string, string> = {
+  male: '男子組',
+  female: '女子組',
+  mixed: '混合組',
+};
+const TIER_LABEL: Record<string, string> = {
+  EL: '國小低年級',
+  EM: '國小中年級',
+  EH: '國小高年級',
+  JH: '青少年國中組',
+  SH: '青少年高中組',
+  OPEN: '公開組',
+  ELEM: '國小組',
+};
+
 interface VRSummaryResponse {
   success: boolean;
   data: {
@@ -89,11 +104,16 @@ export class VrJudgeComponent implements OnInit, OnDestroy {
   roundLabel = computed(() => {
     const team = this.currentTeam();
     if (!team) return '';
-    const cat = team.category.toUpperCase();
-    const tierLabel = team.tier ? ` ${team.tier}` : '';
+    const cat = CATEGORY_LABEL[team.category] ?? team.category;
+    const tierLabel = team.tier ? ` ｜ ${TIER_LABEL[team.tier] ?? team.tier}` : '';
     if (this.isSingleTeamGroup()) return `${cat}${tierLabel}`;
-    return `${cat}${tierLabel} R${this.currentRound()}-G${this.groupIndex()}`;
+    return `${cat}${tierLabel}　R${this.currentRound()}-G${this.groupIndex()}`;
   });
+
+  tierLabelOf(tier: string | null | undefined): string {
+    if (!tier) return '';
+    return TIER_LABEL[tier] ?? tier;
+  }
   seriesLabel = computed(() => ['A', 'B', 'C'][this.currentRound() - 1] ?? 'A');
 
   vrOptions = [2, 1, 0];

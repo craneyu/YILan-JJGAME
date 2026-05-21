@@ -17,12 +17,30 @@ interface ActionRecord {
   items: Record<string, number>;
 }
 
+type TeamTier = 'EL' | 'EM' | 'EH' | 'JH' | 'SH' | 'OPEN' | 'ELEM' | null;
+
 interface TeamInfo {
   _id: string;
   name: string;
   members: string[];
   category: string;
+  tier?: TeamTier;
 }
+
+const CATEGORY_LABEL: Record<string, string> = {
+  male: '男子組',
+  female: '女子組',
+  mixed: '混合組',
+};
+const TIER_LABEL: Record<string, string> = {
+  EL: '國小低年級',
+  EM: '國小中年級',
+  EH: '國小高年級',
+  JH: '青少年國中組',
+  SH: '青少年高中組',
+  OPEN: '公開組',
+  ELEM: '國小組',
+};
 
 interface SummaryResponse {
   success: boolean;
@@ -105,8 +123,10 @@ export class ScoringJudgeComponent implements OnInit, OnDestroy {
   });
   roundLabel = computed(() => {
     const team = this.currentTeam();
-    const cat = team ? team.category.toUpperCase() : '';
-    return `${cat} R${this.currentRound()}-G${this.groupIndex()}`;
+    if (!team) return `R${this.currentRound()}-G${this.groupIndex()}`;
+    const cat = CATEGORY_LABEL[team.category] ?? team.category;
+    const tierLabel = team.tier ? ` ｜ ${TIER_LABEL[team.tier] ?? team.tier}` : '';
+    return `${cat}${tierLabel}　R${this.currentRound()}-G${this.groupIndex()}`;
   });
 
   readonly itemLabels = [

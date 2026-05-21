@@ -144,7 +144,7 @@
           </div>
           <div class="text-center">
             <div class="text-sm text-white/60">
-              {{ CATEGORY_LABEL[match.category] }} · {{ match.weightClass }} · R{{ match.round }}-{{ match.matchNo }}
+              {{ CATEGORY_LABEL[match.category] }}@if (match.tier) { ｜ {{ tierLabel(match.tier) }}} · {{ match.weightClass }} · R{{ match.round }}-{{ match.matchNo }}
             </div>
           </div>
           <button class="glass-btn px-3 py-2 rounded-xl text-sm" (click)="toggleFullscreen()">

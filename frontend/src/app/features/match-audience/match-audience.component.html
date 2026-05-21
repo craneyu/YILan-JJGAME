@@ -46,7 +46,7 @@
               : match.category === "female"
                 ? "女子組"
                 : "混合組"
-          }}
+          }}@if (match.tier) { ｜ {{ tierLabel(match.tier) }}}
           {{ match.weightClass }}
         </div>
         <div
