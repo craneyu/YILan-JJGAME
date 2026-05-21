@@ -215,6 +215,8 @@ export async function clearEventScores(
           currentRound: 1,
           currentActionNo: null,
           currentActionOpen: false,
+          currentTeamAbstained: false,
+          status: "idle",
         },
         { new: true },
       ),
