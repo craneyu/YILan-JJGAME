@@ -4,7 +4,7 @@ import Team from '../models/Team';
 import Event from '../models/Event';
 import VRScore from '../models/VRScore';
 import { broadcast } from '../sockets/index';
-import { sortTeams, resolveCategoryOrder, tierRank } from '../utils/teamSort';
+import { sortTeams, resolveCategoryOrder, buildTournamentGroups } from '../utils/teamSort';
 import {
   isElementaryTier,
   getElementaryMotions,
@@ -75,11 +75,14 @@ export async function nextGroup(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  // 取得隊伍清單（排除 Show 隊伍），依 tier 主、category 次、order 末排序
   const event = await Event.findById(eventId).lean();
-  const categoryOrder = resolveCategoryOrder(event, 'Duo');
   const allTeams = await Team.find({ eventId, competitionType: { $ne: 'Show' } }).lean();
-  const sortedTeams = sortTeams(allTeams, categoryOrder);
+  const isTournament = event?.meetingType === 'tournament';
+
+  // Sports-day 走既有 sortTeams（含 categoryOrder）；錦標賽純依 team.order 升冪
+  const sortedTeams = isTournament
+    ? [...allTeams].sort((a, b) => a.order - b.order)
+    : sortTeams(allTeams, resolveCategoryOrder(event, 'Duo'));
 
   const currentTeam = sortedTeams.find((t) => String(t._id) === String(gameState.currentTeamId));
   if (!currentTeam) {
@@ -90,7 +93,7 @@ export async function nextGroup(req: Request, res: Response): Promise<void> {
   // VR 檢查：棄權組與錦標賽國小組（EL/EM/EH，無 VR 評分）皆跳過；其餘需確認 VR 已送出
   const skipVrCheck =
     gameState.currentTeamAbstained ||
-    (event?.meetingType === 'tournament' && isElementaryTier(currentTeam.tier));
+    (isTournament && isElementaryTier(currentTeam.tier));
   if (!skipVrCheck) {
     const vrScore = await VRScore.findOne({
       eventId,
@@ -103,36 +106,7 @@ export async function nextGroup(req: Request, res: Response): Promise<void> {
     }
   }
 
-  // 建構 (tier, category) 群組的執行序：tier-major、category-secondary、依 categoryOrder
-  // 自動跳過空群組
-  type Group = { tier: string | null; category: string; teams: typeof sortedTeams };
-  const groups: Group[] = [];
-  const distinctTiers = Array.from(
-    new Set(sortedTeams.map((t) => t.tier ?? null)),
-  ).sort((a, b) => tierRank(a) - tierRank(b));
-  for (const tier of distinctTiers) {
-    for (const cat of categoryOrder) {
-      const teams = sortedTeams.filter(
-        (t) => (t.tier ?? null) === tier && t.category === cat,
-      );
-      if (teams.length > 0) groups.push({ tier, category: cat, teams });
-    }
-  }
-
-  const currentTier = currentTeam.tier ?? null;
-  const currentCategory = currentTeam.category;
   const currentRound = gameState.currentRound;
-  const currentGroupIdx = groups.findIndex(
-    (g) => g.tier === currentTier && g.category === currentCategory,
-  );
-  if (currentGroupIdx === -1) {
-    res.status(404).json({ success: false, error: '當前隊伍所在群組不存在' });
-    return;
-  }
-  const currentGroup = groups[currentGroupIdx];
-  const teamIdxInGroup = currentGroup.teams.findIndex(
-    (t) => String(t._id) === String(gameState.currentTeamId),
-  );
 
   // 共用：更新 GameState 並廣播 group/round 變更
   const advance = async (
@@ -162,71 +136,93 @@ export async function nextGroup(req: Request, res: Response): Promise<void> {
     res.json({ success: true, data: { nextTeamId, round: nextRound } });
   };
 
-  // ── Case A：同 (tier, category, round) 內換下一隊 ──
-  if (teamIdxInGroup < currentGroup.teams.length - 1) {
-    const nextTeam = currentGroup.teams[teamIdxInGroup + 1];
-    await advance(nextTeam._id, currentRound, false);
-    return;
-  }
+  // ============================================
+  // 錦標賽流程：依 Excel 列順序，每隊跑完所有 round 才換下一隊
+  // ============================================
+  if (isTournament) {
+    const groups = buildTournamentGroups(sortedTeams);
+    const currentTier = currentTeam.tier ?? null;
+    const currentCategory = currentTeam.category;
+    const currentGroupIdx = groups.findIndex(
+      (g) => g.tier === currentTier && g.category === currentCategory,
+    );
+    if (currentGroupIdx === -1) {
+      res.status(404).json({ success: false, error: '當前隊伍所在群組不存在' });
+      return;
+    }
+    const currentGroup = groups[currentGroupIdx];
+    const teamIdxInGroup = currentGroup.teams.findIndex(
+      (t) => String(t._id) === String(gameState.currentTeamId),
+    );
 
-  // 該 (tier, category) 群組最後一隊已完成。
-  // 國小低/中年級（EL/EM）：單輪連續演練模型，直接推進到下一非空 (tier, category) 群組，round=1
-  const isElementaryAB =
-    event?.meetingType === 'tournament' &&
-    (currentTier === 'EL' || currentTier === 'EM');
+    // EL/EM 採單輪連續演練：actionProgress 已涵蓋 A+B 所有動作，nextGroup 直接換下一隊
+    // EH/JH/SH/OPEN 採多輪：同隊先跑 R1 → R2 → R3 才換下一隊
+    const isElementaryAB = currentTier === 'EL' || currentTier === 'EM';
+    const maxRound = isElementaryAB ? 1 : 3;
 
-  if (isElementaryAB) {
+    // Case A：同隊伍尚有未完成的 round（僅 EH/JH/SH/OPEN）
+    if (!isElementaryAB && currentRound < maxRound) {
+      await advance(gameState.currentTeamId, currentRound + 1, true);
+      return;
+    }
+
+    // Case B：同 (tier, category) 群組內換下一隊（round 重置為 1）
+    if (teamIdxInGroup < currentGroup.teams.length - 1) {
+      const nextTeam = currentGroup.teams[teamIdxInGroup + 1];
+      await advance(nextTeam._id, 1, currentRound !== 1);
+      return;
+    }
+
+    // Case C：本群組最後一隊已完成，換到下一個非空 (tier, category) 群組
     if (currentGroupIdx < groups.length - 1) {
       const nextGroup = groups[currentGroupIdx + 1];
       await advance(nextGroup.teams[0]._id, 1, true);
-    } else {
-      await GameState.findOneAndUpdate(
-        { eventId },
-        { status: 'event_complete', currentActionOpen: false },
-      );
-      broadcast.roundChanged(eventId, { eventId, round: 0 });
-      res.json({ success: true, data: { message: '賽事已結束' } });
+      return;
     }
+
+    // Case D：所有群組完成，賽事結束
+    await GameState.findOneAndUpdate(
+      { eventId },
+      { status: 'event_complete', currentActionOpen: false },
+    );
+    broadcast.roundChanged(eventId, { eventId, round: 0 });
+    res.json({ success: true, data: { message: '賽事已結束' } });
     return;
   }
 
-  // EH / JH / SH / OPEN / sports-day(tier=null) 多輪流程
-  // 同 tier 內其他群組（依 category 順序）
-  const groupsInSameTier = groups.filter((g) => g.tier === currentTier);
-  const currentIdxInTier = groupsInSameTier.findIndex(
-    (g) => g.category === currentCategory,
+  // ============================================
+  // Sports-day 流程：保留既有 category-major 行為（向後相容）
+  // ============================================
+  const sdCategoryOrder = resolveCategoryOrder(event, 'Duo');
+  const sdCurrentCategory = currentTeam.category;
+  const sdCategoryTeams = sortedTeams.filter((t) => t.category === sdCurrentCategory);
+  const sdCurrentIdx = sdCategoryTeams.findIndex(
+    (t) => String(t._id) === String(gameState.currentTeamId),
   );
 
-  // ── Case B：同 tier 同 round，下一非空 category ──
-  if (currentIdxInTier < groupsInSameTier.length - 1) {
-    const nextGroup = groupsInSameTier[currentIdxInTier + 1];
-    await advance(nextGroup.teams[0]._id, currentRound, false);
+  // Case 1: 同 category 內下一隊，round 維持
+  if (sdCurrentIdx < sdCategoryTeams.length - 1) {
+    await advance(sdCategoryTeams[sdCurrentIdx + 1]._id, currentRound, false);
     return;
   }
 
-  // 同 tier 同 round 已完成所有 category
-  // ── Case C：同 tier 換 round R+1，從 tier 第一 category 開始 ──
-  if (currentRound < 3) {
-    const firstGroupInTier = groupsInSameTier[0];
-    await advance(firstGroupInTier.teams[0]._id, currentRound + 1, true);
+  // Case 2: 同 category 換 round
+  if (currentRound + 1 <= 3) {
+    await advance(sdCategoryTeams[0]._id, currentRound + 1, true);
     return;
   }
 
-  // ── Case D：同 tier round=3 已完成，換下一非空 tier 第一 category, round=1 ──
-  // groups 已按 tier 排序，找出第一個 tier 不同於 currentTier 且 idx 大於 current 的群組
-  let nextTierFirstGroup: Group | undefined;
-  for (let i = currentGroupIdx + 1; i < groups.length; i++) {
-    if (groups[i].tier !== currentTier) {
-      nextTierFirstGroup = groups[i];
-      break;
+  // Case 3: 下一非空 category
+  const sdCurrCatIdx = sdCategoryOrder.indexOf(sdCurrentCategory);
+  for (let ci = sdCurrCatIdx + 1; ci < sdCategoryOrder.length; ci++) {
+    const nextCatTeams = sortedTeams.filter((t) => t.category === sdCategoryOrder[ci]);
+    if (nextCatTeams.length > 0) {
+      await advance(nextCatTeams[0]._id, 1, true);
+      return;
     }
   }
-  if (nextTierFirstGroup) {
-    await advance(nextTierFirstGroup.teams[0]._id, 1, true);
-    return;
-  }
 
-  // ── Case E：所有 tier 完成，賽事結束 ──
+  // Case 4: 全部完成
   await GameState.findOneAndUpdate(
     { eventId },
     { status: 'event_complete', currentActionOpen: false },

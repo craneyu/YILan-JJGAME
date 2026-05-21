@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>宜蘭縣柔術錦標賽 — 雙人傳統演武 競賽流程手冊</title>
+<style>
+:root{
+  --primary:#1e3a8a;
+  --primary-light:#3b5dbf;
+  --accent:#f59e0b;
+  --accent-soft:#fef3c7;
+  --ink:#1f2937;
+  --muted:#6b7280;
+  --line:#e5e7eb;
+  --bg:#fafafa;
+  --bg-card:#ffffff;
+  --tier-el:#fce7f3;
+  --tier-em:#fef3c7;
+  --tier-eh:#d1fae5;
+  --tier-jh:#dbeafe;
+  --tier-sh:#e0e7ff;
+  --tier-open:#ede9fe;
+  --tier-elem:#fee2e2;
+  --cat-male:#dbeafe;
+  --cat-female:#fce7f3;
+  --cat-mixed:#ede9fe;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  margin:0;
+  color:var(--ink);
+  background:var(--bg);
+  line-height:1.7;
+  font-size:15px;
+}
+
+.page-header{
+  background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);
+  color:#fff;
+  padding:40px 32px 32px;
+  text-align:center;
+  border-bottom:6px solid var(--accent);
+}
+.page-header h1{
+  margin:0 0 8px;
+  font-size:2.2rem;
+  letter-spacing:0.05em;
+  font-weight:800;
+}
+.page-header .subtitle{
+  margin:0;
+  font-size:1.15rem;
+  opacity:0.9;
+  font-weight:300;
+}
+.page-header .meta{
+  margin-top:16px;
+  font-size:0.85rem;
+  opacity:0.7;
+  letter-spacing:0.1em;
+}
+
+.layout{
+  max-width:1200px;
+  margin:0 auto;
+  display:grid;
+  grid-template-columns:240px 1fr;
+  gap:32px;
+  padding:32px 24px 80px;
+}
+@media(max-width:900px){
+  .layout{grid-template-columns:1fr;gap:0;padding:24px 16px 60px}
+  .toc{position:static!important;max-height:none!important;margin-bottom:24px}
+}
+
+.toc{
+  position:sticky;
+  top:24px;
+  align-self:start;
+  max-height:calc(100vh - 48px);
+  overflow-y:auto;
+  background:var(--bg-card);
+  padding:20px;
+  border-radius:12px;
+  border:1px solid var(--line);
+  font-size:0.9rem;
+}
+.toc h3{
+  margin:0 0 12px;
+  font-size:0.75rem;
+  letter-spacing:0.15em;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+.toc ol{
+  margin:0;
+  padding-left:18px;
+  list-style:decimal;
+}
+.toc li{margin:6px 0}
+.toc a{
+  color:var(--ink);
+  text-decoration:none;
+  border-bottom:1px dashed transparent;
+}
+.toc a:hover{
+  color:var(--primary);
+  border-bottom-color:var(--primary);
+}
+
+.content{min-width:0}
+section.chapter{
+  background:var(--bg-card);
+  border-radius:12px;
+  padding:28px 32px;
+  margin-bottom:24px;
+  border:1px solid var(--line);
+  box-shadow:0 1px 3px rgba(0,0,0,0.04);
+}
+section.chapter h2{
+  margin:0 0 16px;
+  padding-bottom:12px;
+  border-bottom:3px solid var(--accent);
+  color:var(--primary);
+  font-size:1.5rem;
+  display:flex;
+  align-items:baseline;
+  gap:12px;
+}
+section.chapter h2 .num{
+  font-size:1rem;
+  color:var(--accent);
+  font-weight:600;
+  letter-spacing:0.1em;
+}
+section.chapter h3{
+  margin:28px 0 12px;
+  color:var(--primary);
+  font-size:1.15rem;
+  border-left:4px solid var(--accent);
+  padding-left:10px;
+}
+section.chapter h4{
+  margin:20px 0 8px;
+  color:var(--ink);
+  font-size:1.02rem;
+  font-weight:600;
+}
+section.chapter p{margin:12px 0}
+
+.callout{
+  border-left:4px solid var(--accent);
+  background:var(--accent-soft);
+  padding:14px 18px;
+  border-radius:0 8px 8px 0;
+  margin:18px 0;
+}
+.callout.info{
+  border-left-color:#3b82f6;
+  background:#dbeafe;
+}
+.callout.warn{
+  border-left-color:#ef4444;
+  background:#fee2e2;
+}
+.callout strong{color:inherit}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin:16px 0;
+  font-size:0.92rem;
+}
+th,td{
+  padding:10px 12px;
+  border:1px solid var(--line);
+  text-align:left;
+  vertical-align:top;
+}
+th{
+  background:#f3f4f6;
+  font-weight:600;
+  color:var(--primary);
+  font-size:0.88rem;
+  letter-spacing:0.03em;
+}
+tr:nth-child(even) td{background:#fafafa}
+
+.tier-badge{
+  display:inline-block;
+  padding:2px 10px;
+  border-radius:12px;
+  font-weight:600;
+  font-size:0.82rem;
+  letter-spacing:0.05em;
+}
+.tier-EL{background:var(--tier-el);color:#831843}
+.tier-EM{background:var(--tier-em);color:#854d0e}
+.tier-EH{background:var(--tier-eh);color:#065f46}
+.tier-JH{background:var(--tier-jh);color:#1e3a8a}
+.tier-SH{background:var(--tier-sh);color:#3730a3}
+.tier-OPEN{background:var(--tier-open);color:#5b21b6}
+.tier-ELEM{background:var(--tier-elem);color:#991b1b}
+
+.cat-badge{
+  display:inline-block;
+  padding:2px 8px;
+  border-radius:10px;
+  font-size:0.78rem;
+  font-weight:500;
+}
+.cat-male{background:var(--cat-male);color:#1e3a8a}
+.cat-female{background:var(--cat-female);color:#831843}
+.cat-mixed{background:var(--cat-mixed);color:#5b21b6}
+
+.kbd{
+  display:inline-block;
+  background:#f3f4f6;
+  border:1px solid var(--line);
+  border-bottom-width:2px;
+  border-radius:4px;
+  padding:1px 8px;
+  font-family:"SF Mono",Menlo,Consolas,monospace;
+  font-size:0.85em;
+  color:var(--ink);
+}
+
+code{
+  background:#f3f4f6;
+  padding:2px 6px;
+  border-radius:4px;
+  font-family:"SF Mono",Menlo,Consolas,monospace;
+  font-size:0.88em;
+}
+
+pre.flow{
+  background:#1f2937;
+  color:#e5e7eb;
+  padding:16px 20px;
+  border-radius:8px;
+  font-family:"SF Mono",Menlo,Consolas,monospace;
+  font-size:0.85rem;
+  line-height:1.6;
+  overflow-x:auto;
+}
+
+.svg-wrap{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:16px;
+  margin:20px 0;
+  overflow-x:auto;
+}
+.svg-wrap svg{display:block;margin:0 auto;max-width:100%;height:auto}
+
+.svg-caption{
+  text-align:center;
+  font-size:0.82rem;
+  color:var(--muted);
+  margin-top:8px;
+}
+
+.steps{
+  list-style:none;
+  padding:0;
+  margin:16px 0;
+  counter-reset:step;
+}
+.steps li{
+  position:relative;
+  padding:14px 16px 14px 56px;
+  margin:8px 0;
+  background:#f9fafb;
+  border-left:3px solid var(--primary);
+  border-radius:0 8px 8px 0;
+  counter-increment:step;
+}
+.steps li::before{
+  content:counter(step);
+  position:absolute;
+  left:14px;
+  top:50%;
+  transform:translateY(-50%);
+  width:28px;
+  height:28px;
+  background:var(--primary);
+  color:#fff;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:600;
+  font-size:0.85rem;
+}
+
+.role-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:16px;
+  margin:20px 0;
+}
+.role-card{
+  background:#fff;
+  border:1px solid var(--line);
+  border-top:3px solid var(--primary);
+  border-radius:8px;
+  padding:16px;
+}
+.role-card h4{margin:0 0 8px;color:var(--primary)}
+.role-card .role-key{
+  display:inline-block;
+  background:var(--accent-soft);
+  color:#92400e;
+  padding:2px 8px;
+  border-radius:4px;
+  font-size:0.78rem;
+  font-family:"SF Mono",Menlo,monospace;
+  margin-bottom:8px;
+}
+.role-card ul{margin:8px 0;padding-left:18px;font-size:0.9rem;color:var(--ink)}
+.role-card li{margin:4px 0}
+
+.example-event{
+  background:linear-gradient(135deg,#f0f9ff 0%,#fef3c7 100%);
+  border-radius:12px;
+  padding:20px;
+  margin:20px 0;
+}
+.example-event h4{
+  margin:0 0 12px;
+  color:var(--primary);
+  font-size:1rem;
+}
+
+.q{
+  background:#dbeafe;
+  border-radius:8px 8px 0 0;
+  padding:12px 16px;
+  font-weight:600;
+  color:var(--primary);
+  margin-top:16px;
+}
+.q::before{content:"Q：";color:var(--accent)}
+.a{
+  background:#f9fafb;
+  border:1px solid var(--line);
+  border-top:none;
+  border-radius:0 0 8px 8px;
+  padding:14px 16px;
+  margin-bottom:16px;
+}
+.a::before{content:"A：";color:var(--accent);font-weight:600}
+
+@media print{
+  body{background:#fff;font-size:11pt}
+  .layout{display:block;max-width:none;padding:0}
+  .toc{display:none}
+  section.chapter{break-inside:avoid;border:none;box-shadow:none;page-break-inside:avoid;padding:0 0 16px}
+  .page-header{padding:24px 0}
+  .svg-wrap{break-inside:avoid}
+  pre.flow{background:#f3f4f6;color:#1f2937;border:1px solid #d1d5db}
+}
+</style>
+</head>
+<body>
+
+<header class="page-header">
+  <h1>宜蘭縣柔術錦標賽</h1>
+  <p class="subtitle">雙人傳統演武 · 競賽流程與操作手冊</p>
+  <p class="meta">v3.0 ｜ 2026 年 5 月版</p>
+</header>
+
+<div class="layout">
+
+  <nav class="toc">
+    <h3>目錄</h3>
+    <ol>
+      <li><a href="#s1">系統概述</a></li>
+      <li><a href="#s2">賽會分組制度</a></li>
+      <li><a href="#s3">競賽整體流程</a></li>
+      <li><a href="#s4">各 tier 詳細流程</a></li>
+      <li><a href="#s5">計分演算法</a></li>
+      <li><a href="#s6">角色與介面</a></li>
+      <li><a href="#s7">操作指引</a></li>
+      <li><a href="#s8">完整實例：115 錦標賽</a></li>
+      <li><a href="#s9">常見問題 FAQ</a></li>
+    </ol>
+  </nav>
+
+  <main class="content">
+
+  <!-- ================== §1 系統概述 ================== -->
+  <section class="chapter" id="s1">
+    <h2><span class="num">§1</span>系統概述</h2>
+
+    <p>「宜蘭縣柔術錦標賽」是平台的第二個賽會類型，與既有「宜蘭縣運動會」共用同一套計分系統與認證架構，但賽制有顯著差異：增加二級分組（年齡/級別）、國小組規則簡化、不同年齡組獨立排名與頒獎。</p>
+
+    <h3>1.1 兩種賽會類型對照</h3>
+    <table>
+      <tr><th>項目</th><th>宜蘭縣運動會（sports-day）</th><th>宜蘭縣柔術錦標賽（tournament）</th></tr>
+      <tr><td>分組</td><td>僅一級（男/女/混合）</td><td>一級 × 二級（年齡/級別）</td></tr>
+      <tr><td>排名群組</td><td>依 category</td><td>依 (category, tier)</td></tr>
+      <tr><td>賽程進行</td><td>R1 全部隊伍跑 A → R2 跑 B → R3 跑 C</td><td>同 tier 內 R1 → R2 → R3 跑完，再換 tier</td></tr>
+      <tr><td>VR 裁判</td><td>所有組別</td><td>國小組（EL/EM/EH）無 VR</td></tr>
+      <tr><td>創意演武時間罰則</td><td>所有組別</td><td>國小組免罰則</td></tr>
+      <tr><td>寢技預設時長</td><td>3 分鐘</td><td>依 tier：國小 2 分、青少年 3 分、公開 5 分</td></tr>
+      <tr><td>成績匯出</td><td>依 category 一份檔案</td><td>依 (category × tier) 拆分多份檔案</td></tr>
+    </table>
+
+    <div class="callout info">
+      <strong>向後相容保證：</strong>啟用錦標賽功能對既有運動會行為零影響——所有運動會 events 的 <code>meetingType</code> 自動為 <code>sports-day</code>、<code>tier</code> 為 <code>null</code>，排序、計分、觀眾顯示、匯出全部與升級前完全一致。
+    </div>
+  </section>
+
+  <!-- ================== §2 賽會分組 ================== -->
+  <section class="chapter" id="s2">
+    <h2><span class="num">§2</span>賽會分組制度</h2>
+
+    <h3>2.1 一級分組（性別）</h3>
+    <p>沿用既有系統：<span class="cat-badge cat-male">男子組</span> <span class="cat-badge cat-female">女子組</span> <span class="cat-badge cat-mixed">混合組</span>。錦標賽演武三組皆採用。</p>
+
+    <h3>2.2 二級分組（年齡 / 級別）</h3>
+    <table>
+      <tr><th>代碼</th><th>中文名稱</th><th>適用項目</th><th>動作數 / 系列（男）</th><th>動作數 / 系列（女、混）</th></tr>
+      <tr><td><span class="tier-badge tier-EL">EL</span></td><td>國小低年級組</td><td>傳統演武、創意演武</td><td>1</td><td>1</td></tr>
+      <tr><td><span class="tier-badge tier-EM">EM</span></td><td>國小中年級組</td><td>傳統演武、創意演武</td><td>2</td><td>2</td></tr>
+      <tr><td><span class="tier-badge tier-EH">EH</span></td><td>國小高年級組</td><td>傳統演武、創意演武</td><td>3</td><td>3</td></tr>
+      <tr><td><span class="tier-badge tier-JH">JH</span></td><td>青少年國中組</td><td>傳統 / 創意 / 寢技</td><td>4</td><td>3</td></tr>
+      <tr><td><span class="tier-badge tier-SH">SH</span></td><td>青少年高中組</td><td>傳統 / 創意 / 寢技</td><td>4</td><td>3</td></tr>
+      <tr><td><span class="tier-badge tier-OPEN">OPEN</span></td><td>公開組</td><td>傳統 / 創意 / 寢技</td><td>4</td><td>3</td></tr>
+      <tr><td><span class="tier-badge tier-ELEM">ELEM</span></td><td>國小組（寢技專用）</td><td>寢技</td><td colspan="2">—（寢技無動作數概念）</td></tr>
+    </table>
+
+    <h3>2.3 七個 tier 的固定排序</h3>
+    <div class="svg-wrap">
+      <svg viewBox="0 0 800 100" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L9,3 z" fill="#1f2937"/>
+          </marker>
+        </defs>
+        <g font-family="sans-serif" font-size="14" font-weight="600" text-anchor="middle">
+          <rect x="10"  y="30" width="100" height="40" rx="20" fill="#fce7f3" stroke="#831843"/>
+          <text x="60"  y="55" fill="#831843">EL 國小低</text>
+          <rect x="130" y="30" width="100" height="40" rx="20" fill="#fef3c7" stroke="#854d0e"/>
+          <text x="180" y="55" fill="#854d0e">EM 國小中</text>
+          <rect x="250" y="30" width="100" height="40" rx="20" fill="#d1fae5" stroke="#065f46"/>
+          <text x="300" y="55" fill="#065f46">EH 國小高</text>
+          <rect x="370" y="30" width="100" height="40" rx="20" fill="#dbeafe" stroke="#1e3a8a"/>
+          <text x="420" y="55" fill="#1e3a8a">JH 國中</text>
+          <rect x="490" y="30" width="100" height="40" rx="20" fill="#e0e7ff" stroke="#3730a3"/>
+          <text x="540" y="55" fill="#3730a3">SH 高中</text>
+          <rect x="610" y="30" width="100" height="40" rx="20" fill="#ede9fe" stroke="#5b21b6"/>
+          <text x="660" y="55" fill="#5b21b6">OPEN 公開</text>
+          <line x1="112" y1="50" x2="128" y2="50" stroke="#1f2937" stroke-width="2" marker-end="url(#arrow)"/>
+          <line x1="232" y1="50" x2="248" y2="50" stroke="#1f2937" stroke-width="2" marker-end="url(#arrow)"/>
+          <line x1="352" y1="50" x2="368" y2="50" stroke="#1f2937" stroke-width="2" marker-end="url(#arrow)"/>
+          <line x1="472" y1="50" x2="488" y2="50" stroke="#1f2937" stroke-width="2" marker-end="url(#arrow)"/>
+          <line x1="592" y1="50" x2="608" y2="50" stroke="#1f2937" stroke-width="2" marker-end="url(#arrow)"/>
+          <text x="400" y="20" font-size="12" fill="#6b7280" font-weight="400">tier 執行順序（年齡升冪）</text>
+        </g>
+      </svg>
+      <p class="svg-caption">圖 2-1：演武 tier 進行順序。ELEM 為寢技專用，不參與演武排序。</p>
+    </div>
+
+    <h3>2.4 排名計算</h3>
+    <p>每一個 <strong>（性別組 × tier）</strong> 為一個獨立排名群組。例如「男子組 × 國小高年級」與「男子組 × 青少年國中組」分屬不同群組，各自頒獎。</p>
+  </section>
+
+  <!-- ================== §3 整體流程 ================== -->
+  <section class="chapter" id="s3">
+    <h2><span class="num">§3</span>競賽整體流程</h2>
+
+    <p>賽程推進的核心原則：<strong>(tier, category) 群組順序完全依 Excel 匯入順序</strong>。每隊上台後依該 tier 規則跑完所有 round 才換下一隊。</p>
+
+    <div class="callout info">
+      <strong>群組順序規則：</strong>系統會將匯入的 Excel 表逐列掃描，遇到新的 (tier, category) 組合就建立一個新群組，相同組合會合併到既有群組。最終群組執行順序 = 該組合在 Excel 中首次出現的列順序。<br>
+      <strong>不再有「組別順序」設定。</strong>承辦人員可以透過調整 Excel 的列順序直接控制整場賽程的進行順序。
+    </div>
+
+    <div class="svg-wrap">
+      <svg viewBox="0 0 720 380" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arr2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L9,3 z" fill="#1e3a8a"/>
+          </marker>
+        </defs>
+        <g font-family="sans-serif" font-size="13" text-anchor="middle">
+          <ellipse cx="360" cy="30" rx="80" ry="20" fill="#1e3a8a" stroke="#1e3a8a"/>
+          <text x="360" y="35" fill="#fff" font-weight="600">賽會開始</text>
+
+          <rect x="200" y="80" width="320" height="40" rx="6" fill="#dbeafe" stroke="#1e3a8a"/>
+          <text x="360" y="105" fill="#1e3a8a" font-weight="600">依 Excel 列順序取第一個群組之首隊</text>
+
+          <polygon points="360,150 470,180 360,210 250,180" fill="#fef3c7" stroke="#854d0e"/>
+          <text x="360" y="178" fill="#854d0e" font-weight="600">該隊 tier 屬於？</text>
+
+          <rect x="20"  y="240" width="210" height="80" rx="6" fill="#fce7f3" stroke="#831843"/>
+          <text x="125" y="265" fill="#831843" font-weight="600">EL / EM</text>
+          <text x="125" y="285" fill="#831843" font-size="11">一次演完 A + B 所有動作</text>
+          <text x="125" y="300" fill="#831843" font-size="11">無 round 切換</text>
+
+          <rect x="255" y="240" width="210" height="80" rx="6" fill="#d1fae5" stroke="#065f46"/>
+          <text x="360" y="265" fill="#065f46" font-weight="600">EH</text>
+          <text x="360" y="285" fill="#065f46" font-size="11">R1 (A) → R2 (B) → R3 (C)</text>
+          <text x="360" y="300" fill="#065f46" font-size="11">無 VR</text>
+
+          <rect x="490" y="240" width="210" height="80" rx="6" fill="#e0e7ff" stroke="#3730a3"/>
+          <text x="595" y="265" fill="#3730a3" font-weight="600">JH / SH / OPEN</text>
+          <text x="595" y="285" fill="#3730a3" font-size="11">R1 + VR-A → R2 + VR-B</text>
+          <text x="595" y="300" fill="#3730a3" font-size="11">→ R3 + VR-C</text>
+
+          <rect x="200" y="345" width="320" height="30" rx="6" fill="#fef3c7" stroke="#854d0e"/>
+          <text x="360" y="365" fill="#854d0e" font-size="12" font-weight="600">↓ 該隊完成 → 換下一隊（無下一隊則換下一群組）</text>
+
+          <line x1="360" y1="50"  x2="360" y2="80"  stroke="#1e3a8a" stroke-width="2" marker-end="url(#arr2)"/>
+          <line x1="360" y1="120" x2="360" y2="150" stroke="#1e3a8a" stroke-width="2" marker-end="url(#arr2)"/>
+          <line x1="280" y1="195" x2="125" y2="240" stroke="#1e3a8a" stroke-width="2" marker-end="url(#arr2)"/>
+          <line x1="360" y1="210" x2="360" y2="240" stroke="#1e3a8a" stroke-width="2" marker-end="url(#arr2)"/>
+          <line x1="440" y1="195" x2="595" y2="240" stroke="#1e3a8a" stroke-width="2" marker-end="url(#arr2)"/>
+          <line x1="125" y1="320" x2="200" y2="345" stroke="#1e3a8a" stroke-width="2" marker-end="url(#arr2)"/>
+          <line x1="360" y1="320" x2="360" y2="345" stroke="#1e3a8a" stroke-width="2" marker-end="url(#arr2)"/>
+          <line x1="595" y1="320" x2="520" y2="345" stroke="#1e3a8a" stroke-width="2" marker-end="url(#arr2)"/>
+
+          <!-- 回頭 -->
+          <path d="M 200,360 L 30,360 L 30,180 L 250,180" fill="none" stroke="#1e3a8a" stroke-width="2" marker-end="url(#arr2)" stroke-dasharray="4 4"/>
+        </g>
+      </svg>
+      <p class="svg-caption">圖 3-1：競賽整體流程。每隊依 tier 規則跑完所有 round/動作，再換下一隊；群組順序完全依 Excel 列順序。</p>
+    </div>
+
+    <h3>3.1 三種 tier 流程模型</h3>
+    <table>
+      <tr><th>tier</th><th>流程模型</th><th>VR</th><th>說明</th></tr>
+      <tr>
+        <td><span class="tier-badge tier-EL">EL</span> <span class="tier-badge tier-EM">EM</span></td>
+        <td>單輪連續演練</td>
+        <td>無</td>
+        <td>每隊上台後一次演完 A + B 系列所有動作，再換下一隊。無 C 系列、無 round 切換。</td>
+      </tr>
+      <tr>
+        <td><span class="tier-badge tier-EH">EH</span></td>
+        <td>三輪逐隊推進</td>
+        <td>無</td>
+        <td>同一隊伍依序跑 R1 (A) → R2 (B) → R3 (C) 完整 3 輪，再換下一隊。同 tier 內依 Excel 列順序推進。</td>
+      </tr>
+      <tr>
+        <td><span class="tier-badge tier-JH">JH</span> <span class="tier-badge tier-SH">SH</span> <span class="tier-badge tier-OPEN">OPEN</span></td>
+        <td>三輪逐隊推進 + VR</td>
+        <td>有</td>
+        <td>同一隊伍依序跑 R1 (A) → VR-A → R2 (B) → VR-B → R3 (C) → VR-C 完整 3 輪+3 次 VR，再換下一隊。</td>
+      </tr>
+    </table>
+
+    <h3>3.2 自動跳過空群組</h3>
+    <p>若 Excel 沒有列出某個 (tier, category) 組合，系統自動跳過——根本不會在群組序列中產生。例如本次 17 隊資料沒有「EL-female」「EM-male」等，整場流程從不會出現在這些群組。</p>
+
+    <h3>3.3 單一隊伍組別處理</h3>
+    <p>若某 (tier, category) 群組僅有一隊報名，該隊依該 tier 規則完成所有動作（含 VR，若適用）後，系統自動推進到下一群組。<strong>觀眾顯示自動隱藏 R/G 標籤</strong>，例如顯示 <code>MALE EH</code> 而非 <code>MALE EH R1-G1</code>。錦標賽中單隊組別相當常見（例：17 隊資料有 8 個單隊組別）。</p>
+
+    <h3>3.4 群組順序由 Excel 直接決定</h3>
+    <p>承辦人員只需要把 Excel 的隊伍列順序排好就完成「進場順序」的設定——系統不再提供「組別順序拖曳」UI（錦標賽不顯示，運動會仍保留）。</p>
+
+    <div class="callout">
+      <strong>實務建議：</strong>建議匯入前先在 Excel 內以「年齡 → 性別」順序排好（例如 國小低年級男 → 國小低年級女 → 國小低年級混 → 國小中年級…），讓賽程符合常見的頒獎節奏。但若有特殊需求（例如外賓組要安排在中段），直接調 Excel 列順序即可。
+    </div>
+  </section>
+
+  <!-- ================== §4 各 tier 詳細流程 ================== -->
+  <section class="chapter" id="s4">
+    <h2><span class="num">§4</span>各 tier 詳細流程</h2>
+
+    <h3>4.1 EL / EM 流程（國小低/中年級）</h3>
+
+    <div class="svg-wrap">
+      <svg viewBox="0 0 720 280" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arr3" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L9,3 z" fill="#831843"/>
+          </marker>
+        </defs>
+        <g font-family="sans-serif" font-size="12" text-anchor="middle">
+          <rect x="20" y="30" width="100" height="50" rx="6" fill="#fce7f3" stroke="#831843"/>
+          <text x="70" y="55" font-weight="600" fill="#831843">隊伍 N 上台</text>
+          <text x="70" y="70" font-size="10" fill="#831843">（EL/EM）</text>
+
+          <rect x="160" y="30" width="100" height="50" rx="6" fill="#fff" stroke="#831843"/>
+          <text x="210" y="50" font-weight="600" fill="#831843">A 系列</text>
+          <text x="210" y="68" font-size="10" fill="#831843">EL: A1 / EM: A1,A2</text>
+
+          <rect x="300" y="30" width="100" height="50" rx="6" fill="#fff" stroke="#831843"/>
+          <text x="350" y="50" font-weight="600" fill="#831843">B 系列</text>
+          <text x="350" y="68" font-size="10" fill="#831843">EL: B1 / EM: B1,B2</text>
+
+          <rect x="440" y="30" width="120" height="50" rx="6" fill="#fef3c7" stroke="#854d0e"/>
+          <text x="500" y="55" font-weight="600" fill="#854d0e">隊伍 N 完賽</text>
+          <text x="500" y="70" font-size="10" fill="#854d0e">換組到 N+1</text>
+
+          <rect x="600" y="30" width="100" height="50" rx="6" fill="#dbeafe" stroke="#1e3a8a"/>
+          <text x="650" y="50" font-weight="600" fill="#1e3a8a">下一 category</text>
+          <text x="650" y="68" font-size="10" fill="#1e3a8a">或下一 tier</text>
+
+          <line x1="120" y1="55" x2="158" y2="55" stroke="#831843" stroke-width="2" marker-end="url(#arr3)"/>
+          <line x1="260" y1="55" x2="298" y2="55" stroke="#831843" stroke-width="2" marker-end="url(#arr3)"/>
+          <line x1="400" y1="55" x2="438" y2="55" stroke="#831843" stroke-width="2" marker-end="url(#arr3)"/>
+          <line x1="560" y1="55" x2="598" y2="55" stroke="#831843" stroke-width="2" marker-end="url(#arr3)"/>
+
+          <!-- 回到上台箭頭 -->
+          <path d="M 500,80 L 500,130 L 70,130 L 70,80" fill="none" stroke="#831843" stroke-width="2" marker-end="url(#arr3)" stroke-dasharray="4 4"/>
+          <text x="280" y="148" font-size="11" fill="#831843">同 category 還有下一隊 → 重新上台</text>
+
+          <!-- 規則說明 -->
+          <rect x="60" y="180" width="600" height="80" rx="6" fill="#fef3c7" stroke="#854d0e"/>
+          <text x="360" y="205" font-size="12" font-weight="600" fill="#854d0e">⚠ 國小組（EL/EM/EH）特殊規則</text>
+          <text x="360" y="225" font-size="11" fill="#854d0e">• 無 VR 裁判（VR 介面顯示「此組別不需要 VR 評分」）</text>
+          <text x="360" y="240" font-size="11" fill="#854d0e">• 無錯誤攻擊標記功能</text>
+          <text x="360" y="255" font-size="11" fill="#854d0e">• 創意演武免超時/不足時間罰則</text>
+        </g>
+      </svg>
+      <p class="svg-caption">圖 4-1：EL/EM 單輪連續演練流程。每隊一氣呵成演完 A+B。</p>
+    </div>
+
+    <h3>4.2 EH / JH / SH / OPEN 流程（每隊完整跑完 3 輪）</h3>
+
+    <div class="svg-wrap">
+      <svg viewBox="0 0 720 340" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arr4" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L9,3 z" fill="#065f46"/>
+          </marker>
+        </defs>
+        <g font-family="sans-serif" font-size="12" text-anchor="middle">
+          <!-- 單隊 3 輪流程 -->
+          <rect x="20" y="20" width="680" height="160" rx="8" fill="#f0fdf4" stroke="#065f46" stroke-width="2"/>
+          <text x="360" y="40" font-size="13" font-weight="700" fill="#065f46">隊伍 N 上台 (EH / JH / SH / OPEN)</text>
+
+          <!-- R1 -->
+          <rect x="50" y="60" width="180" height="100" rx="6" fill="#d1fae5" stroke="#065f46"/>
+          <text x="140" y="82" font-size="13" font-weight="600" fill="#065f46">Round 1 (A 系列)</text>
+          <text x="140" y="105" font-size="11" fill="#065f46">男 4 動作 / 女混 3 動作</text>
+          <text x="140" y="124" font-size="11" fill="#065f46" font-weight="600">↓</text>
+          <text x="140" y="145" font-size="11" font-weight="600" fill="#065f46">VR-A 送出 (JH/SH/OPEN)</text>
+
+          <!-- R2 -->
+          <rect x="265" y="60" width="180" height="100" rx="6" fill="#fef3c7" stroke="#854d0e"/>
+          <text x="355" y="82" font-size="13" font-weight="600" fill="#854d0e">Round 2 (B 系列)</text>
+          <text x="355" y="105" font-size="11" fill="#854d0e">男 4 動作 / 女混 3 動作</text>
+          <text x="355" y="124" font-size="11" fill="#854d0e" font-weight="600">↓</text>
+          <text x="355" y="145" font-size="11" font-weight="600" fill="#854d0e">VR-B 送出 (JH/SH/OPEN)</text>
+
+          <!-- R3 -->
+          <rect x="480" y="60" width="180" height="100" rx="6" fill="#ede9fe" stroke="#5b21b6"/>
+          <text x="570" y="82" font-size="13" font-weight="600" fill="#5b21b6">Round 3 (C 系列)</text>
+          <text x="570" y="105" font-size="11" fill="#5b21b6">男 4 動作 / 女混 3 動作</text>
+          <text x="570" y="124" font-size="11" fill="#5b21b6" font-weight="600">↓</text>
+          <text x="570" y="145" font-size="11" font-weight="600" fill="#5b21b6">VR-C 送出 (JH/SH/OPEN)</text>
+
+          <!-- 箭頭 -->
+          <line x1="230" y1="110" x2="263" y2="110" stroke="#065f46" stroke-width="2" marker-end="url(#arr4)"/>
+          <line x1="445" y1="110" x2="478" y2="110" stroke="#065f46" stroke-width="2" marker-end="url(#arr4)"/>
+
+          <!-- 完成 -->
+          <rect x="220" y="200" width="280" height="50" rx="6" fill="#fef3c7" stroke="#854d0e"/>
+          <text x="360" y="225" fill="#854d0e" font-weight="600">隊伍 N 完賽 → 換下一隊</text>
+          <text x="360" y="241" fill="#854d0e" font-size="11">本群組無下一隊 → 換下一 (tier, category) 群組</text>
+
+          <line x1="360" y1="180" x2="360" y2="198" stroke="#065f46" stroke-width="2" marker-end="url(#arr4)"/>
+
+          <!-- EH 提示 -->
+          <rect x="60" y="275" width="600" height="50" rx="6" fill="#dbeafe" stroke="#1e3a8a"/>
+          <text x="360" y="297" font-size="12" font-weight="600" fill="#1e3a8a">⚠ EH（國小高年級）特殊：3 輪結構但全程無 VR</text>
+          <text x="360" y="315" font-size="11" fill="#1e3a8a">VR 送出步驟對 EH 自動省略，賽序裁判 R1 動作評分完後即可推進到 R2</text>
+        </g>
+      </svg>
+      <p class="svg-caption">圖 4-2：同一隊伍完整跑完 R1 → R2 → R3 三輪後才換下一隊。JH/SH/OPEN 在每輪間需要 VR 評分送出，EH 則無 VR。</p>
+    </div>
+
+    <h3>4.3 各 tier 動作數量總覽</h3>
+    <table>
+      <tr><th>tier</th><th>男子 A 系列</th><th>男子 B 系列</th><th>男子 C 系列</th><th>女/混 A 系列</th><th>女/混 B 系列</th><th>女/混 C 系列</th><th>輪次</th></tr>
+      <tr><td><span class="tier-badge tier-EL">EL</span></td><td>A1</td><td>B1</td><td>—</td><td>A1</td><td>B1</td><td>—</td><td>1 輪</td></tr>
+      <tr><td><span class="tier-badge tier-EM">EM</span></td><td>A1, A2</td><td>B1, B2</td><td>—</td><td>A1, A2</td><td>B1, B2</td><td>—</td><td>1 輪</td></tr>
+      <tr><td><span class="tier-badge tier-EH">EH</span></td><td>A1-A3</td><td>B1-B3</td><td>C1-C3</td><td>A1-A3</td><td>B1-B3</td><td>C1-C3</td><td>3 輪</td></tr>
+      <tr><td><span class="tier-badge tier-JH">JH</span></td><td>A1-A4</td><td>B1-B4</td><td>C1-C4</td><td>A1-A3</td><td>B1-B3</td><td>C1-C3</td><td>3 輪</td></tr>
+      <tr><td><span class="tier-badge tier-SH">SH</span></td><td>A1-A4</td><td>B1-B4</td><td>C1-C4</td><td>A1-A3</td><td>B1-B3</td><td>C1-C3</td><td>3 輪</td></tr>
+      <tr><td><span class="tier-badge tier-OPEN">OPEN</span></td><td>A1-A4</td><td>B1-B4</td><td>C1-C4</td><td>A1-A3</td><td>B1-B3</td><td>C1-C3</td><td>3 輪</td></tr>
+    </table>
+  </section>
+
+  <!-- ================== §5 計分 ================== -->
+  <section class="chapter" id="s5">
+    <h2><span class="num">§5</span>計分演算法</h2>
+
+    <h3>5.1 每動作計分</h3>
+    <p>每個動作（A1、B2、C3 等）由 5 位裁判獨立評分，每位裁判針對該動作的若干個評分項目（PART）給分。</p>
+
+    <h4>評分項目（PART）數量</h4>
+    <table>
+      <tr><th>系列</th><th>PART 數</th><th>每 PART 最高分</th><th>單動作最高分</th></tr>
+      <tr><td>A / B 系列</td><td>4 個（P1～P4）</td><td>3 分</td><td>4 × 9 = 36 分</td></tr>
+      <tr><td>C 系列</td><td>5 個（P1～P5）</td><td>3 分</td><td>5 × 9 = 45 分</td></tr>
+    </table>
+
+    <h4>「去頭尾取中間 3」演算法</h4>
+    <p>每個 PART 由 5 位裁判給 0～3 分。系統處理流程：</p>
+    <ol class="steps">
+      <li>收集 5 位裁判對某 PART 的分數，例如 <code>[3, 3, 2, 2, 1]</code></li>
+      <li>排序後去掉最高 <code>3</code> 與最低 <code>1</code>，剩下中間 3 位 <code>[2, 2, 3]</code></li>
+      <li>加總中間 3 位 = <strong>該 PART 的得分</strong>（範例為 7 分，最高 9 分）</li>
+      <li>所有 PART 加總 = 該動作得分</li>
+    </ol>
+
+    <div class="callout info">
+      <strong>計算範例：</strong>5 位裁判對 A1 動作給分如下：
+      <table style="margin-top:8px;font-size:0.88rem">
+        <tr><th>裁判</th><th>P1</th><th>P2</th><th>P3</th><th>P4</th></tr>
+        <tr><td>1</td><td>3</td><td>3</td><td>3</td><td>3</td></tr>
+        <tr><td>2</td><td>2</td><td>3</td><td>3</td><td>2</td></tr>
+        <tr><td>3</td><td>3</td><td>2</td><td>2</td><td>3</td></tr>
+        <tr><td>4</td><td>2</td><td>2</td><td>3</td><td>2</td></tr>
+        <tr><td>5</td><td>1</td><td>2</td><td>2</td><td>1</td></tr>
+        <tr style="font-weight:600;background:#fef3c7"><td>中間 3 加總</td><td>7</td><td>7</td><td>8</td><td>7</td></tr>
+      </table>
+      <p style="margin-top:8px"><strong>動作 A1 得分 = 7+7+8+7 = 29 分</strong></p>
+    </div>
+
+    <h3>5.2 系列總分與全場總分</h3>
+
+    <p>系列總分 = 該系列所有動作得分加總 + <strong>VR 多樣性分數</strong>（若該 tier 適用）。</p>
+
+    <h4>VR 多樣性評分</h4>
+    <table>
+      <tr><th>項目</th><th>分數範圍</th><th>說明</th></tr>
+      <tr><td>摔技多樣性</td><td>0 / 1 / 2 分</td><td>該系列展現的摔技種類豐富度</td></tr>
+      <tr><td>地板技多樣性</td><td>0 / 1 / 2 分</td><td>該系列展現的地板技種類豐富度</td></tr>
+      <tr><td>每系列 VR 最高</td><td>4 分</td><td>2 + 2 = 4 分</td></tr>
+    </table>
+
+    <div class="callout warn">
+      <strong>注意：</strong>國小組（EL/EM/EH）<strong>不適用 VR 評分</strong>。其系列總分 = 動作得分加總（不含 VR）。
+    </div>
+
+    <h3>5.3 排名</h3>
+    <p>全場總分 = A 系列總分 + B 系列總分 + C 系列總分（若有）。同一 <strong>(category, tier)</strong> 群組內依全場總分由高到低排名，前 3 名頒獎。</p>
+  </section>
+
+  <!-- ================== §6 角色與介面 ================== -->
+  <section class="chapter" id="s6">
+    <h2><span class="num">§6</span>角色與介面</h2>
+
+    <p>系統共有 6 種角色，每個角色登入後看到不同的介面與權限。</p>
+
+    <div class="role-grid">
+      <div class="role-card">
+        <h4>管理員</h4>
+        <span class="role-key">admin / admin123</span>
+        <ul>
+          <li>建立 / 編輯賽會</li>
+          <li>匯入 / 管理隊伍</li>
+          <li>建立裁判帳號</li>
+          <li>備份與還原</li>
+          <li>匯出 Excel / PDF 成績</li>
+        </ul>
+      </div>
+      <div class="role-card">
+        <h4>賽序裁判</h4>
+        <span class="role-key">seq / seq123</span>
+        <ul>
+          <li>選擇隊伍上台</li>
+          <li>開放動作評分</li>
+          <li>換組（推進到下一群組）</li>
+          <li>標記棄權 / 取消棄權</li>
+          <li>查看 5 位裁判即時送分狀態</li>
+        </ul>
+      </div>
+      <div class="role-card">
+        <h4>計分裁判（5 位）</h4>
+        <span class="role-key">judge1～judge5</span>
+        <ul>
+          <li>對當前開放的動作評分</li>
+          <li>各 PART 給 0～3 分</li>
+          <li>確認送出（不可修改）</li>
+          <li>全螢幕模式顯示</li>
+        </ul>
+      </div>
+      <div class="role-card">
+        <h4>VR 裁判</h4>
+        <span class="role-key">vr / vr123</span>
+        <ul>
+          <li>每系列結束後送出多樣性分數</li>
+          <li>標記 / 取消錯誤攻擊</li>
+          <li>國小組顯示「不需要 VR 評分」</li>
+        </ul>
+      </div>
+      <div class="role-card">
+        <h4>觀眾顯示</h4>
+        <span class="role-key">audience / audience123</span>
+        <ul>
+          <li>即時總分</li>
+          <li>(category, tier) 內排名</li>
+          <li>各動作詳細分數</li>
+          <li>全螢幕投影模式</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>6.1 觀眾顯示頂部標籤格式</h3>
+    <table>
+      <tr><th>情境</th><th>顯示文字</th><th>說明</th></tr>
+      <tr><td>多隊組別</td><td><code>MALE JH R1-G2</code></td><td>男子組 × 青少年國中組，Round 1 的 Group 2 隊伍</td></tr>
+      <tr><td>單隊組別</td><td><code>MALE EH</code></td><td>單隊群組自動隱藏 R/G 標籤</td></tr>
+      <tr><td>運動會（無 tier）</td><td><code>MALE R1-G2</code></td><td>tier 段位自動省略</td></tr>
+    </table>
+  </section>
+
+  <!-- ================== §7 操作指引 ================== -->
+  <section class="chapter" id="s7">
+    <h2><span class="num">§7</span>操作指引</h2>
+
+    <h3>7.1 賽前準備</h3>
+    <ol class="steps">
+      <li><strong>建立賽會</strong>：管理員登入 → 點「建立賽會」→ 填寫名稱、日期、場地 → <strong>賽會類型選「宜蘭縣柔術錦標賽」</strong> → 勾選運動項目（雙人演武等）→ 確認建立</li>
+      <li><strong>下載匯入範本</strong>：進入該賽會 → 演武管理 → 點「範本」按鈕 → 下載含「分級」欄位與「分級對照表」的 Excel</li>
+      <li><strong>填寫名單</strong>：將參賽隊伍填入範本，欄位包含「隊伍名稱、隊員一姓名、隊員二姓名、組別、分級」。<strong>分級欄位</strong>可填中文（如「青少年國中組」）或英文代碼（如「JH」）</li>
+      <li><strong>上傳匯入</strong>：點「匯入雙人演武」→ 選擇剛填好的 Excel → 系統驗證後顯示「成功匯入 N 筆」</li>
+      <li><strong>調整組別順序</strong>（可選）：管理介面可拖曳調整 male/female/mixed 進場順序</li>
+      <li><strong>登入測試</strong>：在各裁判端登入並確認連線正常（OK 後再開賽）</li>
+    </ol>
+
+    <h3>7.2 賽中操作</h3>
+    <ol class="steps">
+      <li><strong>賽序裁判</strong>選定第一隊（系統自動選 EL 或第一個非空群組的首隊）</li>
+      <li>點「開放動作評分」開放當前動作（如 A1）</li>
+      <li>5 位<strong>計分裁判</strong>各自評分後送出</li>
+      <li>系統自動計算動作分數並廣播至觀眾頁</li>
+      <li>賽序裁判點「開放下一動作」直到該系列完成</li>
+      <li>若為國高中以上 tier，<strong>VR 裁判</strong>送出該系列多樣性分數</li>
+      <li>賽序裁判點「換組」推進到下一隊 / 下一群組 / 下一輪</li>
+      <li>重複步驟 2-7 直到賽事結束</li>
+    </ol>
+
+    <div class="callout">
+      <strong>單隊組別小提醒：</strong>該隊跑完所有動作後，「換組」按鈕會自動 enable，按下即可推進到下一個非空 (tier, category) 群組——不需要透過「選擇隊伍」手動切換。
+    </div>
+
+    <h3>7.3 賽後成績匯出</h3>
+    <ol class="steps">
+      <li>管理員進入演武管理頁的「成績排名」區塊</li>
+      <li>每個 <strong>(category, tier)</strong> 顯示為一張獨立卡片，含名次與總分</li>
+      <li>點該卡片的「Excel」按鈕匯出該群組的詳細成績檔（檔名如 <code>男子組_青少年國中組_成績明細.xlsx</code>）</li>
+      <li>點「PDF」按鈕開啟列印視窗，輸出可供裁判長簽署的 A4 橫式 PDF</li>
+      <li>國小組（EL/EM/EH）的匯出檔自動省略 VR 欄位</li>
+    </ol>
+  </section>
+
+  <!-- ================== §8 完整實例 ================== -->
+  <section class="chapter" id="s8">
+    <h2><span class="num">§8</span>完整實例：115 錦標賽（17 隊）</h2>
+
+    <p>以下用 2026 年 115 宜蘭縣柔術錦標賽實際 17 隊參賽資料展示完整流程。</p>
+
+    <div class="example-event">
+      <h4>📋 隊伍分布（共 17 隊 / 12 個 (tier, category) 群組）</h4>
+      <table style="font-size:0.88rem">
+        <tr><th>tier</th><th>男子組</th><th>女子組</th><th>混合組</th><th>合計</th></tr>
+        <tr><td><span class="tier-badge tier-EL">EL</span></td><td>2 隊</td><td>0</td><td>3 隊</td><td>5</td></tr>
+        <tr><td><span class="tier-badge tier-EM">EM</span></td><td>0</td><td>1 隊（單）</td><td>2 隊</td><td>3</td></tr>
+        <tr><td><span class="tier-badge tier-EH">EH</span></td><td>2 隊</td><td>1 隊（單）</td><td>1 隊（單）</td><td>4</td></tr>
+        <tr><td><span class="tier-badge tier-JH">JH</span></td><td>1 隊（單）</td><td>1 隊（單）</td><td>1 隊（單）</td><td>3</td></tr>
+        <tr><td><span class="tier-badge tier-SH">SH</span></td><td>1 隊（單）</td><td>0</td><td>0</td><td>1</td></tr>
+        <tr><td><span class="tier-badge tier-OPEN">OPEN</span></td><td>0</td><td>0</td><td>1 隊（單）</td><td>1</td></tr>
+      </table>
+      <p style="font-size:0.85rem;color:var(--muted);margin-top:8px">「單」標示為單隊組別。17 隊中有 8 個單隊組別。</p>
+    </div>
+
+    <h3>8.1 完整推進序列（共 35 步，依 Excel 列順序）</h3>
+    <pre class="flow">Step  1: EL  male    R1 柯林國小                  ┐
+Step  2: EL  male    R1 大隱國小                  ┘ 群組 1: (EL, male) 2 隊
+Step  3: EL  mixed   R1 大隱國小                  ┐
+Step  4: EL  mixed   R1 大隱國小                  │ 群組 2: (EL, mixed) 3 隊
+Step  5: EL  mixed   R1 大隱國小                  ┘
+Step  6: EM  female  R1 柯林國小                    群組 3: (EM, female) 1 隊（單）
+Step  7: EM  mixed   R1 大隱國小                  ┐
+Step  8: EM  mixed   R1 大隱國小                  ┘ 群組 4: (EM, mixed) 2 隊
+Step  9: EH  female  R1 柯林國小                  ┐
+Step 10: EH  female  R2 柯林國小                  │ 群組 5: 同一隊 R1→R2→R3
+Step 11: EH  female  R3 柯林國小                  ┘
+Step 12: EH  male    R1 柯林國小                  ┐
+Step 13: EH  male    R2 柯林國小                  │ 群組 6 team 1: R1→R2→R3
+Step 14: EH  male    R3 柯林國小                  ┘
+Step 15: EH  male    R1 柯林國小                  ┐
+Step 16: EH  male    R2 柯林國小                  │ 群組 6 team 2: R1→R2→R3
+Step 17: EH  male    R3 柯林國小                  ┘
+Step 18-20: EH  mixed   R1→R2→R3 柯林國小           群組 7: 1 隊（單）
+Step 21-23: JH  female  R1→R2→R3 國華國中           群組 8: 1 隊（單）
+Step 24-26: JH  male    R1→R2→R3 羅東國中           群組 9: 1 隊（單）
+Step 27-29: JH  mixed   R1→R2→R3 國華國中           群組 10: 1 隊（單）
+Step 30-32: SH  male    R1→R2→R3 礁溪勤武           群組 11: 1 隊（單）
+Step 33-35: OPEN mixed  R1→R2→R3 羅冬柔術           群組 12: 1 隊（單）
+Step 36: ✓ 賽事結束</pre>
+
+    <div class="callout">
+      <strong>關鍵差異：</strong>每一隊都會連續跑完自己的 R1→R2→R3（EH/JH/SH/OPEN）或 A+B（EL/EM）才換下一隊。不再有「全部隊伍跑完 R1 再進入 R2」的舊行為。同一群組內隊伍依 Excel 場次（order 欄位）排序；群組之間依 Excel 中首次出現的列順序排序。
+    </div>
+
+    <h3>8.2 排名結果（範例計分下）</h3>
+    <p>假設所有裁判給分一致為 <code>[3,3,2,2,1]</code> 模式，各群組最終排名如下：</p>
+
+    <table>
+      <tr><th>群組</th><th>第 1 名</th><th>總分</th></tr>
+      <tr><td><span class="cat-badge cat-male">男子</span> <span class="tier-badge tier-EL">EL</span></td><td>柯林國小</td><td>58</td></tr>
+      <tr><td><span class="cat-badge cat-mixed">混合</span> <span class="tier-badge tier-EL">EL</span></td><td>大隱國小</td><td>58</td></tr>
+      <tr><td><span class="cat-badge cat-female">女子</span> <span class="tier-badge tier-EM">EM</span></td><td>柯林國小</td><td>116</td></tr>
+      <tr><td><span class="cat-badge cat-mixed">混合</span> <span class="tier-badge tier-EM">EM</span></td><td>大隱國小</td><td>116</td></tr>
+      <tr><td><span class="cat-badge cat-female">女子</span> <span class="tier-badge tier-EH">EH</span></td><td>柯林國小</td><td>285 (A=87, B=87, C=111)</td></tr>
+      <tr><td><span class="cat-badge cat-male">男子</span> <span class="tier-badge tier-EH">EH</span></td><td>柯林國小</td><td>285</td></tr>
+      <tr><td><span class="cat-badge cat-mixed">混合</span> <span class="tier-badge tier-EH">EH</span></td><td>柯林國小</td><td>285</td></tr>
+      <tr><td><span class="cat-badge cat-female">女子</span> <span class="tier-badge tier-JH">JH</span></td><td>國華國中</td><td>294 (含 VR 9)</td></tr>
+      <tr><td><span class="cat-badge cat-male">男子</span> <span class="tier-badge tier-JH">JH</span></td><td>羅東國中</td><td>389 (4 動作 + VR 9)</td></tr>
+      <tr><td><span class="cat-badge cat-mixed">混合</span> <span class="tier-badge tier-JH">JH</span></td><td>國華國中</td><td>294</td></tr>
+      <tr><td><span class="cat-badge cat-male">男子</span> <span class="tier-badge tier-SH">SH</span></td><td>礁溪勤武</td><td>389</td></tr>
+      <tr><td><span class="cat-badge cat-mixed">混合</span> <span class="tier-badge tier-OPEN">OPEN</span></td><td>羅冬柔術</td><td>294</td></tr>
+    </table>
+
+    <h3>8.3 匯出檔案結構</h3>
+    <p>結束後按下匯出，將產生 12 份 Excel 與 12 份 PDF：</p>
+    <pre class="flow">115錦標賽_男子組_國小低年級_成績明細.xlsx     ← EL/EM/EH 國小組
+115錦標賽_混合組_國小低年級_成績明細.xlsx        無 VR 欄位
+115錦標賽_女子組_國小中年級_成績明細.xlsx
+... (略)
+115錦標賽_男子組_青少年國中組_成績明細.xlsx    ← JH/SH/OPEN
+115錦標賽_男子組_青少年高中組_成績明細.xlsx        有 VR 欄位
+115錦標賽_混合組_公開組_成績明細.xlsx
+... (同名 PDF 各一份)</pre>
+  </section>
+
+  <!-- ================== §9 FAQ ================== -->
+  <section class="chapter" id="s9">
+    <h2><span class="num">§9</span>常見問題 FAQ</h2>
+
+    <div class="q">如果某個 (tier, category) 群組只有一隊報名，會怎樣？</div>
+    <div class="a">該隊伍會獨自完成所有動作評分。觀眾頁自動隱藏 R/G 標籤（顯示如 <code>MALE EH</code>），完成後系統自動推進到下一個非空群組。無需任何手動切換。</div>
+
+    <div class="q">EL 隊伍跑完 A1 之後 B1 怎麼開放？</div>
+    <div class="a">同一隊上台演完 A1 後，賽序裁判直接點「開放下一動作」即會看到 B1 為可選按鈕。EL/EM 採單輪連續演練，A 與 B 系列由同一隊伍一氣呵成完成，中間不換組。</div>
+
+    <div class="q">為什麼 EL 隊伍的觀眾頁排名表只看到 A1 和 B1 欄位？</div>
+    <div class="a">因為 EL（國小低年級）每系列僅 1 動作且無 C 系列。排名表動態依 tier 渲染欄位數：EL 顯示 A1/B1、EM 顯示 A1/A2/B1/B2、EH 顯示 A1-A3/B1-B3/C1-C3、JH/SH/OPEN 男子組顯示 A1-A4/B1-B4/C1-C4、女子/混合則 A1-A3/B1-B3/C1-C3。</div>
+
+    <div class="q">「分級」欄位的 Excel 可以填什麼？</div>
+    <div class="a">系統接受英文代碼（EL/EM/EH/JH/SH/OPEN/ELEM）或中文名稱（國小低年級、青少年國中組、公開組等）。下載「範本」按鈕的第二張工作表有完整對照表。</div>
+
+    <div class="q">既有「宜蘭縣運動會」的資料會不會被影響？</div>
+    <div class="a">不會。運動會 events 的 <code>meetingType</code> 自動為 <code>sports-day</code>、所有 teams 的 <code>tier</code> 為 <code>null</code>。排序退化為原本的 category-primary，所有計分、排名、觀眾顯示、匯出行為與升級前完全相同。</div>
+
+    <div class="q">VR 裁判可以對國小組評分嗎？</div>
+    <div class="a">不可以。錦標賽國小組（EL/EM/EH）不需要 VR 評分。VR 裁判進入這些隊伍的頁面會看到「此組別不需要 VR 評分」提示，所有評分按鈕與錯誤攻擊標記都停用。系統後端也會拒絕來自國小組的 VR 提交與錯誤攻擊請求。</div>
+
+    <div class="q">寢技預設時間在哪裡設定？</div>
+    <div class="a">系統依 Match.tier 自動套用：國小組（ELEM）= 2 分鐘、青少年國中（JH）= 3 分鐘、青少年高中（SH）= 3 分鐘、公開組（OPEN）= 5 分鐘。裁判可在賽前操作介面手動調整為其他值。</div>
+
+    <div class="q">中途有隊伍棄權怎麼處理？</div>
+    <div class="a">賽序裁判點「標記棄權」即可跳過該隊的 VR 等待條件。觀眾頁會顯示紅色「棄權」標籤。可隨時取消棄權回到正常流程。</div>
+
+    <div class="q">如果同一動作不小心開放錯了，可以修改嗎？</div>
+    <div class="a">5 位裁判一旦送出後分數不可修改。但若該動作整個被誤判為「錯誤攻擊」，VR 裁判可標記該動作為錯誤攻擊（國高中以上 tier 才有此功能），該動作分數會歸零並計入無效。</div>
+
+    <div class="q">服務怎麼啟動？</div>
+    <div class="a">使用 Docker Compose：<code>docker compose up --build</code>。或單獨啟動 MongoDB（<code>docker start jju-mongo</code>）+ 後端（<code>cd backend &amp;&amp; npm run dev</code>）+ 前端（<code>cd frontend &amp;&amp; npm start</code>）。</div>
+  </section>
+
+  </main>
+</div>
+
+<footer style="text-align:center;padding:24px 16px 40px;color:var(--muted);font-size:0.82rem;background:var(--bg)">
+  <p>宜蘭縣柔術錦標賽 — 雙人傳統演武 競賽流程手冊</p>
+  <p>系統版本 v3.0 ｜ 基於 <code>jujitsu-tournament-expansion</code> 變更實作</p>
+</footer>
+
+</body>
+</html>

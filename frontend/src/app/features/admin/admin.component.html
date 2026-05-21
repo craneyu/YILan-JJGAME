@@ -151,7 +151,8 @@
           }
         }
 
-        <!-- 組別順序設定 -->
+        <!-- 組別順序設定（錦標賽不適用：群組順序依 Excel 列順序） -->
+        @if (!isTournament()) {
         @if (editingCategoryOrderId() === selectedEvent()!._id) {
           <div
             class="bg-indigo-500/10 border border-indigo-400/30 rounded-xl p-3 mb-3 space-y-2">
@@ -309,6 +310,7 @@
               <fa-icon [icon]="faPen" class="text-xs"></fa-icon>
             </button>
           </div>
+        }
         }
 
         <!-- 新增隊伍表單 -->
