@@ -51,6 +51,7 @@ interface CreativeRankingItem {
   name: string;
   members: string[];
   category: string;
+  tier?: TeamTier | null;
   technicalTotal: number;
   artisticTotal: number;
   grandTotal: number;
@@ -61,7 +62,9 @@ interface CreativeRankingItem {
 }
 
 interface CategoryCreativeRanking {
+  groupKey: string; // `${category}:${tier ?? 'none'}`
   category: string;
+  tier: TeamTier | null;
   label: string;
   items: CreativeRankingItem[];
 }
@@ -186,18 +189,40 @@ export class AdminComponent implements OnInit {
   showCreativeRankings = signal(false);
   creativeRankingsLoading = signal(false);
   creativeRankingsByCat = computed<CategoryCreativeRanking[]>(() => {
-    const byCategory: Record<string, CreativeRankingItem[]> = {};
+    const categoryOrder = this.effectiveCategoryOrder(
+      this.selectedEvent(),
+      "Show",
+    );
+    const isTournament = this.isTournament();
+
+    // 依 (category, tier) 分群；sports-day 時 tier=null 將整 category 視為單一群組
+    const byGroup: Record<string, { category: string; tier: TeamTier | null; items: CreativeRankingItem[] }> = {};
     for (const item of this.creativeRankings()) {
-      if (!byCategory[item.category]) byCategory[item.category] = [];
-      byCategory[item.category].push(item);
+      const tier = (item.tier ?? null) as TeamTier | null;
+      const key = isTournament ? `${item.category}:${tier ?? "none"}` : `${item.category}:none`;
+      if (!byGroup[key]) byGroup[key] = { category: item.category, tier: isTournament ? tier : null, items: [] };
+      byGroup[key].items.push(item);
     }
-    return ["female", "male", "mixed"]
-      .filter((cat) => (byCategory[cat]?.length ?? 0) > 0)
-      .map((cat) => ({
-        category: cat,
-        label: this.categoryLabel(cat),
-        items: byCategory[cat],
-      }));
+
+    // 排序：先 category（依設定），再 tier（依固定順序）
+    const groupKeys = Object.keys(byGroup).sort((aKey, bKey) => {
+      const a = byGroup[aKey];
+      const b = byGroup[bKey];
+      const catA = categoryOrder.indexOf(a.category);
+      const catB = categoryOrder.indexOf(b.category);
+      const catDiff = (catA === -1 ? 999 : catA) - (catB === -1 ? 999 : catB);
+      if (catDiff !== 0) return catDiff;
+      const tierA = a.tier ? TIER_ORDER.indexOf(a.tier) : -1;
+      const tierB = b.tier ? TIER_ORDER.indexOf(b.tier) : -1;
+      return tierA - tierB;
+    });
+
+    return groupKeys.map((key) => {
+      const { category, tier, items } = byGroup[key];
+      const catLabel = this.categoryLabel(category);
+      const label = tier ? `${catLabel} ｜ ${TIER_LABEL[tier]}` : catLabel;
+      return { groupKey: key, category, tier, label, items };
+    });
   });
   rankingsByCat = computed<CategoryRanking[]>(() => {
     const categoryOrder = this.effectiveCategoryOrder(
@@ -917,15 +942,13 @@ export class AdminComponent implements OnInit {
       });
   }
 
-  exportCreativeExcel(category: string): void {
+  exportCreativeExcel(category: string, tier: TeamTier | null = null): void {
     const event = this.selectedEvent();
     if (!event || this.creativeRankings().length === 0) return;
-    const groups = this.creativeRankingsByCat().filter(
-      (g) => g.category === category,
+    const group = this.creativeRankingsByCat().find(
+      (g) => g.category === category && g.tier === tier,
     );
-    if (groups.length === 0) return;
-
-    const group = groups[0];
+    if (!group) return;
     const rows: (string | number)[][] = [];
     const merges: {
       s: { r: number; c: number };
@@ -1007,15 +1030,17 @@ export class AdminComponent implements OnInit {
       { wch: 24 },
     ];
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, group.label);
+    // sheet name 限制 31 字，避免 tier label 過長
+    const sheetName = group.label.slice(0, 31);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
     XLSX.writeFile(wb, `${event.name}_${group.label}_創意演武成績.xlsx`);
   }
 
-  printCreativePdf(category: string): void {
+  printCreativePdf(category: string, tier: TeamTier | null = null): void {
     const event = this.selectedEvent();
     if (!event || this.creativeRankings().length === 0) return;
     const groups = this.creativeRankingsByCat().filter(
-      (g) => g.category === category,
+      (g) => g.category === category && g.tier === tier,
     );
     const medalText = (rank: number) =>
       rank === 1 ? "金" : rank === 2 ? "銀" : rank === 3 ? "銅" : String(rank);

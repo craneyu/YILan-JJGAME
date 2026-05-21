@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import Team from '../models/Team';
+import Event from '../models/Event';
 import CreativeScore from '../models/CreativeScore';
 import CreativePenalty from '../models/CreativePenalty';
 import CreativeGameState from '../models/CreativeGameState';
@@ -10,6 +11,7 @@ interface TeamRankEntry {
   name: string;
   members: string[];
   category: string;
+  tier: string | null;
   technicalTotal: number;
   artisticTotal: number;
   grandTotal: number;
@@ -30,12 +32,15 @@ const PENALTY_LABEL: Record<string, string> = {
 export async function getCreativeRankings(req: Request, res: Response): Promise<void> {
   const eventId = req.params['id'] as string;
 
-  const [teams, allScores, allPenalties, gameState] = await Promise.all([
+  const [teams, allScores, allPenalties, gameState, event] = await Promise.all([
     Team.find({ eventId, competitionType: 'Show' }).lean(),
     CreativeScore.find({ eventId }).lean(),
     CreativePenalty.find({ eventId }).lean(),
     CreativeGameState.findOne({ eventId }).lean(),
+    Event.findById(eventId).lean(),
   ]);
+
+  const isTournament = event?.meetingType === 'tournament';
 
   const abstainedTeamIds = new Set(
     (gameState?.abstainedTeamIds ?? []).map((id) => id.toString())
@@ -51,12 +56,15 @@ export async function getCreativeRankings(req: Request, res: Response): Promise<
     );
     const isAbstained = abstainedTeamIds.has(teamId);
 
+    const tier = isTournament ? (team.tier ?? null) : null;
+
     if (judgeScores.length < 5) {
       return {
         teamId,
         name: team.name,
         members: team.members,
         category: team.category,
+        tier,
         technicalTotal: 0,
         artisticTotal: 0,
         grandTotal: 0,
@@ -81,25 +89,37 @@ export async function getCreativeRankings(req: Request, res: Response): Promise<
       name: team.name,
       members: team.members,
       category: team.category,
+      tier,
       ...calc,
       penaltyReasons,
       isAbstained,
     };
   });
 
-  // 棄權隊伍不計入排名；有效隊伍依組別分組，依 finalScore 降序排名
+  // 棄權隊伍不計入排名；有效隊伍依群組分組，依 finalScore 降序排名。
+  // 錦標賽：依 (category, tier) 群組；運動會：只依 category（tier 為 null）。
   const categories = ['female', 'male', 'mixed'];
   const flatRankings: TeamRankEntry[] = [];
 
-  for (const cat of categories) {
-    const catTeams = results.filter((t) => t.category === cat);
-    const activeTeams = catTeams
-      .filter((t) => !t.isAbstained)
-      .sort((a, b) => b.finalScore - a.finalScore);
-    const abstainedTeams = catTeams.filter((t) => t.isAbstained);
+  // 收集 tier 順序（與既有 TIER_ORDER 對齊），sports-day 時退化為 [null]
+  const tierOrder: (string | null)[] = isTournament
+    ? ['KID', 'EL', 'EM', 'EH', 'JH', 'SH', 'OPEN', null]
+    : [null];
 
-    activeTeams.forEach((t, idx) => flatRankings.push({ ...t, rank: idx + 1 }));
-    abstainedTeams.forEach((t) => flatRankings.push({ ...t, rank: 0 }));
+  for (const cat of categories) {
+    for (const tier of tierOrder) {
+      const groupTeams = results.filter(
+        (t) => t.category === cat && (t.tier ?? null) === tier,
+      );
+      if (groupTeams.length === 0) continue;
+      const activeTeams = groupTeams
+        .filter((t) => !t.isAbstained)
+        .sort((a, b) => b.finalScore - a.finalScore);
+      const abstainedTeams = groupTeams.filter((t) => t.isAbstained);
+
+      activeTeams.forEach((t, idx) => flatRankings.push({ ...t, rank: idx + 1 }));
+      abstainedTeams.forEach((t) => flatRankings.push({ ...t, rank: 0 }));
+    }
   }
 
   res.json({ success: true, data: flatRankings });

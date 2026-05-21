@@ -924,7 +924,7 @@
             <p class="text-white/40 text-center py-6">尚無成績資料</p>
           } @else {
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              @for (group of creativeRankingsByCat(); track group.category) {
+              @for (group of creativeRankingsByCat(); track group.groupKey) {
                 <div class="bg-white/5 border border-white/10 rounded-xl p-4">
                   <div class="flex items-center gap-2 mb-3">
                     <fa-icon
@@ -946,13 +946,13 @@
                     <div class="flex items-center gap-1.5 ml-auto">
                       <button
                         class="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 border border-emerald-400/30 rounded-lg px-2 py-0.5 transition-colors"
-                        (click)="exportCreativeExcel(group.category)">
+                        (click)="exportCreativeExcel(group.category, group.tier)">
                         <fa-icon [icon]="faDownload" class="text-xs"></fa-icon>
                         Excel
                       </button>
                       <button
                         class="flex items-center gap-1 text-xs text-rose-400 hover:text-rose-300 border border-rose-400/30 rounded-lg px-2 py-0.5 transition-colors"
-                        (click)="printCreativePdf(group.category)">
+                        (click)="printCreativePdf(group.category, group.tier)">
                         <fa-icon [icon]="faDownload" class="text-xs"></fa-icon>
                         PDF
                       </button>
