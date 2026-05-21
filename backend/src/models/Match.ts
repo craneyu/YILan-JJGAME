@@ -2,7 +2,7 @@ import mongoose, { Document, Schema } from "mongoose";
 
 export type MatchType = "ne-waza" | "fighting" | "contact";
 export type MatchCategory = "male" | "female" | "mixed";
-export type MatchTier = "ELEM" | "JH" | "SH" | "OPEN";
+export type MatchTier = "KID" | "EL" | "EM" | "EH" | "JH" | "SH" | "OPEN";
 export type MatchStatus =
   | "pending"
   | "in-progress"
@@ -20,6 +20,11 @@ export interface IMatchPlayer {
 export interface IMatchResult {
   winner: MatchWinner;
   method: MatchMethod;
+}
+
+export interface IMatchSource {
+  fromMatchNo: number;
+  resolved: boolean;
 }
 
 export interface IIppons {
@@ -56,6 +61,8 @@ export interface IMatch extends Document {
   bluePlayer: IMatchPlayer;
   status: MatchStatus;
   result?: IMatchResult;
+  redSource?: IMatchSource | null;
+  blueSource?: IMatchSource | null;
   isBye: boolean;
   scheduledOrder: number;
   createdAt: Date;
@@ -94,8 +101,8 @@ export interface IMatch extends Document {
 
 const MatchPlayerSchema = new Schema<IMatchPlayer>(
   {
-    name: { type: String, required: true },
-    teamName: { type: String, required: true },
+    name: { type: String, default: "" },
+    teamName: { type: String, default: "" },
   },
   { _id: false },
 );
@@ -108,6 +115,14 @@ const MatchResultSchema = new Schema<IMatchResult>(
       enum: ["judge", "submission", "dq", "full-ippon", "shido-dq", "knockdown", "effective-attack", "decision"],
       required: true,
     },
+  },
+  { _id: false },
+);
+
+const MatchSourceSchema = new Schema<IMatchSource>(
+  {
+    fromMatchNo: { type: Number, required: true, min: 1 },
+    resolved: { type: Boolean, default: false },
   },
   { _id: false },
 );
@@ -153,7 +168,7 @@ const MatchSchema = new Schema<IMatch>(
     },
     tier: {
       type: String,
-      enum: ["ELEM", "JH", "SH", "OPEN", null],
+      enum: ["KID", "EL", "EM", "EH", "JH", "SH", "OPEN", null],
       default: null,
     },
     weightClass: { type: String, required: true },
@@ -167,6 +182,8 @@ const MatchSchema = new Schema<IMatch>(
       default: "pending",
     },
     result: { type: MatchResultSchema },
+    redSource: { type: MatchSourceSchema, default: null },
+    blueSource: { type: MatchSourceSchema, default: null },
     isBye: { type: Boolean, default: false },
     scheduledOrder: { type: Number, required: true },
     foulCount: {

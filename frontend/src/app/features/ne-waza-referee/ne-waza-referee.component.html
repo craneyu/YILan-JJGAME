@@ -83,13 +83,29 @@
                 <span class="text-xs text-white/30">{{ match.weightClass }}</span>
               }
             </div>
+            @let listRed = displayRed(match);
+            @let listBlue = displayBlue(match);
             <div class="flex items-center gap-3">
-              <span class="text-red-300 font-semibold">{{ match.redPlayer.name }}</span>
+              <span
+                class="font-semibold"
+                [class.text-red-300]="!listRed.isPlaceholder"
+                [class.text-white\/40]="listRed.isPlaceholder"
+                [class.italic]="listRed.isPlaceholder"
+              >{{ listRed.text }}</span>
               <span class="text-white/30 text-sm">vs</span>
-              <span class="text-blue-300 font-semibold">{{ match.bluePlayer.name }}</span>
+              @if (match.isBye && !listBlue.text) {
+                <span class="text-white/40 text-sm italic">無對手</span>
+              } @else {
+                <span
+                  class="font-semibold"
+                  [class.text-blue-300]="!listBlue.isPlaceholder"
+                  [class.text-white\/40]="listBlue.isPlaceholder"
+                  [class.italic]="listBlue.isPlaceholder"
+                >{{ listBlue.text }}</span>
+              }
             </div>
             <div class="text-white/40 text-xs mt-0.5">
-              {{ match.redPlayer.teamName }} vs {{ match.bluePlayer.teamName }}
+              {{ listRed.teamName }} vs {{ listBlue.teamName }}
             </div>
           </div>
           <div class="ml-4 flex items-center gap-2">
@@ -136,6 +152,27 @@
           </button>
         </div>
 
+        @if (match.isBye && match.bluePlayer.name === "") {
+          <!-- Bye 場次：無對手，直接判紅方勝（不計時、不評分） -->
+          <div class="glass-card rounded-2xl p-8 text-center">
+            <div class="mb-4">
+              <div class="text-white/40 text-sm">本場無對手</div>
+              <div class="text-3xl font-bold text-red-300 mt-2">{{ match.redPlayer.name }}</div>
+              <div class="text-white/40 text-sm">{{ match.redPlayer.teamName }}</div>
+            </div>
+            @if (match.status === "completed") {
+              <div class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-green-500/20 text-green-300 border border-green-400/30">
+                <fa-icon [icon]="faLock" /> 已完成（紅方勝）
+              </div>
+            } @else {
+              <button
+                class="bg-red-600/80 hover:bg-red-500 active:scale-95 text-white font-bold px-8 py-4 rounded-2xl text-lg shadow-lg transition-all"
+                (click)="completeByeMatch()">
+                紅方勝
+              </button>
+            }
+          </div>
+        } @else {
         <!-- 計時器區塊 -->
         <div class="glass-card rounded-2xl p-4 mb-4 text-center">
           @if (!timerRunning()) {
@@ -336,6 +373,7 @@
             </div>
           }
         </div>
+        }
 
       </div>
     }

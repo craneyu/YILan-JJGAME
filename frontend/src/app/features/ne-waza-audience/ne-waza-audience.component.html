@@ -35,13 +35,7 @@
                 : "混合組"
           }}
           @if (match.tier) {
-            <span class="text-blue-300/90">{{
-              match.tier === "ELEM"
-                ? "國小組"
-                : match.tier === "JH"
-                  ? "國高中組"
-                  : "公開組"
-            }}</span>
+            <span class="text-blue-300/90">{{ tierLabel(match.tier) }}</span>
           }
           {{ match.weightClass }}
         </div>

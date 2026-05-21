@@ -22,7 +22,10 @@ export function getElementaryMotions(
 }
 
 const NE_WAZA_DEFAULT_SECONDS: Record<MatchTier, number> = {
-  ELEM: 120,
+  KID: 90,
+  EL: 120,
+  EM: 120,
+  EH: 120,
   JH: 180,
   SH: 180,
   OPEN: 300,

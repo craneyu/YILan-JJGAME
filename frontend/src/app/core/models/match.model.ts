@@ -20,7 +20,20 @@ export interface IIppons {
   p3: number;
 }
 
-export type MatchTier = 'ELEM' | 'JH' | 'OPEN';
+export type MatchTier = 'KID' | 'EL' | 'EM' | 'EH' | 'JH' | 'SH' | 'OPEN';
+
+export interface MatchSource {
+  fromMatchNo: number;
+  resolved: boolean;
+}
+
+export interface MatchAdvancementResolvedEvent {
+  matchId: string;
+  side: 'red' | 'blue';
+  playerName: string;
+  teamName: string;
+  fromMatchNo: number;
+}
 
 export interface Match {
   _id: string;
@@ -33,6 +46,8 @@ export interface Match {
   matchNo: number;
   redPlayer: MatchPlayer;
   bluePlayer: MatchPlayer;
+  redSource?: MatchSource | null;
+  blueSource?: MatchSource | null;
   status: MatchStatus;
   result?: MatchResult;
   isBye: boolean;

@@ -44,6 +44,21 @@ export class NeWazaAudienceComponent implements OnInit, OnDestroy {
   faExpand = faExpand;
   faCompress = faCompress;
 
+  private readonly TIER_LABEL_MAP: Record<string, string> = {
+    KID: "幼兒組",
+    EL: "國小低年級組",
+    EM: "國小中年級組",
+    EH: "國小高年級組",
+    JH: "青少年國中組",
+    SH: "青少年高中組",
+    OPEN: "公開組",
+  };
+
+  tierLabel(tier: string | null | undefined): string {
+    if (!tier) return "";
+    return this.TIER_LABEL_MAP[tier] ?? tier;
+  }
+
   eventId = signal("");
   activeMatch = signal<Match | null>(null);
   isFullscreen = signal(false);

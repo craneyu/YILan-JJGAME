@@ -124,6 +124,19 @@ The display SHALL listen to the following Socket.IO events on the event room:
 - `match:score-updated` → update red/blue scores, advantages, warnings displayed
 - `match:timer-updated` → update the countdown timer display
 - `match:ended` → show winner banner and stop timer
+- `match:advancement-resolved` → when the displayed match's `_id` matches the event payload's `matchId`, update the corresponding `redPlayer` or `bluePlayer` info shown to spectators
+
+The `match:advancement-resolved` payload SHALL have the TypeScript shape:
+
+```typescript
+interface MatchAdvancementResolvedPayload {
+  matchId: string;
+  side: "red" | "blue";
+  playerName: string;
+  teamName: string;
+  fromMatchNo: number;
+}
+```
 
 #### Scenario: Score update received
 
@@ -136,41 +149,45 @@ The display SHALL listen to the following Socket.IO events on the event room:
 - **THEN** a prominent winner banner appears: "🏆 紅方勝 (降伏勝)"
 - **AND** the timer stops
 
+#### Scenario: Advancement resolution updates currently displayed match
+
+- **GIVEN** the audience display is currently showing Match #16 with red column rendering placeholder `"3 勝者"`
+- **WHEN** the display receives `match:advancement-resolved` with `{ matchId: <#16 id>, side: "red", playerName: "陳冠茗", teamName: "Jabari", fromMatchNo: 3 }`
+- **THEN** the red player name and team name on the audience display SHALL update to `"陳冠茗"` / `"Jabari"` without requiring a manual reload
+
+#### Scenario: Advancement resolution for a different match is ignored on display
+
+- **GIVEN** the audience display is currently showing Match #5
+- **WHEN** the display receives `match:advancement-resolved` with `matchId` of Match #16
+- **THEN** the displayed Match #5 SHALL NOT change
+
 
 <!-- @trace
-source: add-ne-waza-scoring
-updated: 2026-03-09
+source: ne-waza-tournament-import
+updated: 2026-05-21
 code:
-  - docker-compose.yml
-  - backend/src/routes/matches.ts
-  - frontend/src/app/features/admin/admin-sport-selector/admin-sport-selector.component.html
-  - frontend/src/app/features/admin/match-management/match-management.component.html
-  - backend/src/models/User.ts
-  - frontend/src/app/app.config.ts
-  - frontend/src/app/features/admin/admin-sport-selector/admin-sport-selector.component.ts
-  - backend/src/models/Match.ts
-  - frontend/src/app/features/login/login.component.ts
-  - frontend/src/app/features/admin/admin.component.ts
-  - backend/src/controllers/matchController.ts
-  - frontend/src/app/core/services/socket.service.ts
   - frontend/src/app/features/match-audience/match-audience.component.html
-  - backend/src/index.ts
-  - backend/src/models/MatchScoreLog.ts
-  - frontend/src/app/features/match-audience/match-audience.component.ts
-  - frontend/src/app/core/services/auth.service.ts
-  - frontend/src/app/app.routes.ts
-  - SPEC/SPEC-v4.md
-  - frontend/src/app/features/login/login.component.html
-  - backend/src/controllers/matchScoreController.ts
-  - backend/src/sockets/index.ts
-  - frontend/src/app/features/match-referee/match-referee.component.ts
+  - frontend/src/app/core/utils/matchImport.ts
+  - frontend/src/app/features/admin/match-management/match-management.component.html
+  - backend/src/controllers/matchController.ts
   - frontend/src/app/features/admin/match-management/match-management.component.ts
+  - frontend/src/app/features/match-audience/match-audience.component.ts
+  - frontend/src/app/features/ne-waza-audience/ne-waza-audience.component.ts
   - frontend/src/app/core/models/match.model.ts
-  - frontend/src/app/features/admin/admin.component.html
-  - frontend/src/app/features/match-referee/match-referee.component.html
-  - frontend/src/app/core/interceptors/auth.interceptor.ts
-  - backend/src/seeds/initialUsers.ts
-  - backend/src/routes/matchScores.ts
+  - frontend/src/app/features/ne-waza-referee/ne-waza-referee.component.html
+  - backend/src/utils/matchPropagation.ts
+  - frontend/src/app/core/utils/matchDisplay.ts
+  - frontend/src/app/features/ne-waza-referee/ne-waza-referee.component.ts
+  - backend/src/sockets/index.ts
+  - backend/src/utils/tournament.ts
+  - backend/src/seeds/migrateNeWazaTier.ts
+  - frontend/src/app/core/services/socket.service.ts
+  - frontend/src/app/features/ne-waza-audience/ne-waza-audience.component.html
+  - backend/src/models/Match.ts
+tests:
+  - backend/src/utils/__test__/bulkCreateMatches.test.ts
+  - backend/src/utils/__test__/updateMatchPropagation.test.ts
+  - backend/src/utils/__test__/matchPropagation.test.ts
 -->
 
 ---

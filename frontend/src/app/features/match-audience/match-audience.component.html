@@ -72,9 +72,13 @@
         <!-- 左：姓名 + 傷停計時（同行） -->
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-3 md:gap-4 lg:gap-6 xl:gap-8 flex-wrap">
+            @let audRed = displayRed(match);
             <span
-              class="text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-black text-white leading-tight truncate">
-              {{ match.redPlayer.name }}
+              class="text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-black leading-tight truncate"
+              [class.text-white]="!audRed.isPlaceholder"
+              [class.text-white\/40]="audRed.isPlaceholder"
+              [class.italic]="audRed.isPlaceholder">
+              {{ audRed.text }}
             </span>
             @if (redInjuryVisible()) {
               <span
@@ -91,7 +95,7 @@
           </div>
           <div
             class="text-white/60 text-base md:text-xl lg:text-2xl xl:text-3xl 2xl:text-4xl font-semibold mt-1 truncate">
-            {{ match.redPlayer.teamName }}
+            {{ audRed.teamName }}
           </div>
         </div>
 
@@ -180,9 +184,13 @@
         <!-- 左：姓名 + 傷停計時（同行） -->
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-3 md:gap-4 lg:gap-6 xl:gap-8 flex-wrap">
+            @let audBlue = displayBlue(match);
             <span
-              class="text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-black text-white leading-tight truncate">
-              {{ match.bluePlayer.name }}
+              class="text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-black leading-tight truncate"
+              [class.text-white]="!audBlue.isPlaceholder"
+              [class.text-white\/40]="audBlue.isPlaceholder"
+              [class.italic]="audBlue.isPlaceholder">
+              {{ audBlue.text }}
             </span>
             @if (blueInjuryVisible()) {
               <span
@@ -199,7 +207,7 @@
           </div>
           <div
             class="text-white/60 text-base md:text-xl lg:text-2xl xl:text-3xl 2xl:text-4xl font-semibold mt-1 truncate">
-            {{ match.bluePlayer.teamName }}
+            {{ audBlue.teamName }}
           </div>
         </div>
 

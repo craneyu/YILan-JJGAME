@@ -32,6 +32,7 @@ import {
   MatchStatus,
   MatchMethod,
 } from "../../core/models/match.model";
+import { displayPlayerName } from "../../core/utils/matchDisplay";
 import {
   CategoryGroup,
   groupMatchesByCategory,
@@ -151,6 +152,59 @@ export class NeWazaRefereeComponent implements OnInit, OnDestroy {
     [...this.neWazaMatches()].sort((a, b) => a.scheduledOrder - b.scheduledOrder),
   );
 
+  displayRed(m: Match) {
+    return displayPlayerName(m.redPlayer, m.redSource);
+  }
+
+  displayBlue(m: Match) {
+    return displayPlayerName(m.bluePlayer, m.blueSource);
+  }
+
+  /** Bye 場次（藍方空白）直接判紅方勝完賽，不啟動計時器 */
+  completeByeMatch(): void {
+    const match = this.activeMatch();
+    if (!match || !match.isBye || match.bluePlayer.name !== "") return;
+    this.api
+      .patch<{ success: boolean; data: Match }>(
+        `/events/${this.eventId()}/matches/${match._id}`,
+        {
+          status: "completed",
+          result: { winner: "red", method: "judge" },
+        },
+      )
+      .subscribe({
+        next: (res) => {
+          this.matches.update((ms) =>
+            ms.map((m) => (m._id === res.data._id ? res.data : m)),
+          );
+          this.socket.emitMatchEnded(
+            this.eventId(),
+            match._id,
+            "red",
+            "judge",
+          );
+          Swal.fire({
+            icon: "success",
+            title: "場次結束 — 紅方勝",
+            text: "無對手，紅方自動晉級",
+            background: "#1e293b",
+            color: "#fff",
+            confirmButtonColor: "#3b82f6",
+          });
+        },
+        error: (err) => {
+          Swal.fire({
+            icon: "error",
+            title: "判勝失敗",
+            text: err.error?.error ?? "請重試",
+            background: "#1e293b",
+            color: "#fff",
+            confirmButtonColor: "#3b82f6",
+          });
+        },
+      });
+  }
+
   displayTimer = computed(() => {
     const s = this.timerRemaining();
     const m = Math.floor(s / 60);
@@ -183,6 +237,31 @@ export class NeWazaRefereeComponent implements OnInit, OnDestroy {
       this.socket.joinEvent(eid);
       this.loadMatches();
     }
+    this.subs.add(
+      this.socket.matchAdvancementResolved$.subscribe((evt) => {
+        this.matches.update((list) =>
+          list.map((m) => {
+            if (m._id !== evt.matchId) return m;
+            if (evt.side === "red") {
+              return {
+                ...m,
+                redPlayer: { name: evt.playerName, teamName: evt.teamName },
+                redSource: m.redSource
+                  ? { ...m.redSource, resolved: true }
+                  : m.redSource,
+              };
+            }
+            return {
+              ...m,
+              bluePlayer: { name: evt.playerName, teamName: evt.teamName },
+              blueSource: m.blueSource
+                ? { ...m.blueSource, resolved: true }
+                : m.blueSource,
+            };
+          }),
+        );
+      }),
+    );
   }
 
   @HostListener("document:keydown.space", ["$event"])

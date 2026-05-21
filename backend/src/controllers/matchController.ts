@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import Match, { MatchStatus, MatchTier } from "../models/Match";
 import Event from "../models/Event";
 import { getNeWazaDefaultDurationSeconds } from "../utils/tournament";
+import { propagateMatchWinner } from "../utils/matchPropagation";
+import { broadcast } from "../sockets/index";
 
 const VALID_TRANSITIONS: Record<MatchStatus, MatchStatus[]> = {
   pending: ["in-progress"],
@@ -58,7 +60,7 @@ export async function createMatch(req: Request, res: Response): Promise<void> {
   if (isTournamentNeWaza && !tier) {
     res.status(400).json({
       success: false,
-      error: "錦標賽寢技場次必須指定 tier（ELEM / JH / OPEN）",
+      error: "錦標賽寢技場次必須指定 tier（KID / EL / EM / EH / JH / SH / OPEN）",
     });
     return;
   }
@@ -169,6 +171,7 @@ export async function updateMatch(req: Request, res: Response): Promise<void> {
   }
 
   const { status, result, ...otherFields } = req.body;
+  const previousStatus = match.status;
 
   // 狀態機：裁判端只能依合法轉移更新狀態
   if (status !== undefined) {
@@ -184,7 +187,13 @@ export async function updateMatch(req: Request, res: Response): Promise<void> {
     }
 
     const allowed = VALID_TRANSITIONS[match.status];
-    if (!allowed.includes(status as MatchStatus)) {
+    const isByeShortcut =
+      match.status === "pending" &&
+      status === "completed" &&
+      match.isBye === true &&
+      match.bluePlayer.name === "";
+
+    if (!allowed.includes(status as MatchStatus) && !isByeShortcut) {
       res.status(409).json({
         success: false,
         error: `不允許從 ${match.status} 轉移至 ${status}`,
@@ -218,6 +227,28 @@ export async function updateMatch(req: Request, res: Response): Promise<void> {
   }
 
   await match.save();
+
+  // Propagation：偵測「非 completed → completed」轉移且 result.winner 已設定時，
+  // 自動將勝者寫入所有引用此場的下游場次（redSource/blueSource）。
+  const justCompleted =
+    previousStatus !== "completed" &&
+    match.status === "completed" &&
+    match.result?.winner;
+  if (justCompleted) {
+    const winnerSide = match.result!.winner;
+    const winnerPlayer =
+      winnerSide === "red" ? match.redPlayer : match.bluePlayer;
+    const targets = await propagateMatchWinner({
+      eventId: String(match.eventId),
+      completedMatchNo: match.matchNo,
+      winnerName: winnerPlayer.name,
+      winnerTeamName: winnerPlayer.teamName,
+    });
+    for (const target of targets) {
+      broadcast.matchAdvancementResolved(String(match.eventId), target);
+    }
+  }
+
   res.json({ success: true, data: match });
 }
 

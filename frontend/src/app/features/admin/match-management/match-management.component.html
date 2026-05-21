@@ -210,11 +210,27 @@
           <div class="flex items-center gap-3">
             <span class="text-white/40 text-xs w-8 text-right flex-shrink-0">{{ m.scheduledOrder }}</span>
             <div class="flex-1 flex items-center gap-2 min-w-0">
-              <span class="text-red-300 font-medium text-sm truncate">{{ m.redPlayer.name }}</span>
-              <span class="text-white/30 text-xs flex-shrink-0">{{ m.redPlayer.teamName }}</span>
+              @let red = displayRed(m);
+              @let blue = displayBlue(m);
+              <span
+                class="font-medium text-sm truncate"
+                [class.text-red-300]="!red.isPlaceholder"
+                [class.text-white\/40]="red.isPlaceholder"
+                [class.italic]="red.isPlaceholder"
+              >{{ red.text }}</span>
+              <span class="text-white/30 text-xs flex-shrink-0">{{ red.teamName }}</span>
               <span class="text-white/40 text-xs flex-shrink-0">vs</span>
-              <span class="text-blue-300 font-medium text-sm truncate">{{ m.bluePlayer.name }}</span>
-              <span class="text-white/30 text-xs flex-shrink-0">{{ m.bluePlayer.teamName }}</span>
+              @if (m.isBye && !blue.text) {
+                <span class="text-white/40 text-xs flex-shrink-0 italic">無對手</span>
+              } @else {
+                <span
+                  class="font-medium text-sm truncate"
+                  [class.text-blue-300]="!blue.isPlaceholder"
+                  [class.text-white\/40]="blue.isPlaceholder"
+                  [class.italic]="blue.isPlaceholder"
+                >{{ blue.text }}</span>
+                <span class="text-white/30 text-xs flex-shrink-0">{{ blue.teamName }}</span>
+              }
             </div>
             @if (sortMode() === 'order') {
               <span class="flex-shrink-0 text-xs text-white/30">{{ m.weightClass }}</span>

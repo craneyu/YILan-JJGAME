@@ -222,6 +222,14 @@ export interface MatchEndedEvent {
   method: "judge" | "submission" | "dq";
 }
 
+export interface MatchAdvancementResolvedEvent {
+  matchId: string;
+  side: "red" | "blue";
+  playerName: string;
+  teamName: string;
+  fromMatchNo: number;
+}
+
 @Injectable({ providedIn: "root" })
 export class SocketService {
   private socket: Socket;
@@ -355,6 +363,13 @@ export class SocketService {
 
   get matchEnded$(): Observable<MatchEndedEvent> {
     return fromEvent<MatchEndedEvent>(this.socket, "match:ended");
+  }
+
+  get matchAdvancementResolved$(): Observable<MatchAdvancementResolvedEvent> {
+    return fromEvent<MatchAdvancementResolvedEvent>(
+      this.socket,
+      "match:advancement-resolved",
+    );
   }
 
   // ── 柔術場次 emit（裁判端發送）──

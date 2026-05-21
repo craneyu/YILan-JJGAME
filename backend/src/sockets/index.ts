@@ -244,6 +244,18 @@ export const broadcast = {
   matchTimerAdjusted(eventId: string, data: object) {
     getIO().to(eventId).emit("match:timer-adjusted", data);
   },
+  matchAdvancementResolved(
+    eventId: string,
+    data: {
+      matchId: string;
+      side: "red" | "blue";
+      playerName: string;
+      teamName: string;
+      fromMatchNo: number;
+    },
+  ) {
+    getIO().to(eventId).emit("match:advancement-resolved", data);
+  },
   // Contact 亮牌計分事件
   contactFoulUpdated(eventId: string, data: object) {
     getIO().to(eventId).emit("match:contact-foul-updated", data);

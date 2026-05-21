@@ -28,6 +28,7 @@ import {
 } from "../../core/services/socket.service";
 import { ApiService } from "../../core/services/api.service";
 import { Match } from "../../core/models/match.model";
+import { displayPlayerName } from "../../core/utils/matchDisplay";
 
 @Component({
   selector: "app-match-audience",
@@ -44,6 +45,14 @@ export class MatchAudienceComponent implements OnInit, OnDestroy {
 
   faExpand = faExpand;
   faCompress = faCompress;
+
+  displayRed(m: Match) {
+    return displayPlayerName(m.redPlayer, m.redSource);
+  }
+
+  displayBlue(m: Match) {
+    return displayPlayerName(m.bluePlayer, m.blueSource);
+  }
 
   eventId = signal("");
   activeMatch = signal<Match | null>(null);
@@ -168,6 +177,31 @@ export class MatchAudienceComponent implements OnInit, OnDestroy {
         this.timerPaused.set(true);
         this.matchResult.set({ winner: e.winner, method: e.method });
         this.fullIpponOverlay.set(false); // 7.1: dismiss overlay on match ended
+      }),
+    );
+
+    // ── 完賽 propagation：當前顯示場次的紅/藍方來自上游時，即時更新 ──
+    this.subs.add(
+      this.socket.matchAdvancementResolved$.subscribe((evt) => {
+        const m = this.activeMatch();
+        if (!m || m._id !== evt.matchId) return;
+        if (evt.side === "red") {
+          this.activeMatch.set({
+            ...m,
+            redPlayer: { name: evt.playerName, teamName: evt.teamName },
+            redSource: m.redSource
+              ? { ...m.redSource, resolved: true }
+              : m.redSource,
+          });
+        } else {
+          this.activeMatch.set({
+            ...m,
+            bluePlayer: { name: evt.playerName, teamName: evt.teamName },
+            blueSource: m.blueSource
+              ? { ...m.blueSource, resolved: true }
+              : m.blueSource,
+          });
+        }
       }),
     );
 

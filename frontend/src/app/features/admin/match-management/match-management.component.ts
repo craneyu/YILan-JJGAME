@@ -27,8 +27,13 @@ import { AuthService } from "../../../core/services/auth.service";
 import Swal from "sweetalert2";
 import * as XLSX from "xlsx";
 import { ApiService } from "../../../core/services/api.service";
+import { SocketService } from "../../../core/services/socket.service";
 import { Match, MatchCategory } from "../../../core/models/match.model";
 import { groupMatchesByCategory } from "../../../core/utils/match-grouping";
+import { isParseError, parseMatchRow } from "../../../core/utils/matchImport";
+import { displayPlayerName } from "../../../core/utils/matchDisplay";
+import { DestroyRef } from "@angular/core";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 
 const SWAL_DARK = { background: "#1e293b", color: "#fff" } as const;
 
@@ -79,6 +84,8 @@ export class MatchManagementComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private auth = inject(AuthService);
+  private socket = inject(SocketService);
+  private destroyRef = inject(DestroyRef);
 
   faArrowLeft = faArrowLeft;
   faDownload = faDownload;
@@ -126,14 +133,52 @@ export class MatchManagementComponent implements OnInit {
     [...this.matches()].sort((a, b) => a.scheduledOrder - b.scheduledOrder),
   );
 
+  displayRed(m: Match) {
+    return displayPlayerName(m.redPlayer, m.redSource);
+  }
+
+  displayBlue(m: Match) {
+    return displayPlayerName(m.bluePlayer, m.blueSource);
+  }
+
   ngOnInit(): void {
     const type = this.route.snapshot.params["matchType"] as string;
     this.matchType.set(type);
     this.eventId = this.route.snapshot.params["eventId"] as string;
     this.api.get<{ success: boolean; data: EventItem }>(`/events/${this.eventId}`).subscribe({
-      next: (res) => this.currentEvent.set(res.data),
+      next: (res) => {
+        this.currentEvent.set(res.data);
+        this.socket.joinEvent(res.data._id);
+      },
     });
     this.loadMatches(this.eventId);
+
+    // 監聽 propagation 事件：場次完賽後若有下游引用此場，下游姓名即時更新
+    this.socket.matchAdvancementResolved$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((evt) => {
+        this.matches.update((list) =>
+          list.map((m) => {
+            if (m._id !== evt.matchId) return m;
+            if (evt.side === "red") {
+              return {
+                ...m,
+                redPlayer: { name: evt.playerName, teamName: evt.teamName },
+                redSource: m.redSource
+                  ? { ...m.redSource, resolved: true }
+                  : m.redSource,
+              };
+            }
+            return {
+              ...m,
+              bluePlayer: { name: evt.playerName, teamName: evt.teamName },
+              blueSource: m.blueSource
+                ? { ...m.blueSource, resolved: true }
+                : m.blueSource,
+            };
+          }),
+        );
+      });
   }
 
   private loadMatches(eventId: string): void {
@@ -350,10 +395,19 @@ export class MatchManagementComponent implements OnInit {
   }
 
   downloadTemplate(): void {
-    const header = ["項目", "組別", "量級", "回合", "場次序", "紅方姓名", "紅方隊名", "藍方姓名", "藍方隊名"];
-    const sample = [this.matchType(), "male", "-62kg", "1", "1", "張三", "A隊", "李四", "B隊"];
-    const ws = XLSX.utils.aoa_to_sheet([header, sample]);
-    ws["!cols"] = header.map(() => ({ wch: 12 }));
+    const isNeWaza = this.matchType() === "ne-waza";
+    const header = isNeWaza
+      ? ["項目", "組別", "分級", "量級", "回合", "場次序", "紅方姓名", "紅方隊名", "藍方姓名", "藍方隊名"]
+      : ["項目", "組別", "量級", "回合", "場次序", "紅方姓名", "紅方隊名", "藍方姓名", "藍方隊名"];
+    const samples = isNeWaza
+      ? [
+          [this.matchType(), "male", "國小低年級組", "–26公斤級", "1", "1", "張三", "A隊", "", ""],
+          [this.matchType(), "male", "國小低年級組", "–26公斤級", "1", "3", "李四", "B隊", "王五", "C隊"],
+          [this.matchType(), "male", "國小低年級組", "–26公斤級", "1", "16", "3勝", "", "趙六", "D隊"],
+        ]
+      : [[this.matchType(), "male", "-62kg", "1", "1", "張三", "A隊", "李四", "B隊"]];
+    const ws = XLSX.utils.aoa_to_sheet([header, ...samples]);
+    ws["!cols"] = header.map(() => ({ wch: 14 }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "賽程範本");
     XLSX.writeFile(wb, `${this.typeLabel()}賽程匯入範本.xlsx`);
@@ -444,8 +498,7 @@ export class MatchManagementComponent implements OnInit {
 
   private parseAndImport(file: File, ev: EventItem, existingOrders: number[]): void {
     const existingSet = new Set(existingOrders);
-    const TYPE_MAP: Record<string, string> = { "ne-waza": "ne-waza", fighting: "fighting", contact: "contact" };
-    const CAT_MAP: Record<string, string> = { male: "male", female: "female", mixed: "mixed", 男: "male", 女: "female", 混合: "mixed" };
+    const currentType = this.matchType() as "ne-waza" | "fighting" | "contact";
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -453,46 +506,82 @@ export class MatchManagementComponent implements OnInit {
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
         const wb = XLSX.read(data, { type: "array" });
         const ws = wb.Sheets[wb.SheetNames[0]];
-        const rows: Array<Record<string, string>> = XLSX.utils.sheet_to_json(ws, { defval: "" });
+        const rows: Array<Record<string, string | number>> = XLSX.utils.sheet_to_json(ws, { defval: "" });
 
-        const currentType = this.matchType();
-        const allMatches = rows.map((row, i) => ({
-          matchType: TYPE_MAP[String(row["項目"] ?? row["matchType"] ?? "").toLowerCase().trim()] ?? currentType,
-          category: CAT_MAP[String(row["組別"] ?? row["category"] ?? "").toLowerCase().trim()] ?? "male",
-          weightClass: String(row["量級"] ?? row["weightClass"] ?? "").trim(),
-          round: Number(row["回合"] ?? row["round"] ?? 1),
-          matchNo: i + 1,
-          scheduledOrder: Number(row["場次序"] ?? row["scheduledOrder"] ?? i + 1),
-          redPlayer: { name: String(row["紅方姓名"] ?? "").trim(), teamName: String(row["紅方隊名"] ?? "").trim() },
-          bluePlayer: { name: String(row["藍方姓名"] ?? "").trim(), teamName: String(row["藍方隊名"] ?? "").trim() },
-          isBye: false,
-        }));
+        const errors: Array<{ row: number; error: string }> = [];
+        const validMatches: ReturnType<typeof parseMatchRow>[] = [];
+        rows.forEach((row, i) => {
+          const parsed = parseMatchRow(row, currentType);
+          if (isParseError(parsed)) {
+            errors.push({ row: i + 2, error: parsed.error });
+          } else {
+            validMatches.push(parsed);
+          }
+        });
 
-        const skipped = allMatches.filter((m) => existingSet.has(m.scheduledOrder));
-        const toImport = allMatches.filter((m) => !existingSet.has(m.scheduledOrder));
+        const skipped = validMatches.filter(
+          (m) => !isParseError(m) && existingSet.has(m.scheduledOrder),
+        );
+        const toImport = validMatches.filter(
+          (m) => !isParseError(m) && !existingSet.has(m.scheduledOrder),
+        );
+
+        const showErrors = async () => {
+          if (errors.length === 0) return;
+          const lines = errors
+            .slice(0, 20)
+            .map((e) => `第 ${e.row} 列：${e.error}`)
+            .join('\n');
+          const more = errors.length > 20 ? `\n…還有 ${errors.length - 20} 列錯誤` : "";
+          await Swal.fire({
+            icon: "warning",
+            title: `${errors.length} 列匯入錯誤`,
+            text: `${lines}${more}`,
+            ...SWAL_DARK,
+            confirmButtonColor: "#3b82f6",
+          });
+        };
 
         if (toImport.length === 0) {
           this.importLoading.set(false);
-          Swal.fire({
-            icon: "info",
-            title: "無新增資料",
-            text: `所有 ${skipped.length} 筆場次序號均已存在，沒有可匯入的新資料。`,
-            ...SWAL_DARK,
-            confirmButtonColor: "#3b82f6",
+          void showErrors().then(() => {
+            Swal.fire({
+              icon: "info",
+              title: "無新增資料",
+              text:
+                errors.length > 0
+                  ? `${errors.length} 列無效，${skipped.length} 列重複，無可匯入資料。`
+                  : `所有 ${skipped.length} 筆場次序號均已存在。`,
+              ...SWAL_DARK,
+              confirmButtonColor: "#3b82f6",
+            });
           });
           return;
         }
 
         this.api
-          .post<{ success: boolean; count: number; error?: string }>(`/events/${ev._id}/matches/bulk`, toImport)
+          .post<{ success: boolean; count: number; error?: string }>(
+            `/events/${ev._id}/matches/bulk`,
+            toImport,
+          )
           .subscribe({
             next: (res) => {
               this.importLoading.set(false);
               if (res.success) {
-                let title = `成功匯入 ${res.count} 筆賽程`;
-                if (skipped.length > 0) title += `，略過 ${skipped.length} 筆重複場次`;
-                Swal.fire({ icon: "success", title, toast: true, position: "top-end", showConfirmButton: false, timer: 3000 });
-                this.loadMatches(ev._id);
+                void showErrors().then(() => {
+                  let title = `成功匯入 ${res.count} 筆賽程`;
+                  if (skipped.length > 0) title += `，略過 ${skipped.length} 筆重複場次`;
+                  if (errors.length > 0) title += `，${errors.length} 列錯誤`;
+                  Swal.fire({
+                    icon: errors.length > 0 ? "warning" : "success",
+                    title,
+                    toast: true,
+                    position: "top-end",
+                    showConfirmButton: false,
+                    timer: 3000,
+                  });
+                  this.loadMatches(ev._id);
+                });
               }
             },
             error: (err) => {
