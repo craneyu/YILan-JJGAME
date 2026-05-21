@@ -84,8 +84,11 @@ export async function nextTeam(req: Request, res: Response): Promise<void> {
     CreativeScore.find({ eventId }).lean(),
   ]);
 
-  const categoryOrder = resolveCategoryOrder(event, 'Show');
-  const sortedTeams = sortTeams(allTeams, categoryOrder);
+  // 錦標賽：依 Excel 列順序（team.order 升冪）；運動會：保留既有 sortTeams + categoryOrder 行為
+  const isTournament = event?.meetingType === 'tournament';
+  const sortedTeams = isTournament
+    ? [...allTeams].sort((a, b) => a.order - b.order)
+    : sortTeams(allTeams, resolveCategoryOrder(event, 'Show'));
 
   // 計算已完賽隊伍（有 5 筆評分即視為完賽）
   const scoreCountByTeam = new Map<string, number>();
