@@ -95,8 +95,31 @@ docker load < images.tar.gz
 echo "      映像載入完成"
 
 # 啟動所有服務
-echo "[3/3] 啟動所有服務..."
+echo "[3/4] 啟動所有服務..."
 docker compose up -d
+
+# 等 mongo healthcheck pass + backend 起來再跑 migration
+echo "[4/4] 等待 MongoDB 就緒並執行 schema migration..."
+BACKEND_SVC=$(docker compose ps --format json backend 2>/dev/null | head -1 | grep -o '"Name":"[^"]*"' | head -1 | cut -d'"' -f4)
+if [ -z "$BACKEND_SVC" ]; then
+  BACKEND_SVC=$(docker compose ps -q backend | head -1)
+fi
+# 輪詢 mongo healthcheck（最多 60 秒）
+for i in $(seq 1 30); do
+  if docker compose exec -T mongo mongosh --quiet --eval "db.adminCommand('ping').ok" 2>/dev/null | grep -q "^1$"; then
+    echo "      MongoDB 就緒"
+    break
+  fi
+  sleep 2
+done
+
+# 跑一次性 Team schema migration（idempotent，已升級的資料會自動 skip）
+echo "      執行 Team.members IMember[] migration..."
+if docker compose exec -T backend node dist/seeds/migrateMembersToObjects.js 2>&1; then
+  echo "      Migration 完成"
+else
+  echo "      ⚠️  Migration 失敗（如果是全新部署可忽略；舊資料部署請手動執行）"
+fi
 
 echo ""
 echo "✅ 啟動完成！"
@@ -109,6 +132,8 @@ echo "   管理員：admin / admin123"
 echo "   計分裁判：judge1~judge5 / judge123"
 echo "   VR 裁判：vr / vr123"
 echo "   賽序裁判：seq / seq123"
+echo "   場次裁判：match1 / match1"
+echo "   檢錄員：checkin / checkin123"
 echo "   觀眾：audience / audience123"
 echo ""
 echo "停止服務：docker compose down"
