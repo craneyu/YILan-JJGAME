@@ -1,4 +1,17 @@
-import { Match, MatchCategory } from "../models/match.model";
+import { Match, MatchCategory, MatchStatus } from "../models/match.model";
+
+function statusSortPriority(status: MatchStatus): number {
+  if (status === "completed") return 2;
+  if (status === "pending") return 1;
+  return 0;
+}
+
+function compareByStatusThenOrder(a: Match, b: Match): number {
+  const pa = statusSortPriority(a.status);
+  const pb = statusSortPriority(b.status);
+  if (pa !== pb) return pa - pb;
+  return a.scheduledOrder - b.scheduledOrder;
+}
 
 export interface WeightGroup {
   weightClass: string;
@@ -72,7 +85,7 @@ export function groupMatchesByCategory(matches: Match[]): CategoryGroup[] {
       .sort(([wA], [wB]) => getWeightOrder(cat, wA) - getWeightOrder(cat, wB))
       .map(([weightClass, wMatches]) => ({
         weightClass,
-        matches: wMatches.slice().sort((a, b) => a.scheduledOrder - b.scheduledOrder),
+        matches: wMatches.slice().sort(compareByStatusThenOrder),
       }));
 
     result.push({ category: cat, label: CATEGORY_LABELS[cat], weightGroups });

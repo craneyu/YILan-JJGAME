@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import CreativeGameState from '../models/CreativeGameState';
 import CreativeScore from '../models/CreativeScore';
 import CreativePenalty from '../models/CreativePenalty';
-import Team from '../models/Team';
+import Team, { memberNames } from '../models/Team';
 import Event from '../models/Event';
 import { broadcast } from '../sockets/index';
 import { sortTeams, resolveCategoryOrder } from '../utils/teamSort';
@@ -39,7 +39,7 @@ export async function openScoring(req: Request, res: Response): Promise<void> {
     eventId,
     teamId,
     teamName: team.name,
-    members: team.members,
+    members: memberNames(team.members),
     category: team.category,
     tier: team.tier ?? null,
   });
@@ -188,7 +188,7 @@ export async function getCreativeState(req: Request, res: Response): Promise<voi
     const team = await Team.findById(state.currentTeamId).lean();
     if (team) {
       currentTeamName = team.name;
-      currentMembers = team.members;
+      currentMembers = memberNames(team.members);
       currentCategory = team.category;
       currentTier = team.tier ?? null;
     }

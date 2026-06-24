@@ -292,8 +292,8 @@ export class LoginComponent implements OnInit {
 
   /** 登入後決定競賽類型並導向（availableTypes determined from user's event） */
   private resolveTypeAndNavigate(eventId: string, role: string): void {
-    // match_referee 與演武競賽類型（Duo/Show）無關，直接導向
-    if (role === "match_referee") {
+    // match_referee 與 check_in_officer 與演武競賽類型（Duo/Show）無關，直接導向
+    if (role === "match_referee" || role === "check_in_officer") {
       this.navigateByRole(role);
       return;
     }
@@ -357,6 +357,7 @@ export class LoginComponent implements OnInit {
       admin: "/admin",
       audience: "/audience-select",
       match_referee: "/referee",
+      check_in_officer: "/check-in",
     };
     this.router.navigate([routeMap[role] ?? "/audience-select"]);
   }

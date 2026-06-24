@@ -41,6 +41,7 @@ const users = [
   { username: "seq", password: "seq123", role: "sequence_judge" as const },
   { username: "audience", password: "audience123", role: "audience" as const },
   { username: "match1", password: "match1", role: "match_referee" as const },
+  { username: "checkin", password: "checkin123", role: "check_in_officer" as const },
 ];
 
 // 可被 index.ts 引用，在 MongoDB 已連線的情況下執行種子

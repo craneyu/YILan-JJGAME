@@ -275,4 +275,11 @@ export const broadcast = {
   contactCancelWinner(eventId: string, data: object) {
     getIO().to(eventId).emit("match:contact-cancel-winner", data);
   },
+  // 檢錄 / 過磅事件
+  participantStatusChanged(eventId: string, data: object) {
+    getIO().to(eventId).emit("participant:status-changed", data);
+  },
+  matchForfeitApplied(eventId: string, data: object) {
+    getIO().to(eventId).emit("match:forfeit-applied", data);
+  },
 };

@@ -172,6 +172,7 @@ export class NeWazaAudienceComponent implements OnInit, OnDestroy {
         if (!m || m._id !== e.matchId) return;
         this.timerPaused.set(true);
         this.matchResult.set({ winner: e.winner, method: e.method });
+        this.previousTimerValue = -1;
       }),
     );
 
@@ -274,6 +275,7 @@ export class NeWazaAudienceComponent implements OnInit, OnDestroy {
   }
 
   private loadActiveMatch(eventId: string): void {
+    this.previousTimerValue = -1;
     this.api
       .get<{ success: boolean; data: Match[] }>(`/events/${eventId}/matches?matchType=ne-waza`)
       .subscribe({

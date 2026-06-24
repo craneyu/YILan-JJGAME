@@ -35,6 +35,10 @@ import {
 import { displayPlayerName } from "../../core/utils/matchDisplay";
 import { tierLabel } from "../../core/utils/tierLabel";
 import {
+  ParticipantBadgeComponent,
+  MemberStatus,
+} from "../../shared/participant-badge.component";
+import {
   CategoryGroup,
   groupMatchesByCategory,
 } from "../../core/utils/match-grouping";
@@ -66,7 +70,7 @@ interface ScoreEntry {
 @Component({
   selector: "app-ne-waza-referee",
   standalone: true,
-  imports: [CommonModule, FaIconComponent],
+  imports: [CommonModule, FaIconComponent, ParticipantBadgeComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./ne-waza-referee.component.html",
 })
@@ -92,6 +96,36 @@ export class NeWazaRefereeComponent implements OnInit, OnDestroy {
   matches = signal<Match[]>([]);
   activeMatch = signal<Match | null>(null);
   loading = signal(false);
+  // 參賽者狀態 lookup（key = `${name}|${teamName}`）
+  participantsMap = signal<Map<string, MemberStatus>>(new Map());
+
+  lookupMember(name: string | null | undefined, teamName: string | null | undefined): MemberStatus | null {
+    if (!name) return null;
+    const key = `${name}|${teamName ?? ""}`;
+    return this.participantsMap().get(key) ?? null;
+  }
+
+  private loadParticipants(): void {
+    const eid = this.eventId();
+    if (!eid) return;
+    interface MemberDto extends MemberStatus { name: string }
+    interface TeamDto { name: string; members: MemberDto[] }
+    this.api.get<{ success: boolean; data: TeamDto[] }>(`/events/${eid}/participants`).subscribe({
+      next: (res) => {
+        const map = new Map<string, MemberStatus>();
+        for (const t of res.data ?? []) {
+          for (const m of t.members) {
+            map.set(`${m.name}|${t.name}`, {
+              weighInStatus: m.weighInStatus,
+              checkInStatus: m.checkInStatus,
+            });
+          }
+        }
+        this.participantsMap.set(map);
+      },
+      error: () => {},
+    });
+  }
   isFullscreen = signal(false);
 
   // ── 計時器 ──
@@ -193,6 +227,9 @@ export class NeWazaRefereeComponent implements OnInit, OnDestroy {
             background: "#1e293b",
             color: "#fff",
             confirmButtonColor: "#3b82f6",
+          }).then(() => {
+            this.view.set("list");
+            this.activeMatch.set(null);
           });
         },
         error: (err) => {
@@ -239,7 +276,36 @@ export class NeWazaRefereeComponent implements OnInit, OnDestroy {
     if (eid) {
       this.socket.joinEvent(eid);
       this.loadMatches();
+      this.loadParticipants();
     }
+    this.subs.add(
+      this.socket.participantStatusChanged$.subscribe((evt) => {
+        this.participantsMap.update((map) => {
+          const next = new Map(map);
+          // 找到 team name（透過既有 match 內 redPlayer/bluePlayer 的 teamName 比對）
+          const m = this.activeMatch();
+          let teamName = "";
+          if (m) {
+            if (m.redPlayer.name === evt.memberName) teamName = m.redPlayer.teamName;
+            else if (m.bluePlayer.name === evt.memberName) teamName = m.bluePlayer.teamName;
+          }
+          // fallback：scan 既有 map keys
+          if (!teamName) {
+            for (const k of next.keys()) {
+              if (k.startsWith(`${evt.memberName}|`)) {
+                teamName = k.slice(evt.memberName.length + 1);
+                break;
+              }
+            }
+          }
+          next.set(`${evt.memberName}|${teamName}`, {
+            weighInStatus: evt.weighInStatus,
+            checkInStatus: evt.checkInStatus,
+          });
+          return next;
+        });
+      }),
+    );
     this.subs.add(
       this.socket.matchAdvancementResolved$.subscribe((evt) => {
         this.matches.update((list) =>

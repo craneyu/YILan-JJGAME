@@ -543,4 +543,31 @@ export class SocketService {
   get contactCancelWinner$(): Observable<{ matchId: string }> {
     return fromEvent(this.socket, "match:contact-cancel-winner");
   }
+
+  // 檢錄 / 過磅事件
+  get participantStatusChanged$(): Observable<ParticipantStatusChangedEvent> {
+    return fromEvent<ParticipantStatusChangedEvent>(
+      this.socket,
+      "participant:status-changed",
+    );
+  }
+
+  get matchForfeitApplied$(): Observable<MatchForfeitAppliedEvent> {
+    return fromEvent<MatchForfeitAppliedEvent>(this.socket, "match:forfeit-applied");
+  }
+}
+
+export interface ParticipantStatusChangedEvent {
+  teamId: string;
+  memberIndex: number;
+  memberName: string;
+  weighInStatus: "pending" | "passed" | "failed" | "n/a";
+  checkInStatus: "pending" | "present" | "absent";
+  disqualifyReason?: string;
+}
+
+export interface MatchForfeitAppliedEvent {
+  forfeitedMatchIds: string[];
+  propagatedMatchIds: string[];
+  reason: "weigh-in-failed" | "check-in-absent";
 }

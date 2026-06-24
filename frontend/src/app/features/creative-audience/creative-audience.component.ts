@@ -8,6 +8,11 @@ import { FaIconComponent } from '@fortawesome/angular-fontawesome';
 import { faExpand, faCompress, faArrowsRotate, faCheck, faClock, faTriangleExclamation, faGavel } from '@fortawesome/free-solid-svg-icons';
 import { SocketService, CreativePenaltyItem, CreativeTeamAbstainedEvent } from '../../core/services/socket.service';
 import { ApiService } from '../../core/services/api.service';
+import {
+  ParticipantBadgeComponent,
+  MemberStatus,
+  deriveTeamBadgeMember,
+} from '../../shared/participant-badge.component';
 
 interface RankEntry {
   rank: number;
@@ -48,7 +53,7 @@ const TIER_LABEL: Record<string, string> = {
 @Component({
   selector: 'app-creative-audience',
   standalone: true,
-  imports: [CommonModule, FaIconComponent],
+  imports: [CommonModule, FaIconComponent, ParticipantBadgeComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './creative-audience.component.html',
 })
@@ -125,6 +130,17 @@ export class CreativeAudienceComponent implements OnInit, OnDestroy {
   currentMembers = signal<string[]>([]);
   currentCategory = signal<string>('');
   currentTier = signal<TeamTier>(null);
+  // 參賽者狀態 lookup（key = teamId）
+  // teamCheckedIn = members 全部 present 為 true，任一非 present 即 false
+  private teamCheckInMap = signal<Map<string, boolean>>(new Map());
+
+  // 演武 team-level 徽章：以 derived 表示「整隊是否完成檢錄」。
+  // 任一成員 absent → 整隊「檢錄未到」；無資料時不顯示徽章（return null）。
+  teamBadgeMember = computed<MemberStatus | null>(() => {
+    const id = this.currentTeamId();
+    if (!id) return null;
+    return deriveTeamBadgeMember(this.teamCheckInMap().get(id));
+  });
   currentCategoryLabel = computed(() => {
     const cat = CATEGORY_LABEL[this.currentCategory()] ?? this.currentCategory();
     const tier = this.currentTier();
@@ -151,7 +167,16 @@ export class CreativeAudienceComponent implements OnInit, OnDestroy {
       this.socket.joinEvent(id);
       this.loadEventName(id);
       this.loadState(id);
+      this.loadTeamCheckInMap(id);
     }
+
+    this.subs.add(
+      this.socket.participantStatusChanged$.subscribe(() => {
+        // 任一成員狀態變更 → 重抓 team-level 結果（成本低、結構單純）
+        const eid = this.eventId();
+        if (eid) this.loadTeamCheckInMap(eid);
+      }),
+    );
 
     this.subs.add(
       this.socket.creativeScoringOpened$.subscribe((evt) => {
@@ -263,6 +288,23 @@ export class CreativeAudienceComponent implements OnInit, OnDestroy {
   switchToDuo(): void {
     this.router.navigate(['/audience'], { queryParams: { eventId: this.eventId() } });
   }
+
+  private loadTeamCheckInMap(eventId: string): void {
+    interface TeamDto { teamId: string; teamCheckedIn: boolean }
+    this.api
+      .get<{ success: boolean; data: TeamDto[] }>(`/events/${eventId}/participants`)
+      .subscribe({
+        next: (res) => {
+          const map = new Map<string, boolean>();
+          for (const t of res.data ?? []) {
+            map.set(t.teamId, t.teamCheckedIn);
+          }
+          this.teamCheckInMap.set(map);
+        },
+        error: () => {},
+      });
+  }
+
 loadState(eventId: string): void {
   this.api.get<{
     success: boolean;

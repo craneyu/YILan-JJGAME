@@ -90,3 +90,165 @@ code:
   - .github/prompts/spectra-archive.prompt.md
   - CLAUDE.md
 -->
+
+---
+### Requirement: Completed matches are displayed after pending and in-progress matches
+
+The fighting-referee and ne-waza-referee components SHALL order matches within each weight class group by `status` first (pending and in-progress matches before completed matches), then by `scheduledOrder` ascending within each status partition. This ordering SHALL be applied client-side via the component's computed/sort logic and SHALL NOT require any backend ordering change.
+
+The contact-referee component, if it renders the same match list pattern, SHALL apply the same ordering rule.
+
+#### Scenario: Pending matches float above completed matches
+
+- **WHEN** a weight class group contains matches with statuses `[completed, pending, completed, pending]` originally interleaved by `scheduledOrder`
+- **THEN** the rendered order SHALL be the two pending matches first (sorted by `scheduledOrder`), then the two completed matches (sorted by `scheduledOrder`)
+
+##### Example: mixed status ordering
+
+- **GIVEN** matches in one weight class group:
+  | matchId | scheduledOrder | status |
+  |---|---|---|
+  | M1 | 1 | completed |
+  | M2 | 2 | pending |
+  | M3 | 3 | completed |
+  | M4 | 4 | in-progress |
+- **WHEN** the list is rendered
+- **THEN** the display order SHALL be: M4 (in-progress, order 4), M2 (pending, order 2), M1 (completed, order 1), M3 (completed, order 3)
+
+#### Scenario: A referee finishes a match and the list re-orders
+
+- **WHEN** the referee finalizes the currently in-progress match and the component returns to the list view
+- **THEN** the just-completed match SHALL appear below all remaining pending matches within its weight class group
+- **AND** the next pending match SHALL appear at the top of the group's section
+
+
+<!-- @trace
+source: match-list-completion-ux
+updated: 2026-06-24
+code:
+  - backend/src/sockets/index.ts
+  - backend/src/controllers/creativeRankingsController.ts
+  - frontend/src/app/core/services/socket.service.ts
+  - frontend/src/app/features/contact-audience/contact-audience.component.ts
+  - backend/src/controllers/matchScoreController.ts
+  - frontend/setup-jest.ts
+  - backend/src/controllers/eventController.ts
+  - frontend/src/app/features/admin/match-management/match-management.component.ts
+  - frontend/src/app/features/ne-waza-referee/ne-waza-referee.component.html
+  - frontend/tsconfig.spec.json
+  - frontend/src/app/features/creative-audience/creative-audience.component.ts
+  - backend/jest.config.js
+  - frontend/src/app/features/contact-referee/contact-referee.component.html
+  - frontend/src/app/features/fighting-referee/fighting-referee.component.ts
+  - backend/src/controllers/checkInController.ts
+  - backend/src/models/User.ts
+  - frontend/src/app/features/contact-referee/contact-referee.component.ts
+  - backend/src/routes/checkIn.ts
+  - backend/src/seeds/migrateMembersToObjects.ts
+  - frontend/src/app/features/fighting-audience/fighting-audience.component.ts
+  - backend/src/utils/forfeitPropagation.ts
+  - frontend/package.json
+  - frontend/src/app/app.routes.ts
+  - backend/package.json
+  - frontend/src/app/features/ne-waza-audience/ne-waza-audience.component.ts
+  - frontend/src/app/features/check-in/check-in.component.ts
+  - backend/src/index.ts
+  - backend/src/controllers/creativeFlowController.ts
+  - frontend/src/app/shared/participant-badge.component.ts
+  - frontend/src/app/features/check-in/check-in.component.html
+  - frontend/src/app/features/admin/match-management/match-management.component.html
+  - frontend/tsconfig.json
+  - frontend/src/app/features/login/login.component.ts
+  - frontend/src/app/core/utils/match-grouping.ts
+  - frontend/src/app/features/admin/judge-management/judge-management.component.ts
+  - frontend/src/app/features/ne-waza-referee/ne-waza-referee.component.ts
+  - frontend/src/app/core/services/auth.service.ts
+  - frontend/src/app/features/creative-audience/creative-audience.component.html
+  - TESTING.md
+  - backend/src/seeds/initialUsers.ts
+  - frontend/src/app/features/fighting-referee/fighting-referee.component.html
+  - backend/src/models/Team.ts
+  - backend/src/controllers/creativeTimerController.ts
+  - backend/src/controllers/teamController.ts
+  - frontend/jest.config.js
+tests:
+  - frontend/src/app/core/utils/match-grouping.spec.ts
+  - backend/src/utils/__tests__/forfeitPropagation.test.ts
+  - backend/src/utils/__tests__/scoring.test.ts
+  - backend/src/models/__tests__/Team.test.ts
+  - frontend/src/app/shared/participant-badge.component.spec.ts
+-->
+
+---
+### Requirement: Completed match rows are visually distinguished from pending rows
+
+The fighting-referee, ne-waza-referee, and contact-referee match list components SHALL apply a distinct background tint to completed match rows so they are visually separable from pending and in-progress rows.
+
+Completed rows SHALL use a tinted background utility (for example `bg-emerald-500/10`) on top of the base `.glass-card` style, and SHALL reduce the primary text saturation (for example `text-white/60`). Pending rows SHALL retain the default `.glass-card` appearance; in-progress rows SHALL retain the existing yellow status badge.
+
+#### Scenario: Completed row uses emerald tint
+
+- **WHEN** the match list renders a row whose `status === 'completed'`
+- **THEN** that row SHALL include the tinted background class so it appears visually distinct from a default pending row in the same weight class group
+
+#### Scenario: Pending row appearance unchanged
+
+- **WHEN** the match list renders a row whose `status === 'pending'`
+- **THEN** the row SHALL render with the default `.glass-card` style without the completed tint
+
+<!-- @trace
+source: match-list-completion-ux
+updated: 2026-06-24
+code:
+  - backend/src/sockets/index.ts
+  - backend/src/controllers/creativeRankingsController.ts
+  - frontend/src/app/core/services/socket.service.ts
+  - frontend/src/app/features/contact-audience/contact-audience.component.ts
+  - backend/src/controllers/matchScoreController.ts
+  - frontend/setup-jest.ts
+  - backend/src/controllers/eventController.ts
+  - frontend/src/app/features/admin/match-management/match-management.component.ts
+  - frontend/src/app/features/ne-waza-referee/ne-waza-referee.component.html
+  - frontend/tsconfig.spec.json
+  - frontend/src/app/features/creative-audience/creative-audience.component.ts
+  - backend/jest.config.js
+  - frontend/src/app/features/contact-referee/contact-referee.component.html
+  - frontend/src/app/features/fighting-referee/fighting-referee.component.ts
+  - backend/src/controllers/checkInController.ts
+  - backend/src/models/User.ts
+  - frontend/src/app/features/contact-referee/contact-referee.component.ts
+  - backend/src/routes/checkIn.ts
+  - backend/src/seeds/migrateMembersToObjects.ts
+  - frontend/src/app/features/fighting-audience/fighting-audience.component.ts
+  - backend/src/utils/forfeitPropagation.ts
+  - frontend/package.json
+  - frontend/src/app/app.routes.ts
+  - backend/package.json
+  - frontend/src/app/features/ne-waza-audience/ne-waza-audience.component.ts
+  - frontend/src/app/features/check-in/check-in.component.ts
+  - backend/src/index.ts
+  - backend/src/controllers/creativeFlowController.ts
+  - frontend/src/app/shared/participant-badge.component.ts
+  - frontend/src/app/features/check-in/check-in.component.html
+  - frontend/src/app/features/admin/match-management/match-management.component.html
+  - frontend/tsconfig.json
+  - frontend/src/app/features/login/login.component.ts
+  - frontend/src/app/core/utils/match-grouping.ts
+  - frontend/src/app/features/admin/judge-management/judge-management.component.ts
+  - frontend/src/app/features/ne-waza-referee/ne-waza-referee.component.ts
+  - frontend/src/app/core/services/auth.service.ts
+  - frontend/src/app/features/creative-audience/creative-audience.component.html
+  - TESTING.md
+  - backend/src/seeds/initialUsers.ts
+  - frontend/src/app/features/fighting-referee/fighting-referee.component.html
+  - backend/src/models/Team.ts
+  - backend/src/controllers/creativeTimerController.ts
+  - backend/src/controllers/teamController.ts
+  - frontend/jest.config.js
+tests:
+  - frontend/src/app/core/utils/match-grouping.spec.ts
+  - backend/src/utils/__tests__/forfeitPropagation.test.ts
+  - backend/src/utils/__tests__/scoring.test.ts
+  - backend/src/models/__tests__/Team.test.ts
+  - frontend/src/app/shared/participant-badge.component.spec.ts
+-->

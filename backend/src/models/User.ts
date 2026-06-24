@@ -6,7 +6,8 @@ export type UserRole =
   | "sequence_judge"
   | "admin"
   | "audience"
-  | "match_referee";
+  | "match_referee"
+  | "check_in_officer";
 
 export interface IUser extends Document {
   username: string;
@@ -28,6 +29,7 @@ const UserSchema = new Schema<IUser>({
       "admin",
       "audience",
       "match_referee",
+      "check_in_officer",
     ],
     required: true,
   },

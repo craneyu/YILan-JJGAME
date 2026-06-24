@@ -10,7 +10,8 @@ export interface JwtPayload {
     | "sequence_judge"
     | "admin"
     | "audience"
-    | "match_referee";
+    | "match_referee"
+    | "check_in_officer";
   judgeNo?: number;
   eventId?: string;
   username?: string;

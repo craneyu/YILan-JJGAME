@@ -42,6 +42,7 @@ const ROLE_OPTIONS: { value: string; label: string }[] = [
   { value: "vr_judge", label: "VR 裁判" },
   { value: "sequence_judge", label: "賽序裁判" },
   { value: "match_referee", label: "場次裁判" },
+  { value: "check_in_officer", label: "檢錄員" },
   { value: "admin", label: "管理員" },
 ];
 

@@ -2,8 +2,11 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "./out-tsc/spec",
-    "types": ["jasmine"]
+    "types": ["jest", "node"],
+    "esModuleInterop": true,
+    "module": "commonjs",
+    "target": "ES2022"
   },
-  "files": ["src/main.ts"],
+  "files": ["setup-jest.ts"],
   "include": ["src/**/*.spec.ts", "src/**/*.d.ts"]
 }

@@ -101,6 +101,8 @@
       <ng-template #fightingMatchCard let-match>
         <div
           class="glass-card rounded-2xl p-4 mb-2 flex items-center justify-between cursor-pointer transition-all"
+          [class.bg-emerald-500\/10]="match.status === 'completed'"
+          [class.text-white\/60]="match.status === 'completed'"
           [class.opacity-50]="match.status === 'completed' && !batchMode()"
           [class.cursor-not-allowed]="match.status === 'completed' && !batchMode()"
           [class.ring-2]="!batchMode() && match.status !== 'pending' && match.status !== 'completed'"
@@ -316,8 +318,9 @@
             <div
               class="flex-1 flex flex-col justify-center border-r border-white/10 px-2 min-w-0">
               <div
-                class="text-red-300 font-black text-base sm:text-xl lg:text-2xl leading-tight truncate">
-                {{ match.redPlayer.name }}
+                class="text-red-300 font-black text-base sm:text-xl lg:text-2xl leading-tight truncate flex items-center flex-wrap gap-1">
+                <span>{{ match.redPlayer.name }}</span>
+                <app-participant-badge [member]="lookupMember(match.redPlayer.name, match.redPlayer.teamName)" />
               </div>
               <div class="text-white/70 text-xs sm:text-sm mt-0.5 truncate">
                 {{ match.redPlayer.teamName }}
@@ -644,8 +647,9 @@
             <div
               class="flex-1 flex flex-col justify-center border-r border-white/10 px-2 min-w-0">
               <div
-                class="text-blue-300 font-black text-base sm:text-xl lg:text-2xl leading-tight truncate">
-                {{ match.bluePlayer.name }}
+                class="text-blue-300 font-black text-base sm:text-xl lg:text-2xl leading-tight truncate flex items-center flex-wrap gap-1">
+                <span>{{ match.bluePlayer.name }}</span>
+                <app-participant-badge [member]="lookupMember(match.bluePlayer.name, match.bluePlayer.teamName)" />
               </div>
               <div class="text-white/70 text-xs sm:text-sm mt-0.5 truncate">
                 {{ match.bluePlayer.teamName }}

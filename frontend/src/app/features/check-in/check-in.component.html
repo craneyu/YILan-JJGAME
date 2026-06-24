@@ -1,0 +1,171 @@
+<div class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 text-white px-4 py-6">
+  <div class="max-w-6xl mx-auto">
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-3xl font-bold">檢錄 / 過磅</h1>
+      <button class="glass-btn px-3 py-1.5 text-sm flex items-center gap-2" (click)="logout()">
+        <fa-icon [icon]="faRightFromBracket"></fa-icon>
+        登出
+      </button>
+    </div>
+
+    <div class="flex gap-2 mb-4">
+      <button
+        class="px-4 py-2 rounded-lg border transition-all"
+        [class.bg-blue-500\/80]="activeTab() === 'weighin'"
+        [class.text-white]="activeTab() === 'weighin'"
+        [class.border-blue-400\/50]="activeTab() === 'weighin'"
+        [class.bg-white\/10]="activeTab() !== 'weighin'"
+        [class.border-white\/30]="activeTab() !== 'weighin'"
+        (click)="switchTab('weighin')"
+      >
+        過磅
+      </button>
+      <button
+        class="px-4 py-2 rounded-lg border transition-all"
+        [class.bg-blue-500\/80]="activeTab() === 'checkin'"
+        [class.text-white]="activeTab() === 'checkin'"
+        [class.border-blue-400\/50]="activeTab() === 'checkin'"
+        [class.bg-white\/10]="activeTab() !== 'checkin'"
+        [class.border-white\/30]="activeTab() !== 'checkin'"
+        (click)="switchTab('checkin')"
+      >
+        檢錄
+      </button>
+    </div>
+
+    @if (loading()) {
+      <div class="glass-card p-6 text-center text-white/60">載入中...</div>
+    } @else if (!eventId()) {
+      <div class="glass-card p-6 text-center text-white/60">未指派賽事，請聯絡 admin。</div>
+    } @else if (activeTab() === 'weighin') {
+      <div class="glass-card p-4">
+        <p class="text-sm text-white/60 mb-3">僅顯示需過磅的選手（對打 / 寢技 / 格鬥）；演武選手免過磅，請至「檢錄」頁。</p>
+        @if (weighInRows().length === 0) {
+          <p class="text-white/40 text-center py-6">尚無需過磅的選手。</p>
+        } @else {
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="text-white/50 text-xs uppercase">
+                <tr>
+                  <th class="text-left py-2 px-2">姓名</th>
+                  <th class="text-left py-2 px-2">隊伍</th>
+                  <th class="text-left py-2 px-2">分級</th>
+                  <th class="text-left py-2 px-2">狀態</th>
+                  <th class="text-right py-2 px-2">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of weighInRows(); track row.teamId + '-' + row.memberIndex) {
+                  <tr class="border-t border-white/10">
+                    <td class="py-2 px-2 font-medium">{{ row.member.name }}</td>
+                    <td class="py-2 px-2 text-white/60">{{ row.teamName }}</td>
+                    <td class="py-2 px-2 text-white/40">{{ row.tier ?? '—' }}</td>
+                    <td class="py-2 px-2">
+                      @let badge = weighInBadge(row.member.weighInStatus);
+                      <span class="px-2 py-0.5 rounded text-xs" [class]="badge.cls">{{ badge.label }}</span>
+                      @if (row.member.disqualifyReason) {
+                        <span class="ml-2 text-xs text-white/40">{{ row.member.disqualifyReason }}</span>
+                      }
+                    </td>
+                    <td class="py-2 px-2 text-right">
+                      <div class="inline-flex gap-1">
+                        <button
+                          class="glass-btn text-xs px-2 py-1"
+                          (click)="setWeighIn(row, 'passed')"
+                          [disabled]="row.member.weighInStatus === 'failed'"
+                        >
+                          <fa-icon [icon]="faCheck"></fa-icon> 通過
+                        </button>
+                        <button
+                          class="glass-btn text-xs px-2 py-1 text-red-300 border-red-400/30"
+                          (click)="setWeighIn(row, 'failed')"
+                          [disabled]="row.member.weighInStatus === 'failed'"
+                        >
+                          <fa-icon [icon]="faXmark"></fa-icon> 失格
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="glass-card p-4">
+        <p class="text-sm text-white/60 mb-3">所有選手檢錄狀態；過磅失格者顯示為「不需檢錄」。</p>
+        @if (checkInRows().length === 0) {
+          <p class="text-white/40 text-center py-6">尚無選手。</p>
+        } @else {
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="text-white/50 text-xs uppercase">
+                <tr>
+                  <th class="text-left py-2 px-2">姓名</th>
+                  <th class="text-left py-2 px-2">隊伍</th>
+                  <th class="text-left py-2 px-2">分級 / 類別</th>
+                  <th class="text-left py-2 px-2">過磅</th>
+                  <th class="text-left py-2 px-2">檢錄</th>
+                  <th class="text-right py-2 px-2">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of checkInRows(); track row.teamId + '-' + row.memberIndex) {
+                  <tr
+                    class="border-t border-white/10"
+                    [class.bg-white\/5]="row.member.weighInStatus === 'failed'"
+                    [class.text-white\/30]="row.member.weighInStatus === 'failed'"
+                    [class.italic]="row.member.weighInStatus === 'failed'"
+                  >
+                    <td class="py-2 px-2 font-medium">{{ row.member.name }}</td>
+                    <td class="py-2 px-2 text-white/60">{{ row.teamName }}</td>
+                    <td class="py-2 px-2 text-white/40">
+                      {{ row.tier ?? '—' }}
+                      @if (row.competitionType === 'Duo' || row.competitionType === 'Show') {
+                        <span class="ml-1 text-xs">({{ row.competitionType }})</span>
+                      }
+                    </td>
+                    <td class="py-2 px-2">
+                      @let wb = weighInBadge(row.member.weighInStatus);
+                      <span class="px-2 py-0.5 rounded text-xs" [class]="wb.cls">{{ wb.label }}</span>
+                    </td>
+                    <td class="py-2 px-2">
+                      @let cb = checkInBadge(row.member.checkInStatus);
+                      <span class="px-2 py-0.5 rounded text-xs" [class]="cb.cls">{{ cb.label }}</span>
+                      @if (row.member.disqualifyReason && row.member.checkInStatus === 'absent') {
+                        <span class="ml-2 text-xs text-white/40">{{ row.member.disqualifyReason }}</span>
+                      }
+                    </td>
+                    <td class="py-2 px-2 text-right">
+                      @if (row.member.weighInStatus === 'failed') {
+                        <span class="text-xs text-white/30">不需檢錄</span>
+                      } @else {
+                        <div class="inline-flex gap-1">
+                          <button
+                            class="glass-btn text-xs px-2 py-1"
+                            (click)="setCheckIn(row, 'present')"
+                            [disabled]="row.member.checkInStatus === 'absent'"
+                          >
+                            <fa-icon [icon]="faPersonRunning"></fa-icon> 到場
+                          </button>
+                          <button
+                            class="glass-btn text-xs px-2 py-1 text-red-300 border-red-400/30"
+                            (click)="setCheckIn(row, 'absent')"
+                            [disabled]="row.member.checkInStatus === 'absent'"
+                          >
+                            <fa-icon [icon]="faXmark"></fa-icon> 未到
+                          </button>
+                        </div>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>

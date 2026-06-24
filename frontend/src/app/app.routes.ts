@@ -176,5 +176,14 @@ export const appRoutes: Routes = [
         (m) => m.ContactAudienceComponent,
       ),
   },
+  // ── 檢錄 / 過磅 ──
+  {
+    path: "check-in",
+    loadComponent: () =>
+      import("./features/check-in/check-in.component").then(
+        (m) => m.CheckInComponent,
+      ),
+    canActivate: [roleGuard("check_in_officer", "admin")],
+  },
   { path: "**", redirectTo: "/login" },
 ];

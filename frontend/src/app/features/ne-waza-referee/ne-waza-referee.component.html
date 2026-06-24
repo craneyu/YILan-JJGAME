@@ -70,6 +70,8 @@
       <ng-template #matchCard let-match>
         <div
           class="glass-card rounded-2xl p-4 mb-2 flex items-center justify-between cursor-pointer transition-all"
+          [class.bg-emerald-500\/10]="match.status === 'completed'"
+          [class.text-white\/60]="match.status === 'completed'"
           [class.opacity-50]="match.status === 'completed'"
           [class.cursor-not-allowed]="match.status === 'completed'"
           [class.ring-2]="match.status !== 'pending' && match.status !== 'completed'"
@@ -217,7 +219,10 @@
           <!-- 紅方 -->
           <div class="backdrop-blur-md border-2 border-red-400/60 shadow-xl rounded-2xl p-4 bg-white/5">
             <div class="text-center mb-3">
-              <div class="text-red-300 font-bold text-lg">{{ match.redPlayer.name }}</div>
+              <div class="text-red-300 font-bold text-lg inline-flex items-center justify-center">
+                {{ match.redPlayer.name }}
+                <app-participant-badge [member]="lookupMember(match.redPlayer.name, match.redPlayer.teamName)" />
+              </div>
               <div class="text-white/40 text-xs">{{ match.redPlayer.teamName }}</div>
             </div>
             <div class="text-center mb-3">
@@ -272,7 +277,10 @@
           <!-- 藍方 -->
           <div class="backdrop-blur-md border-2 border-blue-400/60 shadow-xl rounded-2xl p-4 bg-white/5">
             <div class="text-center mb-3">
-              <div class="text-blue-300 font-bold text-lg">{{ match.bluePlayer.name }}</div>
+              <div class="text-blue-300 font-bold text-lg inline-flex items-center justify-center">
+                {{ match.bluePlayer.name }}
+                <app-participant-badge [member]="lookupMember(match.bluePlayer.name, match.bluePlayer.teamName)" />
+              </div>
               <div class="text-white/40 text-xs">{{ match.bluePlayer.teamName }}</div>
             </div>
             <div class="text-center mb-3">

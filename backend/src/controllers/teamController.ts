@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Team, { TeamTier } from '../models/Team';
+import Team, { TeamTier, buildMembersFromNames, memberNames } from '../models/Team';
 import Event from '../models/Event';
 import CreativeScore from '../models/CreativeScore';
 import CreativePenalty from '../models/CreativePenalty';
@@ -123,9 +123,10 @@ export async function createTeam(req: Request, res: Response): Promise<void> {
   const team = await Team.create({
     eventId: req.params.id,
     name,
-    members,
+    members: buildMembersFromNames(members, competitionType),
     category,
     order,
+    competitionType,
     ...(isTournament && parsedTier && { tier: parsedTier }),
   });
   res.status(201).json({ success: true, data: team });
@@ -133,9 +134,26 @@ export async function createTeam(req: Request, res: Response): Promise<void> {
 
 export async function updateTeam(req: Request, res: Response): Promise<void> {
   const { name, members, category, order } = req.body;
+  let convertedMembers;
+  if (members) {
+    if (typeof members[0] === 'string') {
+      const existing = await Team.findById(req.params.teamId).lean();
+      convertedMembers = buildMembersFromNames(
+        members as string[],
+        existing?.competitionType,
+      );
+    } else {
+      convertedMembers = members;
+    }
+  }
   const team = await Team.findOneAndUpdate(
     { _id: req.params.teamId, eventId: req.params.id },
-    { ...(name && { name }), ...(members && { members }), ...(category && { category }), ...(order !== undefined && { order }) },
+    {
+      ...(name && { name }),
+      ...(convertedMembers && { members: convertedMembers }),
+      ...(category && { category }),
+      ...(order !== undefined && { order }),
+    },
     { new: true }
   );
   if (!team) {
@@ -197,7 +215,9 @@ async function checkConflictInCategory(
   newMembers: string[]
 ): Promise<string[]> {
   const teamsInCategory = await Team.find({ eventId, category, competitionType });
-  const existingMembers = new Set(teamsInCategory.flatMap((t) => t.members));
+  const existingMembers = new Set(
+    teamsInCategory.flatMap((t) => memberNames(t.members)),
+  );
   return newMembers.filter((m: string) => existingMembers.has(m));
 }
 
@@ -323,7 +343,7 @@ export async function importTeams(req: Request, res: Response): Promise<void> {
     await Team.create({
       eventId,
       name: teamName,
-      members,
+      members: buildMembersFromNames(members, competitionType),
       category,
       order: orderCounter++,
       competitionType,

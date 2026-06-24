@@ -3,7 +3,7 @@ import Event, { SportType } from "../models/Event";
 import Match from "../models/Match";
 import GameState from "../models/GameState";
 import CreativeGameState from "../models/CreativeGameState";
-import Team from "../models/Team";
+import Team, { memberNames } from "../models/Team";
 import Score from "../models/Score";
 import VRScore from "../models/VRScore";
 import WrongAttack from "../models/WrongAttack";
@@ -504,7 +504,7 @@ export async function getEventRankings(
     const base = {
       teamId,
       name: team.name,
-      members: team.members,
+      members: memberNames(team.members),
       category: team.category,
       tier: team.tier ?? null,
       seriesA: series.A,

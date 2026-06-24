@@ -334,6 +334,13 @@ export async function setDuration(req: Request, res: Response): Promise<void> {
   if (match.status === "pending") match.status = "in-progress";
   await match.save();
 
+  broadcast.matchTimerUpdated(match.eventId.toString(), {
+    matchId,
+    remaining: duration,
+    paused: true,
+    durationSec: duration,
+  });
+
   res.json({ success: true, data: { matchDuration: match.matchDuration } });
 }
 

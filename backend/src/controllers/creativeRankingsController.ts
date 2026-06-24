@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Team from '../models/Team';
+import Team, { memberNames } from '../models/Team';
 import Event from '../models/Event';
 import CreativeScore from '../models/CreativeScore';
 import CreativePenalty from '../models/CreativePenalty';
@@ -62,7 +62,7 @@ export async function getCreativeRankings(req: Request, res: Response): Promise<
       return {
         teamId,
         name: team.name,
-        members: team.members,
+        members: memberNames(team.members),
         category: team.category,
         tier,
         technicalTotal: 0,
@@ -87,7 +87,7 @@ export async function getCreativeRankings(req: Request, res: Response): Promise<
     return {
       teamId,
       name: team.name,
-      members: team.members,
+      members: memberNames(team.members),
       category: team.category,
       tier,
       ...calc,

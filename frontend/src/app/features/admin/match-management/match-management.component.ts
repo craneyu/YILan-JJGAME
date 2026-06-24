@@ -72,6 +72,12 @@ const TYPE_LABEL: Record<string, string> = {
   contact: "格鬥",
 };
 
+const METHOD_LABEL: Record<string, string> = {
+  judge: "裁判判決",
+  submission: "降伏勝",
+  dq: "取消資格",
+};
+
 @Component({
   selector: "app-match-management",
   standalone: true,
@@ -141,6 +147,11 @@ export class MatchManagementComponent implements OnInit {
     return displayPlayerName(m.bluePlayer, m.blueSource);
   }
 
+  methodLabel(method: string | undefined | null): string {
+    if (!method) return "";
+    return METHOD_LABEL[method] ?? "";
+  }
+
   ngOnInit(): void {
     const type = this.route.snapshot.params["matchType"] as string;
     this.matchType.set(type);
@@ -177,6 +188,23 @@ export class MatchManagementComponent implements OnInit {
                 : m.blueSource,
             };
           }),
+        );
+      });
+
+    // 即時更新已完賽場次：裁判端結束場次 → admin 列表立即顯示勝方與重新排序
+    this.socket.matchEnded$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((evt) => {
+        this.matches.update((list) =>
+          list.map((m) =>
+            m._id === evt.matchId
+              ? {
+                  ...m,
+                  status: "completed" as const,
+                  result: { winner: evt.winner, method: evt.method },
+                }
+              : m,
+          ),
         );
       });
   }

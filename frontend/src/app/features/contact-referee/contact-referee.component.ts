@@ -27,6 +27,10 @@ import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { SocketService } from '../../core/services/socket.service';
 import { tierLabel } from '../../core/utils/tierLabel';
+import {
+  ParticipantBadgeComponent,
+  MemberStatus,
+} from '../../shared/participant-badge.component';
 import { Match, MatchCategory, MatchStatus } from '../../core/models/match.model';
 import { CategoryGroup, groupMatchesByCategory } from '../../core/utils/match-grouping';
 
@@ -55,7 +59,7 @@ const WINNER_METHOD_LABEL: Record<string, string> = {
 @Component({
   selector: 'app-contact-referee',
   standalone: true,
-  imports: [CommonModule, FaIconComponent],
+  imports: [CommonModule, FaIconComponent, ParticipantBadgeComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './contact-referee.component.html',
 })
@@ -79,6 +83,34 @@ export class ContactRefereeComponent implements OnInit, OnDestroy {
   view = signal<'list' | 'scoring'>('list');
   matches = signal<Match[]>([]);
   activeMatch = signal<Match | null>(null);
+  participantsMap = signal<Map<string, MemberStatus>>(new Map());
+
+  lookupMember(name: string | null | undefined, teamName: string | null | undefined): MemberStatus | null {
+    if (!name) return null;
+    return this.participantsMap().get(`${name}|${teamName ?? ""}`) ?? null;
+  }
+
+  private loadParticipants(): void {
+    const eid = this.eventId();
+    if (!eid) return;
+    interface MemberDto extends MemberStatus { name: string }
+    interface TeamDto { name: string; members: MemberDto[] }
+    this.api.get<{ success: boolean; data: TeamDto[] }>(`/events/${eid}/participants`).subscribe({
+      next: (res) => {
+        const map = new Map<string, MemberStatus>();
+        for (const t of res.data ?? []) {
+          for (const m of t.members) {
+            map.set(`${m.name}|${t.name}`, {
+              weighInStatus: m.weighInStatus,
+              checkInStatus: m.checkInStatus,
+            });
+          }
+        }
+        this.participantsMap.set(map);
+      },
+      error: () => {},
+    });
+  }
   loading = signal(false);
   isFullscreen = signal(false);
 
@@ -157,7 +189,28 @@ export class ContactRefereeComponent implements OnInit, OnDestroy {
     if (eid) {
       this.socket.joinEvent(eid);
       this.loadMatches();
+      this.loadParticipants();
     }
+
+    this.subs.add(
+      this.socket.participantStatusChanged$.subscribe((evt) => {
+        this.participantsMap.update((map) => {
+          const next = new Map(map);
+          let teamName = "";
+          for (const k of next.keys()) {
+            if (k.startsWith(`${evt.memberName}|`)) {
+              teamName = k.slice(evt.memberName.length + 1);
+              break;
+            }
+          }
+          next.set(`${evt.memberName}|${teamName}`, {
+            weighInStatus: evt.weighInStatus,
+            checkInStatus: evt.checkInStatus,
+          });
+          return next;
+        });
+      }),
+    );
 
     // 裁判端也訂閱 socket，保持多裝置同步
     this.subs.add(

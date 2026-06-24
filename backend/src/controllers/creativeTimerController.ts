@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import CreativeGameState from '../models/CreativeGameState';
-import Team from '../models/Team';
+import Team, { memberNames } from '../models/Team';
 import { broadcast } from '../sockets/index';
 
 export async function startTimer(req: Request, res: Response): Promise<void> {
@@ -38,7 +38,7 @@ export async function startTimer(req: Request, res: Response): Promise<void> {
     const team = await Team.findById(teamId).lean();
     if (team) {
       teamName = team.name;
-      members = team.members;
+      members = memberNames(team.members);
       category = team.category;
     }
   }
@@ -149,7 +149,7 @@ export async function resumeTimer(req: Request, res: Response): Promise<void> {
     const team = await Team.findById(state.currentTeamId).lean();
     if (team) {
       teamName = team.name;
-      members = team.members;
+      members = memberNames(team.members);
       category = team.category;
     }
   }

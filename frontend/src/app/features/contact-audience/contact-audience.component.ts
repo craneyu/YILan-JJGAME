@@ -212,6 +212,7 @@ export class ContactAudienceComponent implements OnInit, OnDestroy {
         this.timerPaused.set(true);
         this.stopLocalTimer();
         this.matchResult.set({ winner: e.winner as "red" | "blue", method: e.method });
+        this.previousTimerValue = -1;
       }),
     );
 
@@ -318,6 +319,7 @@ export class ContactAudienceComponent implements OnInit, OnDestroy {
   }
 
   private loadActiveMatch(eventId: string): void {
+    this.previousTimerValue = -1;
     this.api
       .get<{ success: boolean; data: Match[] }>(`/events/${eventId}/matches?matchType=contact`)
       .subscribe({
