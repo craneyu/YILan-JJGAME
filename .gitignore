@@ -15,3 +15,6 @@ coverage/
 GEMINI.md
 .spectra/
 openspec/.vector-search.db*
+
+# 打包產物（package-docker.sh 每次執行都會重新產生並刪除）
+jju-package/
