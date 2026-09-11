@@ -22,6 +22,22 @@ export async function getMatches(req: Request, res: Response): Promise<void> {
   res.json({ success: true, data: matches });
 }
 
+/**
+ * 去除選手姓名與隊名的前後空白。
+ *
+ * forfeitPropagation 以 (選手姓名 + 隊名) 比對 Team 與 Match，Team 端的姓名已於
+ * 匯入時 trim；場次姓名若殘留空白會導致檢錄失格無法連動到對應場次。
+ */
+export function trimPlayer(player: unknown): unknown {
+  if (!player || typeof player !== "object") return player;
+  const p = player as { name?: unknown; teamName?: unknown };
+  return {
+    ...p,
+    ...(typeof p.name === "string" && { name: p.name.trim() }),
+    ...(typeof p.teamName === "string" && { teamName: p.teamName.trim() }),
+  };
+}
+
 export async function createMatch(req: Request, res: Response): Promise<void> {
   const eventId = req.params.eventId;
   const {
@@ -81,8 +97,8 @@ export async function createMatch(req: Request, res: Response): Promise<void> {
     weightClass,
     round,
     matchNo,
-    redPlayer,
-    bluePlayer,
+    redPlayer: trimPlayer(redPlayer),
+    bluePlayer: trimPlayer(bluePlayer),
     isBye: isBye ?? false,
     scheduledOrder,
     ...(resolvedDuration !== undefined && { matchDuration: resolvedDuration }),
@@ -154,6 +170,8 @@ export async function bulkCreateMatches(
     return {
       ...r,
       eventId,
+      ...(r["redPlayer"] !== undefined && { redPlayer: trimPlayer(r["redPlayer"]) }),
+      ...(r["bluePlayer"] !== undefined && { bluePlayer: trimPlayer(r["bluePlayer"]) }),
       ...(resolvedDuration !== undefined && { matchDuration: resolvedDuration }),
     };
   });
@@ -221,7 +239,11 @@ export async function updateMatch(req: Request, res: Response): Promise<void> {
   if (userRole === "admin") {
     for (const key of adminEditableFields) {
       if (otherFields[key] !== undefined) {
-        (match as unknown as Record<string, unknown>)[key] = otherFields[key];
+        const value =
+          key === "redPlayer" || key === "bluePlayer"
+            ? trimPlayer(otherFields[key])
+            : otherFields[key];
+        (match as unknown as Record<string, unknown>)[key] = value;
       }
     }
   }
