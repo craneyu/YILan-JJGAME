@@ -15,6 +15,14 @@ echo "[1/4] 重新建構映像（確保包含最新程式碼）..."
 docker compose build
 echo "      映像建構完成"
 
+# 確認 Compose 專案名稱，避免資料夾改名後打包到舊映像
+PROJECT=$(docker compose config | awk '/^name:/{print $2; exit}')
+if [ "$PROJECT" != "yilan-jju" ]; then
+  echo "錯誤：Compose 專案名稱為 '$PROJECT'，預期 'yilan-jju'（映像會被建成 ${PROJECT}-frontend/backend）"
+  echo "      請確認 docker-compose.yml 內的 name: yilan-jju 設定"
+  exit 1
+fi
+
 # 建立暫存目錄
 rm -rf "$PACKAGE_DIR"
 mkdir -p "$PACKAGE_DIR"
@@ -119,6 +127,14 @@ if docker compose exec -T backend node dist/seeds/migrateMembersToObjects.js 2>&
   echo "      Migration 完成"
 else
   echo "      ⚠️  Migration 失敗（如果是全新部署可忽略；舊資料部署請手動執行）"
+fi
+
+# 清理匯入資料殘留的前後空白（idempotent）
+echo "      執行姓名空白清理..."
+if docker compose exec -T backend node dist/seeds/trimMemberNames.js 2>&1; then
+  echo "      清理完成"
+else
+  echo "      ⚠️  清理失敗（可稍後手動執行 node dist/seeds/trimMemberNames.js）"
 fi
 
 echo ""

@@ -1,3 +1,6 @@
+# 固定 Compose 專案名稱，避免資料夾改名導致映像名稱變動（打包腳本依賴 yilan-jju-* 名稱）
+name: yilan-jju
+
 services:
   frontend:
     build: ./frontend

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Team, { TeamTier, buildMembersFromNames, memberNames } from '../models/Team';
+import Team, { IMember, TeamTier, buildMembersFromNames, memberNames } from '../models/Team';
 import Event from '../models/Event';
 import CreativeScore from '../models/CreativeScore';
 import CreativePenalty from '../models/CreativePenalty';
@@ -32,6 +32,23 @@ function parseTier(raw: string | undefined | null): TeamTier | undefined {
   const upper = trimmed.toUpperCase();
   if (VALID_TIERS.includes(upper as TeamTier)) return upper as TeamTier;
   return TIER_LABEL_MAP[trimmed];
+}
+
+/**
+ * legacy /teams 端點對外形狀：members 以姓名字串陣列輸出。
+ *
+ * Team.members 自 check-in/weigh-in change 起升級為 IMember[]（帶過磅、檢錄狀態），
+ * 但 admin、賽序、計分、觀眾等既有前端仍以 string[] 消費，狀態欄位只由
+ * /events/:id/participants 提供。未 migrate 的舊資料（純字串）亦照原樣輸出。
+ */
+export function toLegacyTeam(team: unknown): Record<string, unknown> {
+  const doc = team as { toObject?: () => Record<string, unknown> };
+  const obj = typeof doc.toObject === 'function' ? doc.toObject() : (team as Record<string, unknown>);
+  const members = (obj['members'] ?? []) as Array<IMember | string>;
+  return {
+    ...obj,
+    members: members.map((m) => (typeof m === 'string' ? m : m.name)),
+  };
 }
 
 export async function listTeams(req: Request, res: Response): Promise<void> {
@@ -69,7 +86,7 @@ export async function listTeams(req: Request, res: Response): Promise<void> {
       }
 
       return {
-        ...team,
+        ...toLegacyTeam(team),
         isFinished,
         scoreSummary: result ? {
           technicalTotal: result.technicalTotal,
@@ -85,7 +102,7 @@ export async function listTeams(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  res.json({ success: true, data: teams });
+  res.json({ success: true, data: teams.map(toLegacyTeam) });
 }
 
 export async function createTeam(req: Request, res: Response): Promise<void> {
@@ -111,7 +128,10 @@ export async function createTeam(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  const duplicateMembers = await checkConflictInCategory(req.params.id as string, category, competitionType, members);
+  // 去除前後空白，避免「王小明 」與「王小明」被視為不同人
+  const normalizedMembers = (members as string[]).map((m) => String(m).trim()).filter((m) => m !== '');
+
+  const duplicateMembers = await checkConflictInCategory(req.params.id as string, category, competitionType, normalizedMembers);
   if (duplicateMembers.length > 0) {
     res.status(409).json({
       success: false,
@@ -123,27 +143,31 @@ export async function createTeam(req: Request, res: Response): Promise<void> {
   const team = await Team.create({
     eventId: req.params.id,
     name,
-    members: buildMembersFromNames(members, competitionType),
+    members: buildMembersFromNames(normalizedMembers, competitionType),
     category,
     order,
     competitionType,
     ...(isTournament && parsedTier && { tier: parsedTier }),
   });
-  res.status(201).json({ success: true, data: team });
+  res.status(201).json({ success: true, data: toLegacyTeam(team) });
 }
 
 export async function updateTeam(req: Request, res: Response): Promise<void> {
   const { name, members, category, order } = req.body;
-  let convertedMembers;
+  let convertedMembers: IMember[] | undefined;
   if (members) {
     if (typeof members[0] === 'string') {
       const existing = await Team.findById(req.params.teamId).lean();
-      convertedMembers = buildMembersFromNames(
-        members as string[],
-        existing?.competitionType,
+      // 姓名未變動的成員沿用既有過磅/檢錄狀態，僅改名或新增的成員才重設為預設值
+      const existingByName = new Map(
+        (existing?.members ?? []).map((m) => [m.name, m] as const),
       );
+      convertedMembers = buildMembersFromNames(
+        (members as string[]).map((m) => String(m).trim()).filter((m) => m !== ''),
+        existing?.competitionType,
+      ).map((m) => existingByName.get(m.name) ?? m);
     } else {
-      convertedMembers = members;
+      convertedMembers = members as IMember[];
     }
   }
   const team = await Team.findOneAndUpdate(
@@ -160,7 +184,7 @@ export async function updateTeam(req: Request, res: Response): Promise<void> {
     res.status(404).json({ success: false, error: '隊伍不存在' });
     return;
   }
-  res.json({ success: true, data: team });
+  res.json({ success: true, data: toLegacyTeam(team) });
 }
 
 export async function deleteTeam(req: Request, res: Response): Promise<void> {
@@ -193,7 +217,7 @@ export async function batchUpdateOrder(req: Request, res: Response): Promise<voi
   );
 
   const teams = await Team.find({ eventId: req.params.id }).sort({ order: 1 });
-  res.json({ success: true, data: teams });
+  res.json({ success: true, data: teams.map(toLegacyTeam) });
 }
 
 export async function batchDeleteTeams(req: Request, res: Response): Promise<void> {
@@ -318,7 +342,7 @@ export async function importTeams(req: Request, res: Response): Promise<void> {
     const member1 = row['隊員一姓名'] || row['隊員一'] || row['member1'] || '';
     const member2 = row['隊員二姓名'] || row['隊員二'] || row['member2'] || '';
     const categoryRaw = (row['組別'] || row['category'] || '').toString().toLowerCase();
-    const members = [member1, member2].filter((m) => m.trim() !== '');
+    const members = [member1, member2].map((m) => String(m).trim()).filter((m) => m !== '');
 
     if (!teamName || members.length === 0) continue;
 
