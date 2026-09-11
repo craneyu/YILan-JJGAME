@@ -90,6 +90,24 @@ export function buildMembersFromNames(
   }));
 }
 
+/**
+ * legacy 端點對外形狀：members 以姓名字串陣列輸出。
+ *
+ * Team.members 自 check-in/weigh-in change 起升級為 IMember[]（帶過磅、檢錄狀態），
+ * 但 admin、賽序、計分、VR、觀眾等既有前端仍以 string[] 消費，狀態欄位只由
+ * /events/:id/participants 提供。未 migrate 的舊資料（純字串）亦照原樣輸出。
+ */
+export function toLegacyTeam(team: unknown): Record<string, unknown> {
+  const doc = team as { toObject?: () => Record<string, unknown> };
+  const obj =
+    typeof doc.toObject === 'function' ? doc.toObject() : (team as Record<string, unknown>);
+  const members = (obj['members'] ?? []) as Array<IMember | string>;
+  return {
+    ...obj,
+    members: members.map((m) => (typeof m === 'string' ? m : m.name)),
+  };
+}
+
 /** 取出成員姓名清單（legacy 端點仍以 string[] 對外）。 */
 export function memberNames(members: IMember[]): string[] {
   return members.map((m) => m.name);

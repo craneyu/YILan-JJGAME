@@ -68,7 +68,8 @@ interface ScoreResult {
   penalties: Array<{ type: string; deduction: number; count: number }>;
 }
 
-const CATEGORY_ORDER: Record<string, number> = { female: 0, male: 1, mixed: 2 };
+/** 賽事未設定 categoryOrder 時的後備順序（對齊後端 resolveCategoryOrder 的預設）。 */
+const DEFAULT_CATEGORY_ORDER = ['female', 'male', 'mixed'];
 const CATEGORY_LABEL: Record<string, string> = { male: '男子組', female: '女子組', mixed: '混合組' };
 const TIER_LABEL: Record<string, string> = {
   EL: '國小低年級',
@@ -105,6 +106,8 @@ export class CreativeSequenceJudgeComponent implements OnInit, OnDestroy {
   isFullscreen = signal(false);
   eventName = signal<string>('');
   meetingType = signal<'sports-day' | 'tournament'>('sports-day');
+  /** 賽事設定的組別順序（由 summary 提供，未設定時用預設）。 */
+  categoryOrder = signal<string[]>(DEFAULT_CATEGORY_ORDER);
 
   // 錦標賽國小組（EL/EM/EH）不適用超時/不足時間罰則
   isCurrentElementary = computed(() => {
@@ -131,8 +134,14 @@ export class CreativeSequenceJudgeComponent implements OnInit, OnDestroy {
 
   // 隊伍清單依 category → order 排序（Sequence judge opens scoring for a team）
   sortedTeams = computed(() => {
+    // 依賽事設定的組別順序排序，與後端 creative flow 的 sortTeams 一致
+    const categoryOrder = this.categoryOrder();
+    const catRank = (category: string): number => {
+      const idx = categoryOrder.indexOf(category);
+      return idx === -1 ? 99 : idx;
+    };
     return [...this.teams()].sort((a, b) => {
-      const catDiff = (CATEGORY_ORDER[a.category] ?? 99) - (CATEGORY_ORDER[b.category] ?? 99);
+      const catDiff = catRank(a.category) - catRank(b.category);
       if (catDiff !== 0) return catDiff;
       return (a.order ?? 0) - (b.order ?? 0);
     });
@@ -709,10 +718,11 @@ export class CreativeSequenceJudgeComponent implements OnInit, OnDestroy {
   }
 
   private loadEventInfo(): void {
-    this.api.get<{ success: boolean; data: { event: { name: string; competitionTypes?: ('Duo' | 'Show')[]; meetingType?: 'sports-day' | 'tournament' } } }>(`/events/${this.eventId}/summary`).subscribe((res) => {
+    this.api.get<{ success: boolean; data: { event: { name: string; competitionTypes?: ('Duo' | 'Show')[]; meetingType?: 'sports-day' | 'tournament'; categoryOrder?: string[] } } }>(`/events/${this.eventId}/summary?competitionType=Show`).subscribe((res) => {
       if (!res.success) return;
       this.eventName.set(res.data.event.name);
       this.meetingType.set(res.data.event.meetingType ?? 'sports-day');
+      if (res.data.event.categoryOrder?.length) this.categoryOrder.set(res.data.event.categoryOrder);
       if (res.data.event.competitionTypes?.length) {
         this.auth.setEventCompetitionTypes(res.data.event.competitionTypes);
       }

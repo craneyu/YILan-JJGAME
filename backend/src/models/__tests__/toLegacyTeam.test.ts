@@ -1,5 +1,4 @@
-import { toLegacyTeam } from "../teamController";
-import { IMember } from "../../models/Team";
+import { IMember, toLegacyTeam } from "../../models/Team";
 
 const member = (name: string): IMember => ({
   name,

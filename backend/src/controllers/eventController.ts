@@ -3,7 +3,7 @@ import Event, { SportType } from "../models/Event";
 import Match from "../models/Match";
 import GameState from "../models/GameState";
 import CreativeGameState from "../models/CreativeGameState";
-import Team, { memberNames } from "../models/Team";
+import Team, { memberNames, toLegacyTeam } from "../models/Team";
 import Score from "../models/Score";
 import VRScore from "../models/VRScore";
 import WrongAttack from "../models/WrongAttack";
@@ -351,6 +351,8 @@ export async function getEventSummary(
     name: event.name,
     competitionTypes: event.competitionTypes ?? ["Duo"],
     meetingType: event.meetingType ?? "sports-day",
+    // 該競賽類型實際生效的組別順序，供前端分群顯示與後端流程一致
+    categoryOrder: resolveCategoryOrder(event, effectiveType),
   };
 
   // 計算單隊組別 map（同一 (category, tier) 群組僅一隊報名時為 true）
@@ -369,7 +371,8 @@ export async function getEventSummary(
     success: true,
     data: {
       event: eventInfo,
-      teams,
+      // members 以姓名字串輸出，維持賽序/計分/VR 裁判端的既有消費形狀
+      teams: teams.map(toLegacyTeam),
       gameState,
       vrScore,
       submittedJudgeNos,

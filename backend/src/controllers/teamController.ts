@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Team, { IMember, TeamTier, buildMembersFromNames, memberNames } from '../models/Team';
+import Team, { IMember, TeamTier, buildMembersFromNames, memberNames, toLegacyTeam } from '../models/Team';
 import Event from '../models/Event';
 import CreativeScore from '../models/CreativeScore';
 import CreativePenalty from '../models/CreativePenalty';
@@ -32,23 +32,6 @@ function parseTier(raw: string | undefined | null): TeamTier | undefined {
   const upper = trimmed.toUpperCase();
   if (VALID_TIERS.includes(upper as TeamTier)) return upper as TeamTier;
   return TIER_LABEL_MAP[trimmed];
-}
-
-/**
- * legacy /teams 端點對外形狀：members 以姓名字串陣列輸出。
- *
- * Team.members 自 check-in/weigh-in change 起升級為 IMember[]（帶過磅、檢錄狀態），
- * 但 admin、賽序、計分、觀眾等既有前端仍以 string[] 消費，狀態欄位只由
- * /events/:id/participants 提供。未 migrate 的舊資料（純字串）亦照原樣輸出。
- */
-export function toLegacyTeam(team: unknown): Record<string, unknown> {
-  const doc = team as { toObject?: () => Record<string, unknown> };
-  const obj = typeof doc.toObject === 'function' ? doc.toObject() : (team as Record<string, unknown>);
-  const members = (obj['members'] ?? []) as Array<IMember | string>;
-  return {
-    ...obj,
-    members: members.map((m) => (typeof m === 'string' ? m : m.name)),
-  };
 }
 
 export async function listTeams(req: Request, res: Response): Promise<void> {

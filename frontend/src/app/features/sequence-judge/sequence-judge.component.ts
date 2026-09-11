@@ -85,7 +85,12 @@ interface JudgeScoreEntry {
 interface SummaryResponse {
   success: boolean;
   data: {
-    event: { name: string; competitionTypes?: ("Duo" | "Show")[]; meetingType?: 'sports-day' | 'tournament' };
+    event: {
+      name: string;
+      competitionTypes?: ("Duo" | "Show")[];
+      meetingType?: 'sports-day' | 'tournament';
+      categoryOrder?: string[];
+    };
     singleTeamGroups?: Record<string, boolean>;
     teams: TeamInfo[];
     gameState: {
@@ -106,7 +111,8 @@ interface SummaryResponse {
   };
 }
 
-const CATEGORY_ORDER: Record<string, number> = { female: 0, male: 1, mixed: 2 };
+/** 賽事未設定 categoryOrder 時的後備順序（對齊後端 resolveCategoryOrder 的預設）。 */
+const DEFAULT_CATEGORY_ORDER = ["female", "male", "mixed"];
 const CATEGORY_LABEL: Record<string, string> = {
   male: "男子組",
   female: "女子組",
@@ -144,6 +150,8 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
   currentTeam = signal<TeamInfo | null>(null);
   currentRound = signal(1);
   groupIndex = signal(1);
+  /** 賽事設定的組別順序（由 summary 提供，未設定時用預設）。 */
+  categoryOrder = signal<string[]>(DEFAULT_CATEGORY_ORDER);
   currentActionNo = signal<string | null>(null);
   actionOpen = signal(false);
   gameStatus = signal<string>("idle");
@@ -263,10 +271,14 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
       return [...groupMap.values()];
     }
 
-    // 運動會：依既有 category 主排序
+    // 運動會：依賽事設定的組別順序主排序（與後端 sortTeams 一致，避免顯示順序與實際進行順序不符）
+    const categoryOrder = this.categoryOrder();
+    const catRank = (category: string): number => {
+      const idx = categoryOrder.indexOf(category);
+      return idx === -1 ? 99 : idx;
+    };
     const sorted = [...this.teams()].sort((a, b) => {
-      const catDiff =
-        (CATEGORY_ORDER[a.category] ?? 99) - (CATEGORY_ORDER[b.category] ?? 99);
+      const catDiff = catRank(a.category) - catRank(b.category);
       if (catDiff !== 0) return catDiff;
       return (a.order ?? 0) - (b.order ?? 0);
     });
@@ -518,6 +530,7 @@ export class SequenceJudgeComponent implements OnInit, OnDestroy {
 
         this.eventName.set(event.name);
         this.meetingType.set(event.meetingType ?? 'sports-day');
+        if (event.categoryOrder?.length) this.categoryOrder.set(event.categoryOrder);
         this.singleTeamGroups.set(res.data.singleTeamGroups ?? {});
         if (event.competitionTypes?.length) {
           this.auth.setEventCompetitionTypes(event.competitionTypes);
