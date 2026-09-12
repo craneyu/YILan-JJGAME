@@ -204,7 +204,9 @@ export class CreativeAudienceComponent implements OnInit, OnDestroy {
         this.timerFinished.set(false);
         this.finalElapsedMs.set(null);
         this.elapsedMs.set(evt.elapsedMs ?? 0);
-        this.localStartMs.set(new Date(evt.timerStartedAt).getTime());
+        // 廣播即時送達，直接以本地時鐘起算；
+        // 不可拿 Date.now() 減伺服器的 timerStartedAt，裝置時鐘偏移會整段位移
+        this.localStartMs.set(Date.now());
         this.timerRunning.set(true);
         this.startLocalInterval();
       })
@@ -329,6 +331,7 @@ loadState(eventId: string): void {
       status: string;
       timerElapsedMs?: number;
       timerStartedAt?: string;
+      serverNow?: string;
       isAbstained?: boolean;
     }
   }>(`/creative/flow/state/${eventId}`).subscribe({
@@ -356,7 +359,13 @@ loadState(eventId: string): void {
       // 還原計時器狀態
       if (s.timerElapsedMs !== undefined) this.elapsedMs.set(s.timerElapsedMs);
       if (s.status === 'timer_running' && s.timerStartedAt) {
-        this.localStartMs.set(new Date(s.timerStartedAt).getTime());
+        // 以伺服器自己的兩個時間戳相減得到「本段已跑多久」，
+        // 再換算成本地時鐘座標，避免裝置與伺服器時鐘不同步造成偏移
+        const startedAt = new Date(s.timerStartedAt).getTime();
+        const serverNow = s.serverNow ? new Date(s.serverNow).getTime() : NaN;
+        const ranMs =
+          !isNaN(startedAt) && !isNaN(serverNow) ? Math.max(0, serverNow - startedAt) : 0;
+        this.localStartMs.set(Date.now() - ranMs);
         this.timerRunning.set(true);
         this.startLocalInterval();
       }

@@ -56,6 +56,7 @@ interface CreativeStateData {
   timerStoppedAt?: string;
   timerElapsedMs?: number;
   timerStatus?: TimerStatus;
+  serverNow?: string;
   isAbstained?: boolean;
 }
 
@@ -296,10 +297,9 @@ export class CreativeSequenceJudgeComponent implements OnInit, OnDestroy {
     this.subs.add(
       this.socket.timerStarted$.subscribe((evt) => {
         if (evt.eventId !== this.eventId) return;
-        const startMs = new Date(evt.timerStartedAt).getTime();
-        if (!isNaN(startMs)) {
-          this.localStartMs.set(startMs);
-        }
+        // 廣播即時送達，直接以本地時鐘起算；
+        // 不可拿 Date.now() 減伺服器的 timerStartedAt，裝置時鐘偏移會整段位移
+        this.localStartMs.set(Date.now());
         this.elapsedMs.set(evt.elapsedMs ?? 0);
         this.timerStatus.set('running');
         this.startLocalInterval();
@@ -477,10 +477,14 @@ export class CreativeSequenceJudgeComponent implements OnInit, OnDestroy {
           const storedElapsed = state.timerElapsedMs ?? 0;
 
           if (storedStatus === 'running' && state.timerStartedAt) {
+            // 以伺服器自己的兩個時間戳相減得到「本段已跑多久」，
+            // 再換算成本地時鐘座標，避免裝置與伺服器時鐘不同步造成偏移
             const startMs = new Date(state.timerStartedAt).getTime();
             if (!isNaN(startMs)) {
+              const serverNow = state.serverNow ? new Date(state.serverNow).getTime() : NaN;
+              const ranMs = !isNaN(serverNow) ? Math.max(0, serverNow - startMs) : 0;
               this.elapsedMs.set(storedElapsed);
-              this.localStartMs.set(startMs);
+              this.localStartMs.set(Date.now() - ranMs);
               this.timerStatus.set('running');
               this.startLocalInterval();
             }
@@ -563,13 +567,11 @@ export class CreativeSequenceJudgeComponent implements OnInit, OnDestroy {
     this.api.post<{ success: boolean; timerStartedAt: string; elapsedMs: number }>('/creative/flow/resume-timer', { eventId: this.eventId }).subscribe({
       next: (res) => {
         this.loading.set(false);
-        const startMs = new Date(res.timerStartedAt).getTime();
-        if (!isNaN(startMs)) {
-          this.localStartMs.set(startMs);
-          this.elapsedMs.set(res.elapsedMs ?? this.elapsedMs());
-          this.timerStatus.set('running');
-          this.startLocalInterval();
-        }
+        // 剛收到回應，續跑起點就是本地的現在
+        this.localStartMs.set(Date.now());
+        this.elapsedMs.set(res.elapsedMs ?? this.elapsedMs());
+        this.timerStatus.set('running');
+        this.startLocalInterval();
       },
       error: () => {
         this.loading.set(false);

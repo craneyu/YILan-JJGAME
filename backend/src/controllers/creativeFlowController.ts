@@ -194,5 +194,8 @@ export async function getCreativeState(req: Request, res: Response): Promise<voi
     }
   }
 
-  res.json({ success: true, data: { ...state, currentTeamName, currentMembers, currentCategory, currentTier, isAbstained: state?.isAbstained ?? false } });
+  // serverNow 讓前端把「伺服器的 timerStartedAt」換算成自己時鐘的座標。
+  // 離線區網沒有 NTP 校時，各裝置時鐘可能相差數十秒，
+  // 直接拿 Date.now() 減伺服器時間戳會讓計時器一啟動就偏掉。
+  res.json({ success: true, data: { ...state, currentTeamName, currentMembers, currentCategory, currentTier, isAbstained: state?.isAbstained ?? false, serverNow: new Date().toISOString() } });
 }
