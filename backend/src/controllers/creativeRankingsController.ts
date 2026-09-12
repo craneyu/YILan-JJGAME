@@ -6,6 +6,12 @@ import CreativePenalty from '../models/CreativePenalty';
 import CreativeGameState from '../models/CreativeGameState';
 import { calculateCreativeScore } from '../utils/creativeScoring';
 
+interface CreativeJudgeEntry {
+  judgeNo: number;
+  technicalScore: number;
+  artisticScore: number;
+}
+
 interface TeamRankEntry {
   teamId: string;
   name: string;
@@ -20,6 +26,8 @@ interface TeamRankEntry {
   rank: number;
   penaltyReasons: string[];
   isAbstained: boolean;
+  /** 各裁判的原始評分（未去頭尾），供裁判評分明細匯出使用 */
+  judgeScores: CreativeJudgeEntry[];
 }
 
 const PENALTY_LABEL: Record<string, string> = {
@@ -58,6 +66,15 @@ export async function getCreativeRankings(req: Request, res: Response): Promise<
 
     const tier = isTournament ? (team.tier ?? null) : null;
 
+    // 原始評分照實列出（即使未滿 5 位裁判送出），方便賽後對帳／申訴查核
+    const judgeDetail: CreativeJudgeEntry[] = judgeScores
+      .map((s) => ({
+        judgeNo: s.judgeNo,
+        technicalScore: s.technicalScore,
+        artisticScore: s.artisticScore,
+      }))
+      .sort((a, b) => a.judgeNo - b.judgeNo);
+
     if (judgeScores.length < 5) {
       return {
         teamId,
@@ -72,6 +89,7 @@ export async function getCreativeRankings(req: Request, res: Response): Promise<
         finalScore: 0,
         penaltyReasons,
         isAbstained,
+        judgeScores: judgeDetail,
       };
     }
 
@@ -93,6 +111,7 @@ export async function getCreativeRankings(req: Request, res: Response): Promise<
       ...calc,
       penaltyReasons,
       isAbstained,
+      judgeScores: judgeDetail,
     };
   });
 

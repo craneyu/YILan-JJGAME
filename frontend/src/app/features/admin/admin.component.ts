@@ -45,6 +45,12 @@ interface EventItem {
   meetingType?: MeetingType;
 }
 
+type CreativeJudgeScore = {
+  judgeNo: number;
+  technicalScore: number;
+  artisticScore: number;
+};
+
 interface CreativeRankingItem {
   rank: number;
   teamId: string;
@@ -59,6 +65,7 @@ interface CreativeRankingItem {
   finalScore: number;
   penaltyReasons?: string[];
   isAbstained?: boolean;
+  judgeScores?: CreativeJudgeScore[];
 }
 
 interface CategoryCreativeRanking {
@@ -1083,6 +1090,125 @@ export class AdminComponent implements OnInit {
     const sheetName = group.label.slice(0, 31);
     XLSX.utils.book_append_sheet(wb, ws, sheetName);
     XLSX.writeFile(wb, `${event.name}_${group.label}_創意演武成績.xlsx`);
+  }
+
+  /**
+   * 匯出創意演武「裁判評分明細」獨立 Excel 檔：
+   * 列出每位裁判的技術分與表演分原始評分，
+   * 並附上去頭尾後實際採計的分數、扣分與最終得分，供賽後對帳與申訴查核。
+   */
+  exportCreativeJudgeExcel(category: string, tier: TeamTier | null = null): void {
+    const event = this.selectedEvent();
+    if (!event || this.creativeRankings().length === 0) return;
+    const group = this.creativeRankingsByCat().find(
+      (g) => g.category === category && g.tier === tier,
+    );
+    if (!group) return;
+
+    // 欄位：裁判 | 技術分 | 表演分 | 小計 | 備註 = 5 欄
+    const COL = 5;
+    const rows: (string | number)[][] = [];
+    const merges: {
+      s: { r: number; c: number };
+      e: { r: number; c: number };
+    }[] = [];
+    const merge = (c1: number, c2: number) =>
+      merges.push({
+        s: { r: rows.length - 1, c: c1 },
+        e: { r: rows.length - 1, c: c2 },
+      });
+    const round1 = (n: number) => Math.round(n * 10) / 10;
+
+    rows.push([`${event.name} — ${group.label} 創意演武裁判評分明細`]);
+    merge(0, COL - 1);
+    rows.push([`列印日期：${new Date().toLocaleDateString("zh-TW")}`]);
+    merge(0, COL - 1);
+    rows.push([
+      "※ 本表為五位裁判的原始評分；正式成績為技術分、表演分各自去除最高、最低分後，取中間三位加總再扣除罰分",
+    ]);
+    merge(0, COL - 1);
+    rows.push([]);
+
+    for (const item of group.items) {
+      const rankLabel = item.isAbstained
+        ? "棄權"
+        : item.rank === 1
+          ? "金牌"
+          : item.rank === 2
+            ? "銀牌"
+            : item.rank === 3
+              ? "銅牌"
+              : `第 ${item.rank} 名`;
+
+      rows.push([
+        `${rankLabel}　${item.name}（${item.members.join(" / ")}）　最終得分：${
+          item.isAbstained ? "—" : item.finalScore
+        }`,
+      ]);
+      merge(0, COL - 1);
+
+      rows.push(["裁判", "技術分", "表演分", "小計", "備註"]);
+
+      const judges = item.judgeScores ?? [];
+      for (let n = 1; n <= 5; n++) {
+        const j = judges.find((x) => x.judgeNo === n);
+        rows.push(
+          j
+            ? [
+                `裁判${n}`,
+                j.technicalScore,
+                j.artisticScore,
+                round1(j.technicalScore + j.artisticScore),
+                "",
+              ]
+            : [`裁判${n}`, "", "", "", "未送出"],
+        );
+      }
+
+      // 實際採計（技術／表演各自去頭尾後中間三位加總）
+      const scored = judges.length >= 5;
+      rows.push([
+        "採計（中間三位）",
+        scored ? item.technicalTotal : "",
+        scored ? item.artisticTotal : "",
+        scored ? item.grandTotal : "",
+        scored ? "" : "未滿 5 位裁判，不列入計分",
+      ]);
+      rows.push([
+        "扣分",
+        "",
+        "",
+        item.penaltyDeduction > 0 ? -item.penaltyDeduction : 0,
+        item.penaltyDeduction > 0 ? (item.penaltyReasons ?? []).join("、") : "",
+      ]);
+      rows.push([
+        "最終得分",
+        "",
+        "",
+        item.isAbstained ? "—" : item.finalScore,
+        item.isAbstained ? "棄權，不列入排名" : "",
+      ]);
+
+      rows.push([]); // 隊伍間空行
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws["!merges"] = merges;
+    ws["!cols"] = [
+      { wch: 18 },
+      { wch: 9 },
+      { wch: 9 },
+      { wch: 9 },
+      { wch: 26 },
+    ];
+
+    const wb = XLSX.utils.book_new();
+    const sheetName = `${group.label} 裁判明細`.slice(0, 31);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    XLSX.writeFile(
+      wb,
+      `${event.name}_${group.label}_創意演武裁判評分明細.xlsx`,
+    );
   }
 
   printCreativePdf(category: string, tier: TeamTier | null = null): void {
