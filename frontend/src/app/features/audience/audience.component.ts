@@ -139,6 +139,10 @@ export class AudienceComponent implements OnInit, OnDestroy {
     if (this.isSingleTeamGroup()) {
       return `${cat}${tierLabel}`;
     }
+    // EL/EM 單輪連續演練，沒有輪次概念，只顯示組次
+    if (this.isElementaryAB()) {
+      return `${cat}${tierLabel}　G${this.groupIndex()}`;
+    }
     return `${cat}${tierLabel}　R${this.currentRound()}-G${this.groupIndex()}`;
   });
 
@@ -160,10 +164,23 @@ export class AudienceComponent implements OnInit, OnDestroy {
     return base + (vrt ?? 0);
   });
 
+  // EL/EM 為單輪連續演練（A 系列接著 B 系列不換組），欄位需同時呈現兩個系列
+  isElementaryAB = computed(() => {
+    const tier = this.currentTeam()?.tier;
+    return tier === 'EL' || tier === 'EM';
+  });
+
   seriesActions = computed(() => {
     const team = this.currentTeam();
     const s = this.series() as 'A' | 'B' | 'C';
-    // Tournament 國小組（EL/EM/EH）依 tier 套用受限動作集
+    // Tournament EL/EM：整場 A+B 動作固定同時顯示，不隨 round 切換
+    if (team && (team.tier === 'EL' || team.tier === 'EM')) {
+      return [
+        ...ELEMENTARY_MOTIONS[team.tier].A,
+        ...ELEMENTARY_MOTIONS[team.tier].B,
+      ];
+    }
+    // Tournament EH：每系列 3 動作，仍按 round 切換
     if (team && isElementaryTier(team.tier)) {
       return [...ELEMENTARY_MOTIONS[team.tier][s]];
     }
@@ -171,14 +188,6 @@ export class AudienceComponent implements OnInit, OnDestroy {
     // Sports-day 沿用現有規則
     const count = team?.category === 'male' ? 4 : 3;
     return Array.from({ length: count }, (_, i) => `${s}${i + 1}`);
-  });
-
-  // Tournament EL/EM 沒有 C 系列：當前 round=3 時 seriesActions 為空，標示需隱藏 C 欄
-  isCseriesHidden = computed(() => {
-    const team = this.currentTeam();
-    if (!team || !isElementaryTier(team.tier)) return false;
-    if (team.tier === 'EL' || team.tier === 'EM') return this.series() === 'C';
-    return false;
   });
 
   // 國小組（EL/EM/EH）無 VR 評分

@@ -10,8 +10,17 @@ import WrongAttack from "../models/WrongAttack";
 import CreativeScore from "../models/CreativeScore";
 import CreativePenalty from "../models/CreativePenalty";
 import { calculateActionScores, CalculatedScore } from "../utils/scoring";
-import { sortTeams, resolveCategoryOrder } from "../utils/teamSort";
-import { isElementaryTier, groupKey } from "../utils/tournament";
+import {
+  sortTeams,
+  resolveCategoryOrder,
+  buildTournamentGroups,
+} from "../utils/teamSort";
+import {
+  isElementaryTier,
+  groupKey,
+  getElementaryMotions,
+  getTeamMotionSequence,
+} from "../utils/tournament";
 
 export async function listEvents(req: Request, res: Response): Promise<void> {
   // open=true：只回傳 pending / active（排除 closed），供登入頁觀眾使用
@@ -265,7 +274,15 @@ export async function getEventSummary(
   if (effectiveType === "Show") teamFilter["competitionType"] = "Show";
   else teamFilter["competitionType"] = { $ne: "Show" }; // 預設排除 Show 隊伍
   const allTeams = await Team.find(teamFilter);
-  const teams = sortTeams(allTeams, resolveCategoryOrder(event, effectiveType));
+  // 錦標賽的出場順序由 Excel 列順序決定（群組首現順序、群內 order 升冪），
+  // 不使用 categoryOrder；與 flowController 的 nextGroup 流程一致。
+  // 運動會維持既有的 category 主排序。
+  const isTournament = event.meetingType === "tournament";
+  const teams = isTournament
+    ? buildTournamentGroups(
+        [...allTeams].sort((a, b) => a.order - b.order),
+      ).flatMap((g) => g.teams)
+    : sortTeams(allTeams, resolveCategoryOrder(event, effectiveType));
   const gameState = await GameState.findOne({ eventId });
 
   let vrScore = null;
@@ -289,25 +306,50 @@ export async function getEventSummary(
     // 查詢 VR 是否已送出
     vrScore = await VRScore.findOne({ eventId, teamId, round }).lean();
 
-    // 查詢本系列錯誤攻擊動作
-    const wrongAttacks = await WrongAttack.find({
-      eventId,
-      teamId,
-      round,
-    }).lean();
+    // 查詢錯誤攻擊動作。EL/EM 單輪連續演練會同時顯示 A、B 兩系列，
+    // 限定 round 會漏掉前一系列已標記的動作，故該類隊伍不限 round。
+    const teamForWrongAttack = await Team.findById(teamId).lean();
+    const spansBothSeries =
+      event.meetingType === "tournament" &&
+      (teamForWrongAttack?.tier === "EL" || teamForWrongAttack?.tier === "EM");
+    const wrongAttacks = await WrongAttack.find(
+      spansBothSeries ? { eventId, teamId } : { eventId, teamId, round },
+    ).lean();
     wrongAttackActionNos = wrongAttacks.map((wa) => wa.actionNo);
 
     // 查詢本系列已完成的動作（5 位裁判均送出）並計算成績
     const currentTeam = teams.find((t) => String(t._id) === String(teamId));
     if (currentTeam) {
-      const actionCount = currentTeam.category === "male" ? 4 : 3;
       const series = ["A", "B", "C"][round - 1] ?? "A";
-      for (let i = 1; i <= actionCount; i++) {
-        const actionNo = `${series}${i}`;
+      const tier = currentTeam.tier;
+      // EL/EM 為單輪連續演練（A 系列接著 B 系列不換組），
+      // 觀眾端會同時顯示兩個系列的欄位，因此要還原整場動作而非單一系列。
+      // EH 與其餘 tier／運動會仍以當前系列為準。
+      const isElementaryAB =
+        isTournament && (tier === "EL" || tier === "EM");
+      let actionNos: string[];
+      if (isElementaryAB) {
+        actionNos = getTeamMotionSequence(currentTeam, event);
+      } else if (isTournament && isElementaryTier(tier)) {
+        actionNos = [
+          ...getElementaryMotions(tier as "EL" | "EM" | "EH", series as "A" | "B" | "C"),
+        ];
+      } else {
+        const actionCount = currentTeam.category === "male" ? 4 : 3;
+        actionNos = Array.from(
+          { length: actionCount },
+          (_, i) => `${series}${i + 1}`,
+        );
+      }
+      for (const actionNo of actionNos) {
+        // 成績以動作編號的系列字母決定 round（A=1、B=2、C=3），
+        // EL/EM 跨系列時 gameState.currentRound 已經推進，不能用它反查前一系列
+        const actionRound =
+          actionNo[0] === "A" ? 1 : actionNo[0] === "B" ? 2 : 3;
         const scores = await Score.find({
           eventId,
           teamId,
-          round,
+          round: actionRound,
           actionNo,
         }).lean();
         if (scores.length >= 5) {
