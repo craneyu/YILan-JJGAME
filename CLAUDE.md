@@ -313,7 +313,7 @@ Each of 5 judges submits technical (0–9.5) and artistic (0–9.5) scores:
 
 ### Running a Match (Fighting/Ne-Waza/Contact) Test Session
 1. Start services, open browser tabs:
-   - 1 match referee (`match1`), 1 audience
+   - 1 match referee (`match`), 1 audience
 2. Admin creates matches in management panel
 3. Referee controls timer, scores, fouls; audience sees real-time updates
 
