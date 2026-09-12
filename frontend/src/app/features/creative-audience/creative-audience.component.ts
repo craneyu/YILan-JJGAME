@@ -8,6 +8,7 @@ import { FaIconComponent } from '@fortawesome/angular-fontawesome';
 import { faExpand, faCompress, faArrowsRotate, faCheck, faClock, faTriangleExclamation, faGavel } from '@fortawesome/free-solid-svg-icons';
 import { SocketService, CreativePenaltyItem, CreativeTeamAbstainedEvent } from '../../core/services/socket.service';
 import { ApiService } from '../../core/services/api.service';
+import { AuthService } from '../../core/services/auth.service';
 import {
   ParticipantBadgeComponent,
   MemberStatus,
@@ -62,6 +63,7 @@ export class CreativeAudienceComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private socket = inject(SocketService);
   private api = inject(ApiService);
+  private auth = inject(AuthService);
 
   eventId = signal('');
   eventName = signal('');
@@ -167,14 +169,14 @@ export class CreativeAudienceComponent implements OnInit, OnDestroy {
       this.socket.joinEvent(id);
       this.loadEventName(id);
       this.loadState(id);
-      this.loadTeamCheckInMap(id);
+      if (this.canReadCheckIn()) this.loadTeamCheckInMap(id);
     }
 
     this.subs.add(
       this.socket.participantStatusChanged$.subscribe(() => {
         // 任一成員狀態變更 → 重抓 team-level 結果（成本低、結構單純）
         const eid = this.eventId();
-        if (eid) this.loadTeamCheckInMap(eid);
+        if (eid && this.canReadCheckIn()) this.loadTeamCheckInMap(eid);
       }),
     );
 
@@ -287,6 +289,16 @@ export class CreativeAudienceComponent implements OnInit, OnDestroy {
 
   switchToDuo(): void {
     this.router.navigate(['/audience'], { queryParams: { eventId: this.eventId() } });
+  }
+
+  /**
+   * 報到名冊 GET /events/:id/participants 僅開放檢錄人員與管理員。
+   * 觀眾端多半未登入，直接呼叫會拿到 401 而被攔截器踢回登入畫面，
+   * 因此無權限時不發送請求，報到標記留空即可。
+   */
+  private canReadCheckIn(): boolean {
+    const role = this.auth.currentRole();
+    return role === 'check_in_officer' || role === 'admin';
   }
 
   private loadTeamCheckInMap(eventId: string): void {
