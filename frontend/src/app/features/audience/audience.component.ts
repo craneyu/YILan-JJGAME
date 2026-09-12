@@ -233,13 +233,7 @@ export class AudienceComponent implements OnInit, OnDestroy {
 
       this.socket.groupChanged$.subscribe((e) => {
         if (e.eventId !== this.eventId()) return;
-        const team = this.teams().find((t) => t._id === e.nextTeamId);
-        if (team) {
-          this.currentTeam.set(team);
-          const sameCategory = this.teams().filter((t) => t.category === team.category);
-          const catIdx = sameCategory.findIndex((t) => t._id === e.nextTeamId);
-          this.groupIndex.set(catIdx >= 0 ? catIdx + 1 : this.groupIndex() + 1);
-        }
+        this.applyCurrentTeam(e.nextTeamId);
         this.currentRound.set(e.round);
         this.actionScores.set([]);
         this.vrScore.set(null);
@@ -254,6 +248,10 @@ export class AudienceComponent implements OnInit, OnDestroy {
 
       this.socket.actionOpened$.subscribe((e) => {
         if (e.eventId !== this.eventId()) return;
+        // 賽事第一隊、或賽序裁判手動選隊時不會發出 group:changed，
+        // 以 action:opened 夾帶的 teamId 補齊當前隊伍，
+        // 否則 currentTeam 為 null 會讓動作欄位退回預設 3 欄（男子組看不到 A4）
+        this.applyCurrentTeam(e.teamId);
         this.currentActionNo.set(e.actionNo);
         this.currentRound.set(e.round);
       }),
@@ -305,13 +303,7 @@ export class AudienceComponent implements OnInit, OnDestroy {
 
       if (!gameState?.currentTeamId) return;
 
-      const team = teams.find((t) => t._id === gameState.currentTeamId);
-      if (team) {
-        this.currentTeam.set(team);
-        const sameCategory = teams.filter((t) => t.category === team.category);
-        const catIdx = sameCategory.findIndex((t) => t._id === gameState.currentTeamId);
-        this.groupIndex.set(catIdx >= 0 ? catIdx + 1 : 1);
-      }
+      this.applyCurrentTeam(gameState.currentTeamId);
       this.currentRound.set(gameState.currentRound);
       if (gameState.currentActionNo) this.currentActionNo.set(gameState.currentActionNo);
 
@@ -337,6 +329,32 @@ export class AudienceComponent implements OnInit, OnDestroy {
     this.api.get<{ success: boolean; data: RankingItem[] }>(`/events/${eventId}/rankings`).subscribe({
       next: (res) => { if (res.success) this.rankings.set(res.data); },
     });
+  }
+
+  /**
+   * 設定當前隊伍並重算 G 編號。
+   * G 編號在同一 (category, tier) 群組內計算，與賽序裁判端、後端換組流程的分群一致。
+   * 若隊伍實際改變但未經 group:changed（賽序裁判手動選隊），一併清掉前一隊的殘留成績。
+   */
+  private applyCurrentTeam(teamId: string | undefined): void {
+    if (!teamId) return;
+    const team = this.teams().find((t) => t._id === teamId);
+    if (!team) return;
+
+    const previousId = this.currentTeam()?._id ?? null;
+    this.currentTeam.set(team);
+
+    const sameGroup = this.teams().filter(
+      (t) => t.category === team.category && (t.tier ?? null) === (team.tier ?? null)
+    );
+    const idx = sameGroup.findIndex((t) => t._id === teamId);
+    this.groupIndex.set(idx >= 0 ? idx + 1 : 1);
+
+    if (previousId && previousId !== teamId) {
+      this.actionScores.set([]);
+      this.vrScore.set(null);
+      this.currentActionNo.set(null);
+    }
   }
 
   getActionScore(actionNo: string): ActionScore | undefined {
