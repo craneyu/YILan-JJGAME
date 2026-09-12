@@ -87,6 +87,15 @@ type ActionDetail = {
   total: number;
 };
 type VrDetail = { throwVariety: number; groundVariety: number };
+type JudgeScore = {
+  judgeNo: number;
+  p1: number;
+  p2: number;
+  p3: number;
+  p4: number;
+  p5?: number;
+};
+type JudgeDetail = { wrongAttack: boolean; judges: JudgeScore[] };
 
 interface RankingItem {
   teamId: string;
@@ -103,6 +112,7 @@ interface RankingItem {
   total: number;
   rank?: number;
   actionDetails: Record<string, ActionDetail>;
+  judgeDetails?: Record<string, JudgeDetail>;
   vrDetails?: Record<string, VrDetail>;
 }
 
@@ -126,6 +136,45 @@ const TIER_LABEL: Record<TeamTier, string> = {
 const TIER_ORDER: TeamTier[] = ["EL", "EM", "EH", "JH", "SH", "OPEN", "ELEM"];
 function isElementaryTier(tier: TeamTier | null | undefined): boolean {
   return tier === "EL" || tier === "EM" || tier === "EH";
+}
+
+/**
+ * 依組別與分級決定成績表版面：
+ * - 國小低/中年級（EL/EM）無 C 系列，且省略 VR 欄位
+ * - 每系列動作數：EL 1、EM 2、EH 3；男子組 4、女子/混合 3
+ * - 每動作項目數：A/B 系列 4 項、C 系列 5 項
+ */
+function seriesLayout(
+  category: string,
+  tier: TeamTier | null,
+): {
+  hideVR: boolean;
+  hideC: boolean;
+  actionCount: number;
+  seriesCfg: { s: string; parts: number }[];
+} {
+  const isElementary = isElementaryTier(tier);
+  const hideC = tier === "EL" || tier === "EM";
+  const actionCount = isElementary
+    ? tier === "EL"
+      ? 1
+      : tier === "EM"
+        ? 2
+        : 3 // EH
+    : category === "male"
+      ? 4
+      : 3;
+  const allSeries: { s: string; parts: number }[] = [
+    { s: "A", parts: 4 },
+    { s: "B", parts: 4 },
+    { s: "C", parts: 5 },
+  ];
+  return {
+    hideVR: isElementary,
+    hideC,
+    actionCount,
+    seriesCfg: hideC ? allSeries.filter((x) => x.s !== "C") : allSeries,
+  };
 }
 
 @Component({
@@ -1159,30 +1208,11 @@ ${sectionsHtml}
     const group = this.rankingsByCat().find((g) => g.groupKey === groupKey);
     if (!group) return;
 
-    // 依 tier 決定每系列動作數
-    // - 國小低/中年級：見下方 hideC 處理（無 C 系列）
-    // - 國小高年級：每系列 3 動作（無 C4）
-    // - 男子組 JH/OPEN/sports-day：4 動作
-    // - 女子/混合 JH/OPEN/sports-day：3 動作
-    const tier = group.tier;
-    const isElementary = isElementaryTier(tier);
-    const hideVR = isElementary; // 國小組（EL/EM/EH）省略 VR 欄位
-    const hideC = tier === "EL" || tier === "EM"; // EL/EM 沒有 C 系列
-    const actionCount = isElementary
-      ? tier === "EL"
-        ? 1
-        : tier === "EM"
-          ? 2
-          : 3 // EH
-      : group.category === "male"
-        ? 4
-        : 3;
-    const allSeries: { s: string; parts: number }[] = [
-      { s: "A", parts: 4 },
-      { s: "B", parts: 4 },
-      { s: "C", parts: 5 },
-    ];
-    const seriesCfg = hideC ? allSeries.filter((x) => x.s !== "C") : allSeries;
+    // 版面（動作數、系列、是否含 VR）依組別與分級決定
+    const { hideVR, actionCount, seriesCfg } = seriesLayout(
+      group.category,
+      group.tier,
+    );
 
     // 欄位數依是否含 VR 動態：
     // 含 VR：動作 | P1..P5 | 動作小計 | VR投技 | VR寢技 | 系列合計 = 10 欄
@@ -1351,6 +1381,155 @@ ${sectionsHtml}
       ? `${this.categoryLabel(group.category)}_${TIER_LABEL[group.tier]}`
       : this.categoryLabel(group.category);
     XLSX.writeFile(wb, `${event.name}_${filenameSuffix}_成績明細.xlsx`);
+  }
+
+  /**
+   * 匯出「裁判評分明細」獨立 Excel 檔：
+   * 列出每個動作、每位裁判對各項目（P1~P5）的原始評分，
+   * 並附上去頭尾後實際採計的分數，供賽後對帳與申訴查核。
+   */
+  exportJudgeExcel(groupKey: string): void {
+    const event = this.selectedEvent();
+    if (!event || this.rankings().length === 0) return;
+
+    const group = this.rankingsByCat().find((g) => g.groupKey === groupKey);
+    if (!group) return;
+
+    const { actionCount, seriesCfg } = seriesLayout(group.category, group.tier);
+
+    // 欄位：動作 | 裁判 | P1..P5 | 裁判小計 | 備註 = 9 欄
+    const COL = 9;
+    const rows: (string | number)[][] = [];
+    const merges: {
+      s: { r: number; c: number };
+      e: { r: number; c: number };
+    }[] = [];
+    const merge = (c1: number, c2: number) =>
+      merges.push({
+        s: { r: rows.length - 1, c: c1 },
+        e: { r: rows.length - 1, c: c2 },
+      });
+
+    rows.push([`${event.name} — ${group.label} 裁判評分明細`]);
+    merge(0, COL - 1);
+    rows.push([`列印日期：${new Date().toLocaleDateString("zh-TW")}`]);
+    merge(0, COL - 1);
+    rows.push([
+      "※ 本表為五位裁判的原始評分；正式成績為各項目去除最高、最低分後，取中間三位加總",
+    ]);
+    merge(0, COL - 1);
+    rows.push([]);
+
+    for (const item of group.items) {
+      const rankLabel =
+        item.rank === 1
+          ? "金牌"
+          : item.rank === 2
+            ? "銀牌"
+            : item.rank === 3
+              ? "銅牌"
+              : `第 ${item.rank} 名`;
+
+      rows.push([
+        `${rankLabel}　${item.name}（${item.members.join(" / ")}）　總分：${item.total}`,
+      ]);
+      merge(0, COL - 1);
+
+      rows.push([
+        "動作",
+        "裁判",
+        "P1",
+        "P2",
+        "P3",
+        "P4",
+        "P5",
+        "裁判小計",
+        "備註",
+      ]);
+
+      for (const { s, parts } of seriesCfg) {
+        for (let i = 1; i <= actionCount; i++) {
+          const actionNo = `${s}${i}`;
+          const detail = (item.judgeDetails ?? {})[actionNo];
+          const calc = (item.actionDetails ?? {})[actionNo];
+          const blockStart = rows.length;
+
+          // 五位裁判的原始評分（未送出者留白並標註）
+          for (let n = 1; n <= 5; n++) {
+            const judge = detail?.judges.find((j) => j.judgeNo === n);
+            const raw = judge as Record<string, number | undefined> | undefined;
+            const r: (string | number)[] = [n === 1 ? actionNo : "", `裁判${n}`];
+            let judgeSum = 0;
+            for (let pIdx = 1; pIdx <= 5; pIdx++) {
+              if (pIdx > parts) {
+                r.push("");
+                continue;
+              }
+              if (!raw) {
+                r.push("");
+                continue;
+              }
+              const v = raw[`p${pIdx}`] ?? 0;
+              judgeSum += v;
+              r.push(v);
+            }
+            r.push(raw ? judgeSum : "");
+            r.push(raw ? "" : "未送出");
+            rows.push(r);
+          }
+
+          // 實際採計（去頭尾後中間三位加總），與成績明細表一致
+          const calcRow: (string | number)[] = ["", "採計（中間三位）"];
+          for (let pIdx = 1; pIdx <= 5; pIdx++) {
+            if (pIdx > parts) {
+              calcRow.push("");
+              continue;
+            }
+            const v = calc
+              ? ((calc as Record<string, number | undefined>)[`p${pIdx}`] ?? 0)
+              : "";
+            calcRow.push(v);
+          }
+          calcRow.push(calc?.total ?? "");
+          calcRow.push(detail?.wrongAttack ? "無效動作：P1 以 0 分計" : "");
+          rows.push(calcRow);
+
+          // 動作編號欄跨「5 位裁判 + 採計」共 6 列
+          merges.push({
+            s: { r: blockStart, c: 0 },
+            e: { r: rows.length - 1, c: 0 },
+          });
+        }
+
+        rows.push([]); // 系列間空白
+      }
+
+      rows.push([]); // 隊伍間空行
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws["!merges"] = merges;
+    ws["!cols"] = [
+      { wch: 8 },
+      { wch: 16 },
+      { wch: 5 },
+      { wch: 5 },
+      { wch: 5 },
+      { wch: 5 },
+      { wch: 5 },
+      { wch: 10 },
+      { wch: 20 },
+    ];
+
+    const wb = XLSX.utils.book_new();
+    const safeSheetName = `${group.label} 裁判明細`
+      .replace(/[/\\?*\[\]:]/g, "_")
+      .slice(0, 31);
+    XLSX.utils.book_append_sheet(wb, ws, safeSheetName);
+    const filenameSuffix = group.tier
+      ? `${this.categoryLabel(group.category)}_${TIER_LABEL[group.tier]}`
+      : this.categoryLabel(group.category);
+    XLSX.writeFile(wb, `${event.name}_${filenameSuffix}_裁判評分明細.xlsx`);
   }
 
   printPdf(groupKey: string): void {

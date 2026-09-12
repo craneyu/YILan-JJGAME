@@ -515,6 +515,38 @@ export async function getEventRankings(
     };
   }
 
+  // 收集各動作「每位裁判」的原始評分（不去頭尾、不加總），供裁判評分明細匯出使用
+  // 與 teamActionDetails 不同：即使未滿 5 位裁判送出也照實列出，方便賽後對帳／申訴查核
+  const teamJudgeDetails: Record<
+    string,
+    Record<
+      string,
+      {
+        wrongAttack: boolean;
+        judges: Array<{
+          judgeNo: number;
+          p1: number;
+          p2: number;
+          p3: number;
+          p4: number;
+          p5?: number;
+        }>;
+      }
+    >
+  > = {};
+  for (const [key, judges] of Object.entries(groups)) {
+    const parts = key.split("|");
+    const teamId = parts[0];
+    const actionNo = parts[2];
+    if (!teamJudgeDetails[teamId]) teamJudgeDetails[teamId] = {};
+    teamJudgeDetails[teamId][actionNo] = {
+      wrongAttack: wrongAttackSet.has(key),
+      judges: [...judges]
+        .sort((a, b) => a.judgeNo - b.judgeNo)
+        .map((j) => ({ judgeNo: j.judgeNo, ...j.items })),
+    };
+  }
+
   // 加入 VR 分數（依輪次對應系列 A/B/C），同時儲存投技/寢技明細
   const teamVrScore: Record<string, { A: number; B: number; C: number }> = {};
   const teamVrDetails: Record<
@@ -557,6 +589,7 @@ export async function getEventRankings(
       seriesC: series.C,
       total,
       actionDetails: teamActionDetails[teamId] ?? {},
+      judgeDetails: teamJudgeDetails[teamId] ?? {},
     };
     if (tierIsElementary) {
       return base;

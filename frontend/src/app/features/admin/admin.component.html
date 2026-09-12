@@ -765,6 +765,13 @@
                         Excel
                       </button>
                       <button
+                        class="flex items-center gap-1 text-xs text-sky-400 hover:text-sky-300 border border-sky-400/30 hover:border-sky-300/50 rounded-lg px-2 py-0.5 transition-colors"
+                        (click)="exportJudgeExcel(group.groupKey)"
+                        title="匯出裁判評分明細 Excel（各裁判原始分數）">
+                        <fa-icon [icon]="faDownload" class="text-xs"></fa-icon>
+                        裁判明細
+                      </button>
+                      <button
                         class="flex items-center gap-1 text-xs text-rose-400 hover:text-rose-300 border border-rose-400/30 hover:border-rose-300/50 rounded-lg px-2 py-0.5 transition-colors"
                         (click)="printPdf(group.groupKey)"
                         title="列印 PDF">
