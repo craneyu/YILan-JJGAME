@@ -3,6 +3,16 @@ import { createServer } from "http";
 
 let io: Server;
 
+/**
+ * 各賽事最後一次的計時器廣播，供中途加入的用戶端補狀態。
+ * 計時由裁判端驅動且暫停時不再送出，後端不另存 DB；
+ * 後端重啟後此表清空，裁判端下一次 tick 會自動補上。
+ */
+const lastTimerByEvent = new Map<
+  string,
+  { matchId: string; remaining: number; paused: boolean }
+>();
+
 export function initSocketIO(
   httpServer: ReturnType<typeof createServer>,
 ): Server {
@@ -16,6 +26,11 @@ export function initSocketIO(
     socket.on("join:event", (eventId: string) => {
       socket.join(eventId);
       console.log(`[Socket] ${socket.id} 加入賽事房間: ${eventId}`);
+      // 計時器狀態只存在裁判端的記憶體中，且暫停時不會再送出。
+      // 中途加入或重新整理的觀眾端若沒有補送，會一直顯示 00:00，
+      // 因此把最後一次計時廣播補給剛加入的人。
+      const last = lastTimerByEvent.get(eventId);
+      if (last) socket.emit("match:timer-updated", last);
     });
 
     socket.on("leave:event", (eventId: string) => {
@@ -32,11 +47,13 @@ export function initSocketIO(
         remaining: number;
         paused: boolean;
       }) => {
-        io.to(data.eventId).emit("match:timer-updated", {
+        const payload = {
           matchId: data.matchId,
           remaining: data.remaining,
           paused: data.paused,
-        });
+        };
+        lastTimerByEvent.set(data.eventId, payload);
+        io.to(data.eventId).emit("match:timer-updated", payload);
       },
     );
 

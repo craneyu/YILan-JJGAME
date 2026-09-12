@@ -9,6 +9,7 @@ import {
   ChangeDetectionStrategy,
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
+import { Countdown, startCountdown } from "../../core/utils/countdown";
 import { Router } from "@angular/router";
 import { Subscription } from "rxjs";
 import Swal from "sweetalert2";
@@ -119,7 +120,7 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
   timerTotal = signal(120);
   timerSetupDone = signal(false);
   timerBeforeAdjust = signal(0);
-  private timerInterval: ReturnType<typeof setInterval> | null = null;
+  private countdown: Countdown | null = null;
 
   // ── 對打計分 Signals ──
   redParts = signal<[number, number, number]>([0, 0, 0]);
@@ -151,16 +152,16 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
   blueOsaeKomiRemaining = signal(15);
   redOsaeKomiActive = signal(false);
   blueOsaeKomiActive = signal(false);
-  private redOsaeKomiInterval: ReturnType<typeof setInterval> | null = null;
-  private blueOsaeKomiInterval: ReturnType<typeof setInterval> | null = null;
+  private redOsaeKomiInterval: Countdown | null = null;
+  private blueOsaeKomiInterval: Countdown | null = null;
 
   // ── MEDICAL 計時器 ──
   redMedicalRemaining = signal(120);
   blueMedicalRemaining = signal(120);
   redMedicalActive = signal(false);
   blueMedicalActive = signal(false);
-  private redMedicalInterval: ReturnType<typeof setInterval> | null = null;
-  private blueMedicalInterval: ReturnType<typeof setInterval> | null = null;
+  private redMedicalInterval: Countdown | null = null;
+  private blueMedicalInterval: Countdown | null = null;
 
   // ── 裁判判決 ──
   judgeWinner = signal<"red" | "blue" | null>(null);
@@ -538,24 +539,22 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
   startTimer(): void {
     if (this.timerRemaining() <= 0) return;
     this.timerRunning.set(true);
-    this.timerInterval = setInterval(() => {
-      this.timerRemaining.update((v) => {
-        if (v <= 1) {
-          this.pauseTimer();
-          return 0;
+    // 依實際經過時間倒數，不累減 tick 次數（見 startCountdown 說明）
+    this.countdown = startCountdown(this.timerRemaining(), {
+      onTick: (remaining) => {
+        this.timerRemaining.set(remaining);
+        const m = this.activeMatch();
+        if (m) {
+          this.socket.emitMatchTimerUpdated(
+            this.eventId(),
+            m._id,
+            remaining,
+            false,
+          );
         }
-        return v - 1;
-      });
-      const m = this.activeMatch();
-      if (m) {
-        this.socket.emitMatchTimerUpdated(
-          this.eventId(),
-          m._id,
-          this.timerRemaining(),
-          false,
-        );
-      }
-    }, 1000);
+      },
+      onFinish: () => this.pauseTimer(),
+    });
   }
 
   pauseTimer(): void {
@@ -574,10 +573,8 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
   }
 
   private clearTimerInterval(): void {
-    if (this.timerInterval) {
-      clearInterval(this.timerInterval);
-      this.timerInterval = null;
-    }
+    this.countdown?.stop();
+    this.countdown = null;
   }
 
   // ──────────────────────────────────────────────────────────
@@ -616,45 +613,39 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
       this.redOsaeKomiRemaining.set(DURATION);
       this.redOsaeKomiActive.set(true);
       if (match) this.socket.emitOsaeKomiStarted(this.eventId(), match._id, "red", DURATION);
-      this.redOsaeKomiInterval = setInterval(() => {
-        const newVal = Math.max(0, this.redOsaeKomiRemaining() - 1);
-        this.redOsaeKomiRemaining.set(newVal);
-        if (newVal <= 0) {
+      this.redOsaeKomiInterval = startCountdown(this.redOsaeKomiRemaining(), {
+        onTick: (remaining) => this.redOsaeKomiRemaining.set(remaining),
+        onFinish: () => {
           this.clearRedOsaeKomiInterval();
           this.redOsaeKomiActive.set(false);
           this.redOsaeKomiRemaining.set(15);
           if (match) this.socket.emitOsaeKomiEnded(this.eventId(), match._id, "red");
-        }
-      }, 1000);
+        },
+      });
     } else {
       this.blueOsaeKomiRemaining.set(DURATION);
       this.blueOsaeKomiActive.set(true);
       if (match) this.socket.emitOsaeKomiStarted(this.eventId(), match._id, "blue", DURATION);
-      this.blueOsaeKomiInterval = setInterval(() => {
-        const newVal = Math.max(0, this.blueOsaeKomiRemaining() - 1);
-        this.blueOsaeKomiRemaining.set(newVal);
-        if (newVal <= 0) {
+      this.blueOsaeKomiInterval = startCountdown(this.blueOsaeKomiRemaining(), {
+        onTick: (remaining) => this.blueOsaeKomiRemaining.set(remaining),
+        onFinish: () => {
           this.clearBlueOsaeKomiInterval();
           this.blueOsaeKomiActive.set(false);
           this.blueOsaeKomiRemaining.set(15);
           if (match) this.socket.emitOsaeKomiEnded(this.eventId(), match._id, "blue");
-        }
-      }, 1000);
+        },
+      });
     }
   }
 
   private clearRedOsaeKomiInterval(): void {
-    if (this.redOsaeKomiInterval) {
-      clearInterval(this.redOsaeKomiInterval);
-      this.redOsaeKomiInterval = null;
-    }
+    this.redOsaeKomiInterval?.stop();
+    this.redOsaeKomiInterval = null;
   }
 
   private clearBlueOsaeKomiInterval(): void {
-    if (this.blueOsaeKomiInterval) {
-      clearInterval(this.blueOsaeKomiInterval);
-      this.blueOsaeKomiInterval = null;
-    }
+    this.blueOsaeKomiInterval?.stop();
+    this.blueOsaeKomiInterval = null;
   }
 
   // ──────────────────────────────────────────────────────────
@@ -695,46 +686,40 @@ export class FightingRefereeComponent implements OnInit, OnDestroy {
       if (match) {
         this.socket.emitInjuryStarted(this.eventId(), match._id, "red", this.redMedicalRemaining());
       }
-      this.redMedicalInterval = setInterval(() => {
-        const newVal = Math.max(0, this.redMedicalRemaining() - 1);
-        this.redMedicalRemaining.set(newVal);
-        if (newVal <= 0) {
+      this.redMedicalInterval = startCountdown(this.redMedicalRemaining(), {
+        onTick: (remaining) => this.redMedicalRemaining.set(remaining),
+        onFinish: () => {
           this.clearRedMedicalInterval();
           this.redMedicalActive.set(false);
           if (match) this.socket.emitInjuryEnded(this.eventId(), match._id, "red");
           if (!this.blueMedicalActive()) this.startTimer();
-        }
-      }, 1000);
+        },
+      });
     } else {
       this.blueMedicalActive.set(true);
       if (match) {
         this.socket.emitInjuryStarted(this.eventId(), match._id, "blue", this.blueMedicalRemaining());
       }
-      this.blueMedicalInterval = setInterval(() => {
-        const newVal = Math.max(0, this.blueMedicalRemaining() - 1);
-        this.blueMedicalRemaining.set(newVal);
-        if (newVal <= 0) {
+      this.blueMedicalInterval = startCountdown(this.blueMedicalRemaining(), {
+        onTick: (remaining) => this.blueMedicalRemaining.set(remaining),
+        onFinish: () => {
           this.clearBlueMedicalInterval();
           this.blueMedicalActive.set(false);
           if (match) this.socket.emitInjuryEnded(this.eventId(), match._id, "blue");
           if (!this.redMedicalActive()) this.startTimer();
-        }
-      }, 1000);
+        },
+      });
     }
   }
 
   private clearRedMedicalInterval(): void {
-    if (this.redMedicalInterval) {
-      clearInterval(this.redMedicalInterval);
-      this.redMedicalInterval = null;
-    }
+    this.redMedicalInterval?.stop();
+    this.redMedicalInterval = null;
   }
 
   private clearBlueMedicalInterval(): void {
-    if (this.blueMedicalInterval) {
-      clearInterval(this.blueMedicalInterval);
-      this.blueMedicalInterval = null;
-    }
+    this.blueMedicalInterval?.stop();
+    this.blueMedicalInterval = null;
   }
 
   // ──────────────────────────────────────────────────────────

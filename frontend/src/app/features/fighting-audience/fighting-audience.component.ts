@@ -9,6 +9,7 @@ import {
   ChangeDetectionStrategy,
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
+import { Countdown, startCountdown } from "../../core/utils/countdown";
 import { ActivatedRoute } from "@angular/router";
 import { Subscription } from "rxjs";
 import { FaIconComponent } from "@fortawesome/angular-fontawesome";
@@ -113,16 +114,16 @@ export class FightingAudienceComponent implements OnInit, OnDestroy {
   redInjuryRemaining = signal(120);
   blueInjuryActive = signal(false);
   blueInjuryRemaining = signal(120);
-  private redInjuryInterval: ReturnType<typeof setInterval> | null = null;
-  private blueInjuryInterval: ReturnType<typeof setInterval> | null = null;
+  private redInjuryInterval: Countdown | null = null;
+  private blueInjuryInterval: Countdown | null = null;
 
   // OSAE KOMI
   redOsaeKomiActive = signal(false);
   redOsaeKomiRemaining = signal(0);
   blueOsaeKomiActive = signal(false);
   blueOsaeKomiRemaining = signal(0);
-  private redOsaeKomiInterval: ReturnType<typeof setInterval> | null = null;
-  private blueOsaeKomiInterval: ReturnType<typeof setInterval> | null = null;
+  private redOsaeKomiInterval: Countdown | null = null;
+  private blueOsaeKomiInterval: Countdown | null = null;
 
   // OSAE KOMI 進度條（15 格）
   progressBarSegments = Array.from({ length: 15 }, (_, i) => i);
@@ -199,10 +200,15 @@ export class FightingAudienceComponent implements OnInit, OnDestroy {
 
     this.subs.add(
       this.socket.matchTimerUpdated$.subscribe((e: MatchTimerUpdatedEvent) => {
+        // 裁判端每秒廣播權威剩餘秒數，觀眾端只負責顯示。
+        // 剛連上時後端會補送最後一次計時狀態，但此時場次可能還在載入中，
+        // 先暫存起來，等 activeMatch 就緒再套用，否則暫停中的計時會一直顯示 00:00。
         const m = this.activeMatch();
-        if (!m || m._id !== e.matchId) return;
-        this.timerRemaining.set(e.remaining);
-        this.timerPaused.set(e.paused);
+        if (!m || m._id !== e.matchId) {
+          this.pendingTimer = e;
+          return;
+        }
+        this.applyTimerEvent(e);
       }),
     );
 
@@ -284,20 +290,18 @@ export class FightingAudienceComponent implements OnInit, OnDestroy {
           this.clearRedInjuryInterval();
           this.redInjuryActive.set(true);
           this.redInjuryRemaining.set(duration);
-          this.redInjuryInterval = setInterval(() => {
-            const nv = Math.max(0, this.redInjuryRemaining() - 1);
-            this.redInjuryRemaining.set(nv);
-            if (nv <= 0) { this.clearRedInjuryInterval(); }
-          }, 1000);
+          this.redInjuryInterval = startCountdown(this.redInjuryRemaining(), {
+            onTick: (remaining) => this.redInjuryRemaining.set(remaining),
+            onFinish: () => { this.clearRedInjuryInterval(); },
+          });
         } else {
           this.clearBlueInjuryInterval();
           this.blueInjuryActive.set(true);
           this.blueInjuryRemaining.set(duration);
-          this.blueInjuryInterval = setInterval(() => {
-            const nv = Math.max(0, this.blueInjuryRemaining() - 1);
-            this.blueInjuryRemaining.set(nv);
-            if (nv <= 0) { this.clearBlueInjuryInterval(); }
-          }, 1000);
+          this.blueInjuryInterval = startCountdown(this.blueInjuryRemaining(), {
+            onTick: (remaining) => this.blueInjuryRemaining.set(remaining),
+            onFinish: () => { this.clearBlueInjuryInterval(); },
+          });
         }
       }),
     );
@@ -321,28 +325,26 @@ export class FightingAudienceComponent implements OnInit, OnDestroy {
           this.clearRedOsaeKomiInterval();
           this.redOsaeKomiActive.set(true);
           this.redOsaeKomiRemaining.set(duration);
-          this.redOsaeKomiInterval = setInterval(() => {
-            const nv = Math.max(0, this.redOsaeKomiRemaining() - 1);
-            this.redOsaeKomiRemaining.set(nv);
-            if (nv <= 0) {
+          this.redOsaeKomiInterval = startCountdown(this.redOsaeKomiRemaining(), {
+            onTick: (remaining) => this.redOsaeKomiRemaining.set(remaining),
+            onFinish: () => {
               this.clearRedOsaeKomiInterval();
               this.redOsaeKomiActive.set(false);
               this.playOsaeKomiBuzzer();
-            }
-          }, 1000);
+            },
+          });
         } else {
           this.clearBlueOsaeKomiInterval();
           this.blueOsaeKomiActive.set(true);
           this.blueOsaeKomiRemaining.set(duration);
-          this.blueOsaeKomiInterval = setInterval(() => {
-            const nv = Math.max(0, this.blueOsaeKomiRemaining() - 1);
-            this.blueOsaeKomiRemaining.set(nv);
-            if (nv <= 0) {
+          this.blueOsaeKomiInterval = startCountdown(this.blueOsaeKomiRemaining(), {
+            onTick: (remaining) => this.blueOsaeKomiRemaining.set(remaining),
+            onFinish: () => {
               this.clearBlueOsaeKomiInterval();
               this.blueOsaeKomiActive.set(false);
               this.playOsaeKomiBuzzer();
-            }
-          }, 1000);
+            },
+          });
         }
       }),
     );
@@ -383,16 +385,29 @@ export class FightingAudienceComponent implements OnInit, OnDestroy {
   }
 
   private clearRedInjuryInterval(): void {
-    if (this.redInjuryInterval) { clearInterval(this.redInjuryInterval); this.redInjuryInterval = null; }
+    this.redInjuryInterval?.stop();
+    this.redInjuryInterval = null;
   }
   private clearBlueInjuryInterval(): void {
-    if (this.blueInjuryInterval) { clearInterval(this.blueInjuryInterval); this.blueInjuryInterval = null; }
+    this.blueInjuryInterval?.stop();
+    this.blueInjuryInterval = null;
   }
   private clearRedOsaeKomiInterval(): void {
-    if (this.redOsaeKomiInterval) { clearInterval(this.redOsaeKomiInterval); this.redOsaeKomiInterval = null; }
+    this.redOsaeKomiInterval?.stop();
+    this.redOsaeKomiInterval = null;
   }
   private clearBlueOsaeKomiInterval(): void {
-    if (this.blueOsaeKomiInterval) { clearInterval(this.blueOsaeKomiInterval); this.blueOsaeKomiInterval = null; }
+    this.blueOsaeKomiInterval?.stop();
+    this.blueOsaeKomiInterval = null;
+  }
+
+
+  /** 暫存於 activeMatch 就緒前收到的計時廣播 */
+  private pendingTimer: MatchTimerUpdatedEvent | null = null;
+
+  private applyTimerEvent(e: MatchTimerUpdatedEvent): void {
+    this.timerRemaining.set(e.remaining);
+    this.timerPaused.set(e.paused);
   }
 
   private loadActiveMatch(eventId: string): void {
@@ -410,6 +425,11 @@ export class FightingAudienceComponent implements OnInit, OnDestroy {
           this.activeMatch.set(inProgress);
           this.matchResult.set(null);
           this.resetScores();
+          // 套用連線時暫存的計時狀態（場次載入前收到的補送廣播）
+          if (inProgress && this.pendingTimer?.matchId === inProgress._id) {
+            this.applyTimerEvent(this.pendingTimer);
+          }
+          this.pendingTimer = null;
           if (inProgress) {
             this.redWazaAri.set(inProgress.redWazaAri ?? 0);
             this.blueWazaAri.set(inProgress.blueWazaAri ?? 0);

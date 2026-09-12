@@ -9,6 +9,7 @@ import {
   HostListener,
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
+import { Countdown, startCountdown } from "../../core/utils/countdown";
 import { ActivatedRoute, Router } from "@angular/router";
 import { Subscription } from "rxjs";
 import Swal from "sweetalert2";
@@ -132,7 +133,7 @@ export class NeWazaRefereeComponent implements OnInit, OnDestroy {
   timerRunning = signal(false);
   timerRemaining = signal(360);
   timerTotal = signal(360);
-  private timerInterval: ReturnType<typeof setInterval> | null = null;
+  private countdown: Countdown | null = null;
 
   // ── 得分 Signals ──
   redScore = signal(0);
@@ -166,8 +167,8 @@ export class NeWazaRefereeComponent implements OnInit, OnDestroy {
   blueInjuryActive = signal(false);
   blueInjuryVisible = signal(false);
   blueInjuryRemaining = signal(120);
-  private redInjuryInterval: ReturnType<typeof setInterval> | null = null;
-  private blueInjuryInterval: ReturnType<typeof setInterval> | null = null;
+  private redInjuryInterval: Countdown | null = null;
+  private blueInjuryInterval: Countdown | null = null;
 
   // ── 降伏/DQ ──
   submissionPending = signal<"red" | "blue" | null>(null);
@@ -462,24 +463,22 @@ export class NeWazaRefereeComponent implements OnInit, OnDestroy {
   startTimer(): void {
     if (this.timerRemaining() <= 0) return;
     this.timerRunning.set(true);
-    this.timerInterval = setInterval(() => {
-      this.timerRemaining.update((v) => {
-        if (v <= 1) {
-          this.pauseTimer();
-          return 0;
+    // 依實際經過時間倒數，不累減 tick 次數（見 startCountdown 說明）
+    this.countdown = startCountdown(this.timerRemaining(), {
+      onTick: (remaining) => {
+        this.timerRemaining.set(remaining);
+        const m = this.activeMatch();
+        if (m) {
+          this.socket.emitMatchTimerUpdated(
+            this.eventId(),
+            m._id,
+            remaining,
+            false,
+          );
         }
-        return v - 1;
-      });
-      const m = this.activeMatch();
-      if (m) {
-        this.socket.emitMatchTimerUpdated(
-          this.eventId(),
-          m._id,
-          this.timerRemaining(),
-          false,
-        );
-      }
-    }, 1000);
+      },
+      onFinish: () => this.pauseTimer(),
+    });
   }
 
   pauseTimer(): void {
@@ -497,10 +496,8 @@ export class NeWazaRefereeComponent implements OnInit, OnDestroy {
   }
 
   private clearTimerInterval(): void {
-    if (this.timerInterval) {
-      clearInterval(this.timerInterval);
-      this.timerInterval = null;
-    }
+    this.countdown?.stop();
+    this.countdown = null;
   }
 
   // ──────────────────────────────────────────────────────────
@@ -729,33 +726,31 @@ export class NeWazaRefereeComponent implements OnInit, OnDestroy {
     if (side === "red") {
       this.redInjuryActive.set(true);
       this.redInjuryVisible.set(true);
-      this.redInjuryInterval = setInterval(() => {
-        const newVal = Math.max(0, this.redInjuryRemaining() - 1);
-        this.redInjuryRemaining.set(newVal);
-        if (newVal <= 0) {
+      this.redInjuryInterval = startCountdown(this.redInjuryRemaining(), {
+        onTick: (remaining) => this.redInjuryRemaining.set(remaining),
+        onFinish: () => {
           this.clearRedInjuryInterval();
           this.redInjuryActive.set(false);
           if (match) {
             this.socket.emitInjuryEnded(this.eventId(), match._id, "red");
           }
           if (!this.blueInjuryActive()) this.startTimer();
-        }
-      }, 1000);
+        },
+      });
     } else {
       this.blueInjuryActive.set(true);
       this.blueInjuryVisible.set(true);
-      this.blueInjuryInterval = setInterval(() => {
-        const newVal = Math.max(0, this.blueInjuryRemaining() - 1);
-        this.blueInjuryRemaining.set(newVal);
-        if (newVal <= 0) {
+      this.blueInjuryInterval = startCountdown(this.blueInjuryRemaining(), {
+        onTick: (remaining) => this.blueInjuryRemaining.set(remaining),
+        onFinish: () => {
           this.clearBlueInjuryInterval();
           this.blueInjuryActive.set(false);
           if (match) {
             this.socket.emitInjuryEnded(this.eventId(), match._id, "blue");
           }
           if (!this.redInjuryActive()) this.startTimer();
-        }
-      }, 1000);
+        },
+      });
     }
     if (match) {
       this.socket.emitInjuryStarted(
@@ -785,17 +780,13 @@ export class NeWazaRefereeComponent implements OnInit, OnDestroy {
   }
 
   private clearRedInjuryInterval(): void {
-    if (this.redInjuryInterval) {
-      clearInterval(this.redInjuryInterval);
-      this.redInjuryInterval = null;
-    }
+    this.redInjuryInterval?.stop();
+    this.redInjuryInterval = null;
   }
 
   private clearBlueInjuryInterval(): void {
-    if (this.blueInjuryInterval) {
-      clearInterval(this.blueInjuryInterval);
-      this.blueInjuryInterval = null;
-    }
+    this.blueInjuryInterval?.stop();
+    this.blueInjuryInterval = null;
   }
 
   // ──────────────────────────────────────────────────────────

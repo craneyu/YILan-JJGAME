@@ -9,6 +9,7 @@ import {
   ChangeDetectionStrategy,
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
+import { Countdown, startCountdown } from "../../core/utils/countdown";
 import { ActivatedRoute } from "@angular/router";
 import { Subscription } from "rxjs";
 import { FaIconComponent } from "@fortawesome/angular-fontawesome";
@@ -85,8 +86,8 @@ export class NeWazaAudienceComponent implements OnInit, OnDestroy {
   blueInjuryActive = signal(false);
   blueInjuryVisible = signal(false);
   blueInjuryRemaining = signal(120);
-  private redInjuryInterval: ReturnType<typeof setInterval> | null = null;
-  private blueInjuryInterval: ReturnType<typeof setInterval> | null = null;
+  private redInjuryInterval: Countdown | null = null;
+  private blueInjuryInterval: Countdown | null = null;
 
   // 主計時歸零鈴聲
   private previousTimerValue = -1;
@@ -159,10 +160,15 @@ export class NeWazaAudienceComponent implements OnInit, OnDestroy {
 
     this.subs.add(
       this.socket.matchTimerUpdated$.subscribe((e: MatchTimerUpdatedEvent) => {
+        // 裁判端每秒廣播權威剩餘秒數，觀眾端只負責顯示。
+        // 剛連上時後端會補送最後一次計時狀態，但此時場次可能還在載入中，
+        // 先暫存起來，等 activeMatch 就緒再套用，否則暫停中的計時會一直顯示 00:00。
         const m = this.activeMatch();
-        if (!m || m._id !== e.matchId) return;
-        this.timerRemaining.set(e.remaining);
-        this.timerPaused.set(e.paused);
+        if (!m || m._id !== e.matchId) {
+          this.pendingTimer = e;
+          return;
+        }
+        this.applyTimerEvent(e);
       }),
     );
 
@@ -212,27 +218,25 @@ export class NeWazaAudienceComponent implements OnInit, OnDestroy {
           this.redInjuryActive.set(true);
           this.redInjuryVisible.set(true);
           this.redInjuryRemaining.set(duration);
-          this.redInjuryInterval = setInterval(() => {
-            const newVal = Math.max(0, this.redInjuryRemaining() - 1);
-            this.redInjuryRemaining.set(newVal);
-            if (newVal <= 0) {
+          this.redInjuryInterval = startCountdown(this.redInjuryRemaining(), {
+            onTick: (remaining) => this.redInjuryRemaining.set(remaining),
+            onFinish: () => {
               this.clearRedInjuryInterval();
               this.redInjuryActive.set(false);
-            }
-          }, 1000);
+            },
+          });
         } else {
           this.clearBlueInjuryInterval();
           this.blueInjuryActive.set(true);
           this.blueInjuryVisible.set(true);
           this.blueInjuryRemaining.set(duration);
-          this.blueInjuryInterval = setInterval(() => {
-            const newVal = Math.max(0, this.blueInjuryRemaining() - 1);
-            this.blueInjuryRemaining.set(newVal);
-            if (newVal <= 0) {
+          this.blueInjuryInterval = startCountdown(this.blueInjuryRemaining(), {
+            onTick: (remaining) => this.blueInjuryRemaining.set(remaining),
+            onFinish: () => {
               this.clearBlueInjuryInterval();
               this.blueInjuryActive.set(false);
-            }
-          }, 1000);
+            },
+          });
         }
       }),
     );
@@ -261,17 +265,22 @@ export class NeWazaAudienceComponent implements OnInit, OnDestroy {
   }
 
   private clearRedInjuryInterval(): void {
-    if (this.redInjuryInterval) {
-      clearInterval(this.redInjuryInterval);
-      this.redInjuryInterval = null;
-    }
+    this.redInjuryInterval?.stop();
+    this.redInjuryInterval = null;
   }
 
   private clearBlueInjuryInterval(): void {
-    if (this.blueInjuryInterval) {
-      clearInterval(this.blueInjuryInterval);
-      this.blueInjuryInterval = null;
-    }
+    this.blueInjuryInterval?.stop();
+    this.blueInjuryInterval = null;
+  }
+
+
+  /** 暫存於 activeMatch 就緒前收到的計時廣播 */
+  private pendingTimer: MatchTimerUpdatedEvent | null = null;
+
+  private applyTimerEvent(e: MatchTimerUpdatedEvent): void {
+    this.timerRemaining.set(e.remaining);
+    this.timerPaused.set(e.paused);
   }
 
   private loadActiveMatch(eventId: string): void {
@@ -285,6 +294,11 @@ export class NeWazaAudienceComponent implements OnInit, OnDestroy {
           this.activeMatch.set(inProgress);
           this.matchResult.set(null);
           this.resetScores();
+          // 套用連線時暫存的計時狀態（場次載入前收到的補送廣播）
+          if (inProgress && this.pendingTimer?.matchId === inProgress._id) {
+            this.applyTimerEvent(this.pendingTimer);
+          }
+          this.pendingTimer = null;
           if (inProgress) {
             this.restoreScores(inProgress._id);
           }

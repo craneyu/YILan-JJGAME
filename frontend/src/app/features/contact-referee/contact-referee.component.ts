@@ -9,6 +9,7 @@ import {
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Countdown, startCountdown } from '../../core/utils/countdown';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import Swal from 'sweetalert2';
@@ -126,7 +127,7 @@ export class ContactRefereeComponent implements OnInit, OnDestroy {
   timerRunning = signal(false);
   timerRemaining = signal(180); // 3 分鐘
   timerNaturallyEnded = signal(false); // 計時器是否自然倒數至 0（非手動操作）
-  private timerInterval: ReturnType<typeof setInterval> | null = null;
+  private countdown: Countdown | null = null;
 
   // ── Contact 計分 Signals ──
   foulCount = signal<{ red: number; blue: number }>({ red: 0, blue: 0 });
@@ -144,8 +145,8 @@ export class ContactRefereeComponent implements OnInit, OnDestroy {
   redMedicalRemaining = signal(120);
   blueMedicalActive = signal(false);
   blueMedicalRemaining = signal(120);
-  private redMedicalInterval: ReturnType<typeof setInterval> | null = null;
-  private blueMedicalInterval: ReturnType<typeof setInterval> | null = null;
+  private redMedicalInterval: Countdown | null = null;
+  private blueMedicalInterval: Countdown | null = null;
 
   // ── 勝負判決 ──
   declaredWinner = signal<'red' | 'blue' | null>(null);
@@ -349,20 +350,20 @@ export class ContactRefereeComponent implements OnInit, OnDestroy {
     this.clearTimerInterval(); // 防止重複呼叫洩漏舊 interval
     this.timerNaturallyEnded.set(false);
     this.timerRunning.set(true);
-    this.timerInterval = setInterval(() => {
-      this.timerRemaining.update((v) => {
-        if (v <= 1) {
-          this.timerNaturallyEnded.set(true);
-          this.pauseTimer();
-          return 0;
+    // 依實際經過時間倒數，不累減 tick 次數（見 startCountdown 說明）
+    this.countdown = startCountdown(this.timerRemaining(), {
+      onTick: (remaining) => {
+        this.timerRemaining.set(remaining);
+        const m = this.activeMatch();
+        if (m) {
+          this.socket.emitMatchTimerUpdated(this.eventId(), m._id, remaining, false);
         }
-        return v - 1;
-      });
-      const m = this.activeMatch();
-      if (m) {
-        this.socket.emitMatchTimerUpdated(this.eventId(), m._id, this.timerRemaining(), false);
-      }
-    }, 1000);
+      },
+      onFinish: () => {
+        this.timerNaturallyEnded.set(true);
+        this.pauseTimer();
+      },
+    });
   }
 
   pauseTimer(): void {
@@ -381,10 +382,8 @@ export class ContactRefereeComponent implements OnInit, OnDestroy {
   }
 
   private clearTimerInterval(): void {
-    if (this.timerInterval) {
-      clearInterval(this.timerInterval);
-      this.timerInterval = null;
-    }
+    this.countdown?.stop();
+    this.countdown = null;
   }
 
   // ──────────────────────────────────────────────────────────
@@ -530,38 +529,38 @@ export class ContactRefereeComponent implements OnInit, OnDestroy {
     if (side === 'red') {
       this.redMedicalActive.set(true);
       if (match) this.socket.emitInjuryStarted(this.eventId(), match._id, 'red', this.redMedicalRemaining());
-      this.redMedicalInterval = setInterval(() => {
-        const newVal = Math.max(0, this.redMedicalRemaining() - 1);
-        this.redMedicalRemaining.set(newVal);
-        if (newVal <= 0) {
+      this.redMedicalInterval = startCountdown(this.redMedicalRemaining(), {
+        onTick: (remaining) => this.redMedicalRemaining.set(remaining),
+        onFinish: () => {
           this.clearRedMedicalInterval();
           this.redMedicalActive.set(false);
           if (match) this.socket.emitInjuryEnded(this.eventId(), match._id, 'red');
           if (!this.blueMedicalActive()) this.startTimer();
-        }
-      }, 1000);
+        },
+      });
     } else {
       this.blueMedicalActive.set(true);
       if (match) this.socket.emitInjuryStarted(this.eventId(), match._id, 'blue', this.blueMedicalRemaining());
-      this.blueMedicalInterval = setInterval(() => {
-        const newVal = Math.max(0, this.blueMedicalRemaining() - 1);
-        this.blueMedicalRemaining.set(newVal);
-        if (newVal <= 0) {
+      this.blueMedicalInterval = startCountdown(this.blueMedicalRemaining(), {
+        onTick: (remaining) => this.blueMedicalRemaining.set(remaining),
+        onFinish: () => {
           this.clearBlueMedicalInterval();
           this.blueMedicalActive.set(false);
           if (match) this.socket.emitInjuryEnded(this.eventId(), match._id, 'blue');
           if (!this.redMedicalActive()) this.startTimer();
-        }
-      }, 1000);
+        },
+      });
     }
   }
 
   private clearRedMedicalInterval(): void {
-    if (this.redMedicalInterval) { clearInterval(this.redMedicalInterval); this.redMedicalInterval = null; }
+    this.redMedicalInterval?.stop();
+    this.redMedicalInterval = null;
   }
 
   private clearBlueMedicalInterval(): void {
-    if (this.blueMedicalInterval) { clearInterval(this.blueMedicalInterval); this.blueMedicalInterval = null; }
+    this.blueMedicalInterval?.stop();
+    this.blueMedicalInterval = null;
   }
 
   // ──────────────────────────────────────────────────────────
