@@ -590,6 +590,9 @@ export async function getEventRankings(
       seriesC: series.C,
       total,
       actionDetails: teamActionDetails[teamId] ?? {},
+      // 已有裁判送出過評分的動作數（含未滿 5 位者）；0 代表整隊完全未評分，不列入排名。
+      // 只是筆數、不含評分內容，故對觀眾端公開。
+      scoredActionCount: Object.keys(teamJudgeDetails[teamId] ?? {}).length,
       // 裁判逐項原始評分屬賽後查核資料，僅 admin 可見（本端點對觀眾端公開）
       ...(isAdmin ? { judgeDetails: teamJudgeDetails[teamId] ?? {} } : {}),
     };

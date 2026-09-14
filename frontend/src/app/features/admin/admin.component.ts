@@ -120,6 +120,8 @@ interface RankingItem {
   vrScoreC?: number;
   total: number;
   rank?: number;
+  /** 已有裁判送出過評分的動作數；0 代表完全未評分，不列入排名 */
+  scoredActionCount?: number;
   actionDetails: Record<string, ActionDetail>;
   judgeDetails?: Record<string, JudgeDetail>;
   vrDetails?: Record<string, VrDetail>;
@@ -313,7 +315,15 @@ export class AdminComponent implements OnInit {
 
     return groupKeys.map((key) => {
       const { category, tier, items } = byGroup[key];
-      const sorted = [...items].sort((a, b) => b.total - a.total);
+      // 完全未評分的隊伍不列入排名（rank 0），排在已評分隊伍之後
+      const isRanked = (i: RankingItem) => (i.scoredActionCount ?? 0) > 0;
+      const ranked = items
+        .filter(isRanked)
+        .sort((a, b) => b.total - a.total)
+        .map((item, idx) => ({ ...item, rank: idx + 1 }));
+      const unranked = items
+        .filter((i) => !isRanked(i))
+        .map((item) => ({ ...item, rank: 0 }));
       const catLabel = this.categoryLabel(category);
       const label = tier ? `${catLabel} × ${TIER_LABEL[tier]}` : catLabel;
       return {
@@ -321,7 +331,7 @@ export class AdminComponent implements OnInit {
         category,
         tier,
         label,
-        items: sorted.map((item, idx) => ({ ...item, rank: idx + 1 })),
+        items: [...ranked, ...unranked],
       };
     });
   });
@@ -1399,13 +1409,15 @@ ${sectionsHtml}
 
     for (const item of group.items) {
       const rankLabel =
-        item.rank === 1
-          ? "金牌"
-          : item.rank === 2
-            ? "銀牌"
-            : item.rank === 3
-              ? "銅牌"
-              : `第 ${item.rank} 名`;
+        item.rank === 0
+          ? "未計分"
+          : item.rank === 1
+            ? "金牌"
+            : item.rank === 2
+              ? "銀牌"
+              : item.rank === 3
+                ? "銅牌"
+                : `第 ${item.rank} 名`;
 
       // ── 隊伍標題（橫跨所有欄）──
       rows.push([
@@ -1623,13 +1635,15 @@ ${sectionsHtml}
 
     for (const item of group.items) {
       const rankLabel =
-        item.rank === 1
-          ? "金牌"
-          : item.rank === 2
-            ? "銀牌"
-            : item.rank === 3
-              ? "銅牌"
-              : `第 ${item.rank} 名`;
+        item.rank === 0
+          ? "未計分"
+          : item.rank === 1
+            ? "金牌"
+            : item.rank === 2
+              ? "銀牌"
+              : item.rank === 3
+                ? "銅牌"
+                : `第 ${item.rank} 名`;
 
       rows.push([
         `${rankLabel}　${item.name}（${item.members.join(" / ")}）　總分：${item.total}`,
@@ -1781,7 +1795,15 @@ ${sectionsHtml}
       group.items.every((i) => i.seriesC === 0);
 
     const medalText = (rank: number) =>
-      rank === 1 ? "金" : rank === 2 ? "銀" : rank === 3 ? "銅" : String(rank);
+      rank === 0
+        ? "未計分"
+        : rank === 1
+          ? "金"
+          : rank === 2
+            ? "銀"
+            : rank === 3
+              ? "銅"
+              : String(rank);
     const medalStyle = (rank: number) =>
       rank === 1
         ? "color:#b8860b;font-weight:bold"
@@ -1839,7 +1861,7 @@ ${sectionsHtml}
         cells.push(`<td><b>${item.seriesC + vc}</b></td>`);
       }
       cells.push(
-        `<td style="font-weight:${item.rank <= 3 ? "bold" : "normal"}">${item.total}</td>`,
+        `<td style="font-weight:${item.rank >= 1 && item.rank <= 3 ? "bold" : "normal"}">${item.total}</td>`,
       );
       return `<tr style="${rowStyle(item.rank)}">${cells.join("")}</tr>`;
     };

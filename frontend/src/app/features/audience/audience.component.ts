@@ -70,6 +70,8 @@ interface RankingItem {
   category: string;
   tier?: TeamTier;
   total: number;
+  /** 已有裁判送出過評分的動作數；0 代表完全未評分，不列入排名 */
+  scoredActionCount?: number;
 }
 
 const ELEMENTARY_MOTIONS: Record<'EL' | 'EM' | 'EH', Record<'A' | 'B' | 'C', readonly string[]>> = {
@@ -199,9 +201,15 @@ export class AudienceComponent implements OnInit, OnDestroy {
   categoryRank = computed(() => {
     const team = this.currentTeam();
     if (!team) return null;
-    // 排名群組依 (category, tier) 計算
+    // 排名群組依 (category, tier) 計算；完全未評分的隊伍不列入排名，
+    // 也不計入分母，與 admin 端的排名一致
     const sameGroup = [...this.rankings()]
-      .filter((r) => r.category === team.category && (r.tier ?? null) === (team.tier ?? null))
+      .filter(
+        (r) =>
+          r.category === team.category &&
+          (r.tier ?? null) === (team.tier ?? null) &&
+          (r.scoredActionCount ?? 0) > 0,
+      )
       .sort((a, b) => b.total - a.total);
     const rank = sameGroup.findIndex((r) => r.teamId === team._id) + 1;
     return rank > 0 ? { rank, total: sameGroup.length } : null;
