@@ -1396,13 +1396,46 @@ ${sectionsHtml}
         ]);
       }
 
-      for (const { s, parts } of seriesCfg) {
+      // 版面內動作，再補上實際有分數卻落在版面外的動作（隊伍分級／組別可能已異動）。
+      // 系列合計取自後端、含全部動作，漏列會讓合計大於列出的動作總和。
+      const layoutActions = new Set(
+        seriesCfg.flatMap(({ s }) =>
+          Array.from({ length: actionCount }, (_, i) => `${s}${i + 1}`),
+        ),
+      );
+      const extraActions = new Set(
+        Object.keys(item.actionDetails ?? {}).filter(
+          (a) => !layoutActions.has(a),
+        ),
+      );
+      const seriesPlan = seriesCfg.map(({ s, parts }) => ({
+        s,
+        parts,
+        actions: Array.from({ length: actionCount }, (_, i) => `${s}${i + 1}`),
+      }));
+      for (const actionNo of extraActions) {
+        const s = actionNo[0];
+        let plan = seriesPlan.find((x) => x.s === s);
+        if (!plan) {
+          // 該系列整個不在版面上（例如 EL/EM 無 C 系列），補回整個系列
+          plan = { s, parts: s === "C" ? 5 : 4, actions: [] };
+          seriesPlan.push(plan);
+        }
+        plan.actions.push(actionNo);
+      }
+      seriesPlan.sort((a, b) => a.s.localeCompare(b.s));
+      for (const plan of seriesPlan)
+        plan.actions.sort((a, b) => a.localeCompare(b));
+
+      for (const { s, parts, actions } of seriesPlan) {
         // 各動作細項
-        for (let i = 1; i <= actionCount; i++) {
+        for (const actionNo of actions) {
           const d: ActionDetail | undefined = (item.actionDetails ?? {})[
-            `${s}${i}`
+            actionNo
           ];
-          const r: (string | number)[] = [`${s}${i}`];
+          const r: (string | number)[] = [
+            extraActions.has(actionNo) ? `${actionNo} *` : actionNo,
+          ];
           for (let p = 1; p <= 5; p++) {
             r.push(
               p <= parts
@@ -1464,6 +1497,13 @@ ${sectionsHtml}
       } else {
         rows.push(["總分", "", "", "", "", "", "", "", "", item.total]);
         merge(0, 8);
+      }
+
+      if (extraActions.size > 0) {
+        rows.push([
+          "* 版面外動作（隊伍分級／組別可能已異動），分數仍計入系列合計與總分",
+        ]);
+        merge(0, COL - 1);
       }
 
       rows.push([]);
