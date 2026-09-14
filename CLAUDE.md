@@ -267,9 +267,18 @@ After all motions in a series complete, VR Judge evaluates:
 ### Creative Kata Scoring
 Each of 5 judges submits technical (0–9.5) and artistic (0–9.5) scores:
 1. Drop highest and lowest for both technical & artistic
-2. Sum middle 3 judges
-3. Apply penalty deductions (overtime, undertime, props, attacks)
-4. Final = max(0, technicalTotal + artisticTotal - penalties)
+2. Sum middle 3 judges → `technicalRaw` / `artisticRaw`
+3. Apply each penalty **to the item it belongs to** (`PENALTY_TARGET` in `models/CreativePenalty.ts`):
+   - 超時 `overtime` (-1.0), 未達時間 `undertime` (-1.0), 使用道具 `props` (-1.0) → **artistic**
+   - 未達攻擊次數 `attacks` (-0.5) → **technical**
+   - The type code stays `attacks` for data compatibility; only the label changed (was 「實際攻防」).
+     「超過 2 樣」 for props is the referee's on-site judgement — it is a single on/off deduction,
+     not a per-item count.
+4. `technicalTotal = max(0, technicalRaw - technicalDeduction)`; `artisticTotal` likewise
+5. `finalScore = technicalTotal + artisticTotal`; `grandTotal` stays the **pre-penalty** total so the
+   exports can reconcile both ways (`技術分 + 表演分 = 最終得分` and `原始總分 − 總扣分 = 最終得分`)
+6. **Ranking**: `finalScore` descending, **ties broken by `technicalTotal`** (the post-penalty technical
+   score). Abstained teams and teams with fewer than 5 judges are excluded from the ranking (rank 0).
 
 ## Critical UI States
 
