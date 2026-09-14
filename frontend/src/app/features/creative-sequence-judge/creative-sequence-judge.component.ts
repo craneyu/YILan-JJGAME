@@ -17,11 +17,12 @@ import { Router } from '@angular/router';
 type PenaltyType = 'overtime' | 'undertime' | 'props' | 'attacks';
 type TimerStatus = 'idle' | 'running' | 'paused';
 
+// 扣分歸屬：超時／未達時間／使用道具扣表演分，未達攻擊次數扣技術分
 const PENALTY_LABELS: Record<PenaltyType, string> = {
-  overtime: '超時 (-1.0)',
-  undertime: '未達時間 (-1.0)',
-  props: '使用道具 (-1.0)',
-  attacks: '實際攻防 (-0.5)',
+  overtime: '超時 (表演 -1.0)',
+  undertime: '未達時間 (表演 -1.0)',
+  props: '使用道具 (表演 -1.0)',
+  attacks: '未達攻擊次數 (技術 -0.5)',
 };
 
 const ALL_PENALTIES: PenaltyType[] = ['overtime', 'undertime', 'props', 'attacks'];
@@ -85,7 +86,7 @@ const PENALTY_TYPE_LABEL: Record<string, string> = {
   overtime: '超時',
   undertime: '未達時間',
   props: '使用道具',
-  attacks: '實際攻防',
+  attacks: '未達攻擊次數',
 };
 
 @Component({

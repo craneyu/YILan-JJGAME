@@ -57,14 +57,13 @@ export async function listTeams(req: Request, res: Response): Promise<void> {
       let result = null;
 
       if (isFinished) {
-        const totalPenalty = teamPenalties.reduce((sum, p) => sum + p.deduction, 0);
         result = calculateCreativeScore(
           teamScores.map((s) => ({
             judgeNo: s.judgeNo,
             technicalScore: s.technicalScore,
             artisticScore: s.artisticScore,
           })),
-          totalPenalty
+          teamPenalties.map((p) => ({ penaltyType: p.penaltyType, deduction: p.deduction }))
         );
       }
 

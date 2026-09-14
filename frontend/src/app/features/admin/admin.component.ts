@@ -58,9 +58,19 @@ interface CreativeRankingItem {
   members: string[];
   category: string;
   tier?: TeamTier | null;
+  /** 扣分前的技術分與表演分（中間三位加總） */
+  technicalRaw?: number;
+  artisticRaw?: number;
+  /** 扣分後的技術分；平分時以此決勝 */
   technicalTotal: number;
+  /** 扣分後的表演分 */
   artisticTotal: number;
+  /** 扣分前的原始總分 */
   grandTotal: number;
+  /** 扣在技術分的扣分合計（未達攻擊次數） */
+  technicalDeduction?: number;
+  /** 扣在表演分的扣分合計（超時／未達時間／使用道具） */
+  artisticDeduction?: number;
   penaltyDeduction: number;
   finalScore: number;
   penaltyReasons?: string[];
@@ -1058,8 +1068,8 @@ export class AdminComponent implements OnInit {
         e: { r: rows.length - 1, c: c2 },
       });
 
-    // 欄位：名次 | 隊伍 | 隊員 | 技術總分 | 表演總分 | 大總分 | 扣分 | 最終得分 | 備註 = 9 欄
-    const COL = 9;
+    // 欄位：名次 | 隊伍 | 隊員 | 技術分 | 表演分 | 原始總分 | 技術扣分 | 表演扣分 | 最終得分 | 備註 = 10 欄
+    const COL = 10;
     rows.push([`${event.name} — ${group.label} 創意演武成績`]);
     merge(0, COL - 1);
     rows.push([`列印日期：${new Date().toLocaleDateString("zh-TW")}`]);
@@ -1069,13 +1079,18 @@ export class AdminComponent implements OnInit {
       "名次",
       "隊伍",
       "隊員",
-      "技術總分",
-      "表演總分",
-      "大總分",
-      "扣分",
+      "技術分",
+      "表演分",
+      "原始總分",
+      "技術扣分",
+      "表演扣分",
       "最終得分",
       "備註",
     ]);
+    rows.push([
+      "※ 技術分、表演分為扣分後的分數；未達攻擊次數扣技術分，超時／未達時間／使用道具扣表演分。平分時以技術分決勝",
+    ]);
+    merge(0, COL - 1);
 
     for (const item of group.items) {
       if (item.isAbstained) {
@@ -1083,6 +1098,7 @@ export class AdminComponent implements OnInit {
           "棄權",
           item.name,
           item.members.join(" / "),
+          "—",
           "—",
           "—",
           "—",
@@ -1108,6 +1124,8 @@ export class AdminComponent implements OnInit {
           notes.push(
             `評分未完成：已送出 ${item.judgeCount ?? 0} / 5 位裁判`,
           );
+        const td = item.technicalDeduction ?? 0;
+        const ad = item.artisticDeduction ?? 0;
         rows.push([
           medalText,
           item.name,
@@ -1115,7 +1133,8 @@ export class AdminComponent implements OnInit {
           item.technicalTotal,
           item.artisticTotal,
           item.grandTotal,
-          item.penaltyDeduction > 0 ? `-${item.penaltyDeduction}` : 0,
+          td > 0 ? `-${td}` : 0,
+          ad > 0 ? `-${ad}` : 0,
           item.finalScore,
           notes.join("；"),
         ]);
@@ -1130,10 +1149,11 @@ export class AdminComponent implements OnInit {
       { wch: 16 },
       { wch: 8 },
       { wch: 8 },
-      { wch: 8 },
-      { wch: 6 },
-      { wch: 8 },
-      { wch: 24 },
+      { wch: 9 },
+      { wch: 9 },
+      { wch: 9 },
+      { wch: 9 },
+      { wch: 30 },
     ];
     const wb = XLSX.utils.book_new();
     // sheet name 限制 31 字，避免 tier label 過長
@@ -1174,7 +1194,11 @@ export class AdminComponent implements OnInit {
     rows.push([`列印日期：${new Date().toLocaleDateString("zh-TW")}`]);
     merge(0, COL - 1);
     rows.push([
-      "※ 本表為五位裁判的原始評分；正式成績為技術分、表演分各自去除最高、最低分後，取中間三位加總再扣除罰分",
+      "※ 本表為五位裁判的原始評分；正式成績為技術分、表演分各自去除最高、最低分後，取中間三位加總再扣除該項的罰分",
+    ]);
+    merge(0, COL - 1);
+    rows.push([
+      "※ 未達攻擊次數扣技術分；超時／未達時間／使用道具扣表演分。平分時以技術分決勝",
     ]);
     merge(0, COL - 1);
     rows.push([]);
@@ -1223,21 +1247,30 @@ export class AdminComponent implements OnInit {
         );
       }
 
-      // 實際採計（技術／表演各自去頭尾後中間三位加總）
+      // 實際採計（技術／表演各自去頭尾後中間三位加總，扣分前）
       const scored = judges.length >= 5;
+      const tDed = item.technicalDeduction ?? 0;
+      const aDed = item.artisticDeduction ?? 0;
       rows.push([
         "採計（中間三位）",
-        scored ? item.technicalTotal : "",
-        scored ? item.artisticTotal : "",
+        scored ? (item.technicalRaw ?? item.technicalTotal) : "",
+        scored ? (item.artisticRaw ?? item.artisticTotal) : "",
         scored ? item.grandTotal : "",
         scored ? "" : "未滿 5 位裁判，不列入計分",
       ]);
       rows.push([
         "扣分",
-        "",
-        "",
+        tDed > 0 ? -tDed : 0,
+        aDed > 0 ? -aDed : 0,
         item.penaltyDeduction > 0 ? -item.penaltyDeduction : 0,
         item.penaltyDeduction > 0 ? (item.penaltyReasons ?? []).join("、") : "",
+      ]);
+      rows.push([
+        "扣分後",
+        scored ? item.technicalTotal : "",
+        scored ? item.artisticTotal : "",
+        scored ? item.finalScore : "",
+        "",
       ]);
       rows.push([
         "最終得分",
@@ -1318,7 +1351,7 @@ export class AdminComponent implements OnInit {
             <thead>
               <tr>
                 <th>名次</th><th>隊伍名稱</th><th>隊員</th>
-                <th>技術總分</th><th>表演總分</th><th>大總分</th><th>扣分</th><th>最終得分</th>
+                <th>技術分</th><th>表演分</th><th>原始總分</th><th>技術扣分</th><th>表演扣分</th><th>最終得分</th>
                 ${hasUnscored ? "<th>備註</th>" : ""}
               </tr>
             </thead>
@@ -1330,7 +1363,7 @@ export class AdminComponent implements OnInit {
                 <tr>
                   <td style="text-align:center;color:#f97316;font-weight:bold">棄權</td>
                   <td>${item.name}</td><td style="color:#555">${item.members.join(" / ")}</td>
-                  <td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
+                  <td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
                   ${hasUnscored ? "<td>—</td>" : ""}
                 </tr>`
                     : `
@@ -1341,8 +1374,13 @@ export class AdminComponent implements OnInit {
                   <td>${item.artisticTotal.toFixed(1)}</td>
                   <td>${item.grandTotal.toFixed(1)}</td>
                   <td style="color:#dc2626">${
-                    item.penaltyDeduction > 0
-                      ? `-${item.penaltyDeduction.toFixed(1)} (${(item.penaltyReasons ?? []).join(", ")})`
+                    (item.technicalDeduction ?? 0) > 0
+                      ? `-${(item.technicalDeduction ?? 0).toFixed(1)}`
+                      : "—"
+                  }</td>
+                  <td style="color:#dc2626">${
+                    (item.artisticDeduction ?? 0) > 0
+                      ? `-${(item.artisticDeduction ?? 0).toFixed(1)}`
                       : "—"
                   }</td>
                   <td style="font-weight:${item.rank >= 1 && item.rank <= 3 ? "bold" : "normal"}">${item.finalScore.toFixed(1)}</td>

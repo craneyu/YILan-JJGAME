@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import Team, { memberNames } from '../models/Team';
 import Event from '../models/Event';
 import CreativeScore from '../models/CreativeScore';
-import CreativePenalty from '../models/CreativePenalty';
+import CreativePenalty, { PENALTY_LABELS } from '../models/CreativePenalty';
 import CreativeGameState from '../models/CreativeGameState';
 import { calculateCreativeScore } from '../utils/creativeScoring';
 
@@ -18,9 +18,19 @@ interface TeamRankEntry {
   members: string[];
   category: string;
   tier: string | null;
+  /** 扣分前的技術分與表演分（中間三位加總） */
+  technicalRaw: number;
+  artisticRaw: number;
+  /** 扣分後的技術分；平分時以此決勝 */
   technicalTotal: number;
+  /** 扣分後的表演分 */
   artisticTotal: number;
+  /** 扣分前的原始總分 */
   grandTotal: number;
+  /** 扣在技術分的扣分合計（未達攻擊次數） */
+  technicalDeduction: number;
+  /** 扣在表演分的扣分合計（超時／未達時間／使用道具） */
+  artisticDeduction: number;
   penaltyDeduction: number;
   finalScore: number;
   rank: number;
@@ -32,12 +42,7 @@ interface TeamRankEntry {
   judgeScores?: CreativeJudgeEntry[];
 }
 
-const PENALTY_LABEL: Record<string, string> = {
-  overtime: '超時',
-  undertime: '未達時間',
-  props: '使用道具',
-  attacks: '實際攻防',
-};
+const PENALTY_LABEL = PENALTY_LABELS;
 
 export async function getCreativeRankings(req: Request, res: Response): Promise<void> {
   const eventId = req.params['id'] as string;
@@ -86,9 +91,13 @@ export async function getCreativeRankings(req: Request, res: Response): Promise<
         members: memberNames(team.members),
         category: team.category,
         tier,
+        technicalRaw: 0,
+        artisticRaw: 0,
         technicalTotal: 0,
         artisticTotal: 0,
         grandTotal: 0,
+        technicalDeduction: 0,
+        artisticDeduction: 0,
         penaltyDeduction,
         finalScore: 0,
         penaltyReasons,
@@ -104,7 +113,7 @@ export async function getCreativeRankings(req: Request, res: Response): Promise<
         technicalScore: s.technicalScore,
         artisticScore: s.artisticScore,
       })),
-      penaltyDeduction
+      teamPenalties.map((p) => ({ penaltyType: p.penaltyType, deduction: p.deduction }))
     );
 
     return {
@@ -140,9 +149,13 @@ export async function getCreativeRankings(req: Request, res: Response): Promise<
       // 棄權、以及未滿 5 位裁判送出（總分一律為 0）的隊伍都不列入排名，rank 記 0
       const isRanked = (t: Omit<TeamRankEntry, 'rank'>) =>
         !t.isAbstained && t.judgeCount >= 5;
+      // 排名依 finalScore 降序；平分時以技術分（扣分後）決勝
       const activeTeams = groupTeams
         .filter(isRanked)
-        .sort((a, b) => b.finalScore - a.finalScore);
+        .sort(
+          (a, b) =>
+            b.finalScore - a.finalScore || b.technicalTotal - a.technicalTotal,
+        );
       const unrankedTeams = groupTeams.filter((t) => !isRanked(t));
 
       activeTeams.forEach((t, idx) => flatRankings.push({ ...t, rank: idx + 1 }));

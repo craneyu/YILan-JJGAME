@@ -62,7 +62,6 @@ export async function submitCreativeScore(req: Request, res: Response): Promise<
   if (allScores.length === 5) {
     // 取得違例扣分
     const penalties = await CreativePenalty.find({ eventId, teamId }).lean();
-    const penaltyDeduction = penalties.reduce((sum, p) => sum + p.deduction, 0);
 
     const result = calculateCreativeScore(
       allScores.map((s) => ({
@@ -70,7 +69,7 @@ export async function submitCreativeScore(req: Request, res: Response): Promise<
         technicalScore: s.technicalScore,
         artisticScore: s.artisticScore,
       })),
-      penaltyDeduction
+      penalties.map((p) => ({ penaltyType: p.penaltyType, deduction: p.deduction }))
     );
 
     // 更新賽程狀態

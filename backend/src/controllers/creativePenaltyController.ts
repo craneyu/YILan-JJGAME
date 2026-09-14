@@ -72,7 +72,7 @@ export async function updatePenalties(req: Request, res: Response): Promise<void
         technicalScore: s.technicalScore,
         artisticScore: s.artisticScore,
       })),
-      totalDeduction
+      penaltyList.map((p) => ({ penaltyType: p.penaltyType, deduction: p.deduction }))
     );
     const penaltyItems = penaltyList.map((p) => ({ type: p.penaltyType, deduction: p.deduction, count: 1 }));
     broadcast.creativeScoreCalculated(eventId, { eventId, teamId, ...result, penalties: penaltyItems });

@@ -35,7 +35,7 @@ const PENALTY_LABEL: Record<string, string> = {
   overtime: '超時',
   undertime: '未達時間',
   props: '使用道具',
-  attacks: '實際攻防',
+  attacks: '未達攻擊次數',
 };
 
 const CATEGORY_LABEL: Record<string, string> = { male: '男子組', female: '女子組', mixed: '混合組' };
