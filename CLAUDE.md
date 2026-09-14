@@ -305,6 +305,21 @@ Each of 5 judges submits technical (0–9.5) and artistic (0–9.5) scores:
   - **VR scores split by series**: VR diversity scores shown separately for A/B/C series
 - **Judge Row**: P1~P4 (or P1~P5 for C series) showing current motion's judge totals (middle 3 of 5)
 - **Unscored**: Shown as `-`, updates real-time once all 5 judges submit
+- **Abstention**: Red 「棄權」 badge next to the team name when the **current round** is abstained, plus
+  「已棄權系列：A、C」 underneath. Sourced from `abstainedRounds` in the rankings response (persisted),
+  not from the live `currentTeamAbstained` flag — see Wrong Attack vs Abstention below.
+- **Category Ranking excludes** teams that have never been scored (`scoredActionCount === 0`), both from
+  the rank and from the denominator, matching the admin ranking list.
+
+### Creative Kata Audience Display
+- **Score Summary**: technical / artistic / penalty breakdown and the final score for the current team,
+  driven by the `creative-score:calculated` socket event (which only fires once all 5 judges have submitted)
+- **Rank badge**: `RANK #n / m`, where `m` counts only ranked teams; teams excluded from the ranking
+  (abstained, or fewer than 5 judges) show 「未列入排名」 instead
+- **Group Ranking table**: 名次 / 隊伍 / 技術 / 表演 / 最終 for every team in the same group, with the
+  current team's row highlighted and a footnote that ties are broken by the technical score. Grouping is
+  `(category, tier)` — the same key the backend ranks by; filtering on category alone mixes in other tiers.
+  Rows excluded from the ranking show 「—」 for rank and scores.
 
 ## Common Development Tasks
 
