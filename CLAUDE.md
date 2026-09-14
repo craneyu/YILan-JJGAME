@@ -132,9 +132,17 @@ cd backend && npm test
 # Run single test file
 npm test -- --include="**/path/to/spec.ts"
 
-# E2E tests (if implemented)
-cd frontend && npm run e2e
+# End-to-end scoring test — builds an event from scratch, produces every score through the
+# real API (kata + creative kata), then asserts rankings, penalties and field-level permissions.
+# Exit code 0 = all passed; each failure prints a FAIL line.
+./scripts/e2e-scoring.sh
 ```
+
+`scripts/e2e-scoring.sh` needs the MongoDB container running (`jju-mongo` by default, override with
+`MONGO_CONTAINER`) and port 3001 free. It uses a dedicated `jju_e2e` database and always tears the
+backend and that database down on exit, so it never touches the real `jju` data. Browser UI is out of
+scope — it asserts the ranking API payload the exports are computed from. See `scripts/README.md`;
+when a scoring rule changes, `scripts/e2e-assert.py`'s expected values must be updated alongside it.
 
 ### Linting & Code Quality
 
@@ -210,6 +218,10 @@ Yilan-jju/
 │   ├── package.json
 │   └── Dockerfile
 ├── openspec/                      # Spectra SDD specs & archived changes
+├── scripts/
+│   ├── e2e-scoring.sh             # End-to-end scoring test (kata + creative kata)
+│   ├── e2e-assert.py              # Its expected values — keep in sync with the script
+│   └── README.md
 ├── docker-compose.yml
 ├── package-docker.sh              # MacBook offline portable package script
 ├── package-synology.sh            # Synology NAS deployment script
