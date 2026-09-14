@@ -196,8 +196,8 @@ Yilan-jju/
 │   ├── src/
 │   │   ├── routes/                # 14 route files (auth, events, teams, scores, flow, matches, etc.)
 │   │   ├── controllers/           # 19 controller files
-│   │   ├── models/                # 12 Mongoose models (User, Event, Team, Score, VRScore,
-│   │   │                          #   Match, MatchScoreLog, GameState, WrongAttack,
+│   │   ├── models/                # 13 Mongoose models (User, Event, Team, Score, VRScore,
+│   │   │                          #   Match, MatchScoreLog, GameState, WrongAttack, Abstention,
 │   │   │                          #   CreativeScore, CreativePenalty, CreativeGameState)
 │   │   ├── middleware/            # auth.ts (JWT + role), errorHandler.ts
 │   │   ├── sockets/               # Socket.IO broadcast handlers
@@ -233,7 +233,7 @@ Yilan-jju/
 - **Score Calculation**: Utils process dropped high/low scores server-side
 
 ### Database
-- **Collections**: users, events, teams, scores, vr_scores, wrong_attacks, game_states, matches, match_score_logs, creative_scores, creative_penalties, creative_game_states
+- **Collections**: users, events, teams, scores, vr_scores, wrong_attacks, abstentions, game_states, matches, match_score_logs, creative_scores, creative_penalties, creative_game_states
 - **Indexes**: Ensure unique player names per event, eventId/teamId for filtering
 - **Persistence**: MongoDB volume `mongo_data` persists across container rebuilds
 
@@ -372,6 +372,19 @@ All authenticated endpoints require `Authorization: Bearer <JWT>`
   - Chief judge signature area at bottom
   - A4 landscape orientation, one page per category
 - Both export buttons placed on each category card in admin rankings view
+- **Ranking exclusions** (`rank` is 0 for excluded teams, rendered as 「未計分」 in exports and 「—」 in the
+  admin list):
+  - Kata: teams with `scoredActionCount === 0` (never scored at all). Partially scored teams still rank.
+  - Creative kata: teams with `judgeCount < 5` (scoring incomplete → total is forced to 0), plus abstained
+    teams. Both are computed server-side in `creativeRankingsController`.
+  - Kata ranks are computed **client-side** in `rankingsByCat`; creative ranks come from the backend.
+- **Annotations carried by all exports** (so a total is never mistaken for a final score):
+  - Kata: 「⚠ 評分未完成：已計分 X / Y 個動作」, 「⚠ A 系列棄權」, and a 「版面外動作」 section for motions that
+    fall outside the team's tier/category layout but still count toward the total
+  - Creative kata: 「評分未完成：已送出 X / 5 位裁判」
+- **Judge detail is admin-only**: `judgeDetails` (kata) and `judgeScores` (creative) are returned by the
+  public rankings endpoints only when the caller is an admin (`optionalAuth` in `middleware/auth.ts`).
+  The endpoints stay public because the audience displays poll them.
 
 ## Current Feature Status
 
@@ -404,5 +417,14 @@ All authenticated endpoints require `Authorization: Bearer <JWT>`
 
 ### Wrong Attack vs Abstention
 - **Wrong Attack** (VR Judge action): Individual motion marked as invalid, zero score, but team continues
-- **Abstention** (Sequence Judge action): Entire team skips VR scoring, no diversity points
-- Both affect final rankings; abstained teams show red "棄權" label on audience
+- **Abstention** (Sequence Judge action): Skips the VR check for **that team in that round** — the sequence
+  judge UI reads 「設定此組棄權」. It is per-round, not a withdrawal from the whole event: a team may abstain
+  in round A and compete normally in B/C.
+- **Persistence**: abstentions are stored per `(eventId, teamId, round)` in the `abstentions` collection
+  (`models/Abstention.ts`). `GameState.currentTeamAbstained` remains as the *live* flag for the current team
+  only — it is reset on `next-group`, and (a known quirk) is **not** reset by `open-action` when the sequence
+  judge picks a team manually, so never derive per-team abstention from it. Use the persisted records.
+- **Where it surfaces**: `GET /events/:id/rankings` returns `abstainedRounds: number[]` (public — round
+  numbers only, no scoring content). The kata audience shows a red 「棄權」 badge plus 「已棄權系列：A、C」,
+  and all three kata exports annotate it (team header + the abstained series subtotal row / PDF 備註 column).
+- Abstention does **not** remove a kata team from the rankings; creative kata is different (see below)
