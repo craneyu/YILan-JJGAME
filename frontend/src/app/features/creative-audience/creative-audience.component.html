@@ -168,6 +168,55 @@
                 </p>
               </div>
             </div>
+
+            <!-- 同組排名（含技術分，供對照；平分時以技術分決勝） -->
+            @if (groupRankings().length > 0) {
+              <div class="space-y-3">
+                <div class="flex items-center gap-2 text-white/40 text-xs font-bold uppercase tracking-widest">
+                  <span class="h-px flex-1 bg-white/10"></span>
+                  同組排名 Group Ranking
+                  <span class="h-px flex-1 bg-white/10"></span>
+                </div>
+                <table class="w-full text-sm">
+                  <thead>
+                    <tr class="text-white/40 text-xs border-b border-white/10">
+                      <th class="text-center pb-2 w-12">名次</th>
+                      <th class="text-left pb-2">隊伍</th>
+                      <th class="text-right pb-2 w-20">技術</th>
+                      <th class="text-right pb-2 w-20">表演</th>
+                      <th class="text-right pb-2 w-20">最終</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-white/5">
+                    @for (r of groupRankings(); track r.teamId) {
+                      <tr [class]="r.teamId === currentTeamId() ? 'bg-blue-500/20' : ''">
+                        <td class="py-1.5 text-center font-bold"
+                            [class]="r.rank === 1 ? 'text-yellow-400'
+                                   : r.rank === 2 ? 'text-gray-300'
+                                   : r.rank === 3 ? 'text-orange-400' : 'text-white/40'">
+                          {{ r.rank === 0 ? '—' : r.rank }}
+                        </td>
+                        <td class="py-1.5 pr-2 truncate"
+                            [class]="r.teamId === currentTeamId() ? 'text-white font-bold' : 'text-white/70'">
+                          {{ r.name }}
+                        </td>
+                        <td class="py-1.5 text-right font-mono tabular-nums text-blue-300">
+                          {{ r.rank === 0 ? '—' : r.technicalTotal.toFixed(1) }}
+                        </td>
+                        <td class="py-1.5 text-right font-mono tabular-nums text-purple-300">
+                          {{ r.rank === 0 ? '—' : r.artisticTotal.toFixed(1) }}
+                        </td>
+                        <td class="py-1.5 text-right font-mono tabular-nums font-bold"
+                            [class]="r.teamId === currentTeamId() ? 'text-white' : 'text-white/80'">
+                          {{ r.rank === 0 ? '—' : r.finalScore.toFixed(1) }}
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+                <p class="text-white/30 text-xs text-right">最終得分相同時，以技術分較高者排前</p>
+              </div>
+            }
           </div>
         } @else {
           <!-- 未結算時的佔位 -->

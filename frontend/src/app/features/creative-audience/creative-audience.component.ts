@@ -20,11 +20,17 @@ interface RankEntry {
   teamId: string;
   name: string;
   category: string;
+  tier?: string | null;
   finalScore: number;
+  /** 扣分後的技術分；平分時以此決勝 */
   technicalTotal: number;
+  /** 扣分後的表演分 */
   artisticTotal: number;
   grandTotal: number;
   penaltyDeduction: number;
+  isAbstained?: boolean;
+  /** 已送出評分的裁判人數；未滿 5 位不列入排名 */
+  judgeCount?: number;
 }
 
 // 合規時間：90–120 秒
@@ -125,6 +131,8 @@ export class CreativeAudienceComponent implements OnInit, OnDestroy {
 
   // 排名
   myRank = signal<{ rank: number; total: number } | null>(null);
+  /** 同組（category + tier）排名列表，供觀眾對照技術分 */
+  groupRankings = signal<RankEntry[]>([]);
 
   isAbstained = signal(false);
   currentTeamId = signal<string | null>(null);
@@ -192,6 +200,7 @@ export class CreativeAudienceComponent implements OnInit, OnDestroy {
         // 開放評分時保留已停止的計時結果供觀眾查看
         this.calculatedResult.set(null);
         this.myRank.set(null);
+        this.groupRankings.set([]);
       })
     );
 
@@ -378,13 +387,23 @@ loadState(eventId: string): void {
     this.api.get<{ success: boolean; data: RankEntry[] }>(`/events/${eventId}/creative-rankings`).subscribe({
       next: (res) => {
         const entries = res.data ?? [];
-        const entry = entries.find(e => e.teamId === teamId);
-        const sameCategory = entries.filter(e =>
-          entry ? e.category === entry.category : false
-        );
-        if (entry) {
-          this.myRank.set({ rank: entry.rank, total: sameCategory.length });
+        const entry = entries.find((e) => e.teamId === teamId);
+        if (!entry) {
+          this.myRank.set(null);
+          this.groupRankings.set([]);
+          return;
         }
+        // 後端依 (category, tier) 分組排名，這裡的分組條件必須一致，
+        // 只比 category 會把其他分級的隊伍混進來、分母也會算錯
+        const sameGroup = entries.filter(
+          (e) =>
+            e.category === entry.category &&
+            (e.tier ?? null) === (entry.tier ?? null),
+        );
+        this.groupRankings.set(sameGroup);
+        // 分母只算列入排名的隊伍（排除棄權與未滿 5 位裁判）
+        const rankedCount = sameGroup.filter((e) => e.rank > 0).length;
+        this.myRank.set({ rank: entry.rank, total: rankedCount });
       },
       error: () => {},
     });
@@ -412,6 +431,7 @@ loadState(eventId: string): void {
     this.penaltyDeduction.set(0);
     this.calculatedResult.set(null);
     this.myRank.set(null);
+    this.groupRankings.set([]);
     this.currentTeamId.set(null);
     this.currentTeamName.set('');
     this.currentMembers.set([]);
