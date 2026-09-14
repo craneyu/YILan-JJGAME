@@ -72,6 +72,8 @@ interface RankingItem {
   total: number;
   /** 已有裁判送出過評分的動作數；0 代表完全未評分，不列入排名 */
   scoredActionCount?: number;
+  /** 棄權的輪次（1=A、2=B、3=C）；kata 的棄權以輪次為單位 */
+  abstainedRounds?: number[];
 }
 
 const ELEMENTARY_MOTIONS: Record<'EL' | 'EM' | 'EH', Record<'A' | 'B' | 'C', readonly string[]>> = {
@@ -198,6 +200,27 @@ export class AudienceComponent implements OnInit, OnDestroy {
     return team ? isElementaryTier(team.tier) : false;
   });
 
+  /** 當前隊伍已棄權的輪次，來源為 rankings 的持久化記錄 */
+  abstainedRounds = computed<number[]>(() => {
+    const team = this.currentTeam();
+    if (!team) return [];
+    return (
+      this.rankings().find((r) => r.teamId === team._id)?.abstainedRounds ?? []
+    );
+  });
+
+  /** 當前輪次是否棄權（隊名旁的紅色標籤） */
+  currentRoundAbstained = computed(() =>
+    this.abstainedRounds().includes(this.currentRound()),
+  );
+
+  /** 已棄權輪次的系列字母，例如 "A、C" */
+  abstainedSeriesLabel = computed(() =>
+    this.abstainedRounds()
+      .map((r) => ['A', 'B', 'C'][r - 1] ?? String(r))
+      .join('、'),
+  );
+
   categoryRank = computed(() => {
     const team = this.currentTeam();
     if (!team) return null;
@@ -255,6 +278,8 @@ export class AudienceComponent implements OnInit, OnDestroy {
         this.actionScores.set([]);
         this.vrScore.set(null);
         this.currentActionNo.set(null);
+        // 換隊後需要新隊伍的棄權記錄
+        this.loadRankings(this.eventId());
       }),
 
       this.socket.roundChanged$.subscribe((e) => {
@@ -271,6 +296,18 @@ export class AudienceComponent implements OnInit, OnDestroy {
         this.applyCurrentTeam(e.teamId);
         this.currentActionNo.set(e.actionNo);
         this.currentRound.set(e.round);
+        this.loadRankings(this.eventId());
+      }),
+
+      // 棄權事件：重抓 rankings 取得持久化的棄權輪次
+      this.socket.teamAbstained$.subscribe((e) => {
+        if (e.eventId !== this.eventId()) return;
+        this.loadRankings(this.eventId());
+      }),
+
+      this.socket.teamAbstainCancelled$.subscribe((e) => {
+        if (e.eventId !== this.eventId()) return;
+        this.loadRankings(this.eventId());
       }),
 
       this.socket.wrongAttackUpdated$.subscribe((e: WrongAttackUpdatedEvent) => {

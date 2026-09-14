@@ -51,8 +51,20 @@
             <span class="text-white/30 text-sm">/ {{ rank.total }} 隊</span>
           }
         </div>
-        <!-- 隊名 -->
-        <p class="text-white font-bold text-4xl leading-tight">{{ currentTeam()!.name }}</p>
+        <!-- 隊名（本輪棄權時標紅字標籤；其他輪次棄權則於後方列出） -->
+        <div class="flex items-center gap-3 flex-wrap">
+          <p class="text-white font-bold text-4xl leading-tight">{{ currentTeam()!.name }}</p>
+          @if (currentRoundAbstained()) {
+            <span class="text-base px-4 py-1 rounded-full font-bold bg-red-500/30 text-red-200 border border-red-400/40">
+              棄權
+            </span>
+          }
+        </div>
+        @if (abstainedSeriesLabel()) {
+          <p class="text-red-300/80 text-lg font-medium">
+            已棄權系列：{{ abstainedSeriesLabel() }}
+          </p>
+        }
         <!-- 隊員姓名 -->
         <p class="text-white/80 text-2xl font-medium tracking-wide">{{ currentTeam()!.members.join(' ／ ') }}</p>
       } @else {
