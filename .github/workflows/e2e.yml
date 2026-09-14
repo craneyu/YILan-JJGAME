@@ -1,0 +1,38 @@
+name: E2E 評分測試
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    name: 評分到匯出端對端測試
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: 安裝後端相依套件
+        working-directory: backend
+        run: npm ci
+
+      # 腳本以 docker exec 操作資料庫，因此用容器而非 service container，
+      # 容器名稱與本機開發環境（CLAUDE.md）一致，腳本不需為 CI 另開分支
+      - name: 啟動 MongoDB
+        run: docker run -d --name jju-mongo -p 27017:27017 mongo:7
+
+      - name: 執行端對端測試
+        run: ./scripts/e2e-scoring.sh
+
+      - name: 失敗時輸出 MongoDB log
+        if: failure()
+        run: docker logs jju-mongo --tail 50

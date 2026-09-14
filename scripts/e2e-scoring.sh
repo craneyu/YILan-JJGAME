@@ -75,7 +75,20 @@ if lsof -nP -iTCP:${TEST_PORT} -sTCP:LISTEN >/dev/null 2>&1; then
   echo "錯誤：port ${TEST_PORT} 已被佔用，請先關閉佔用的程序"
   exit 1
 fi
-echo "      MongoDB 容器與 port ${TEST_PORT} 皆就緒"
+# 容器在跑不代表 mongod 已可連線（剛啟動的容器尤其如此），等到真的能連為止
+MONGO_READY=0
+for _ in $(seq 1 30); do
+  if docker exec -i "$MONGO_CONTAINER" mongosh --quiet --eval 'db.adminCommand({ ping: 1 })' >/dev/null 2>&1; then
+    MONGO_READY=1
+    break
+  fi
+  sleep 1
+done
+if [ "$MONGO_READY" -ne 1 ]; then
+  echo "錯誤：MongoDB 容器 '${MONGO_CONTAINER}' 在 30 秒內未能接受連線"
+  exit 1
+fi
+echo "      MongoDB 已可連線、port ${TEST_PORT} 未被佔用"
 
 # ── 建立賽事與隊伍（只建結構，分數全部走 API 產生）──
 echo "[2/6] 建立測試賽事與隊伍..."
