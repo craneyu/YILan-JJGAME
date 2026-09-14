@@ -7,6 +7,7 @@ import Team, { memberNames, toLegacyTeam } from "../models/Team";
 import Score from "../models/Score";
 import VRScore from "../models/VRScore";
 import WrongAttack from "../models/WrongAttack";
+import Abstention from "../models/Abstention";
 import CreativeScore from "../models/CreativeScore";
 import CreativePenalty from "../models/CreativePenalty";
 import { calculateActionScores, CalculatedScore } from "../utils/scoring";
@@ -217,6 +218,7 @@ export async function clearEventScores(
         deletedVrScores += r.deletedCount;
       }),
       WrongAttack.deleteMany({ eventId }),
+      Abstention.deleteMany({ eventId }),
       GameState.findOneAndUpdate(
         { eventId },
         {
@@ -547,6 +549,15 @@ export async function getEventRankings(
     };
   }
 
+  // 棄權記錄（依輪次），供匯出標註；只是輪次編號、不含評分內容，故對觀眾端公開
+  const teamAbstainedRounds: Record<string, number[]> = {};
+  for (const a of await Abstention.find({ eventId }).lean()) {
+    const tid = String(a.teamId);
+    (teamAbstainedRounds[tid] ??= []).push(a.round);
+  }
+  for (const tid of Object.keys(teamAbstainedRounds))
+    teamAbstainedRounds[tid].sort((x, y) => x - y);
+
   // 加入 VR 分數（依輪次對應系列 A/B/C），同時儲存投技/寢技明細
   const teamVrScore: Record<string, { A: number; B: number; C: number }> = {};
   const teamVrDetails: Record<
@@ -593,6 +604,7 @@ export async function getEventRankings(
       // 已有裁判送出過評分的動作數（含未滿 5 位者）；0 代表整隊完全未評分，不列入排名。
       // 只是筆數、不含評分內容，故對觀眾端公開。
       scoredActionCount: Object.keys(teamJudgeDetails[teamId] ?? {}).length,
+      abstainedRounds: teamAbstainedRounds[teamId] ?? [],
       // 裁判逐項原始評分屬賽後查核資料，僅 admin 可見（本端點對觀眾端公開）
       ...(isAdmin ? { judgeDetails: teamJudgeDetails[teamId] ?? {} } : {}),
     };

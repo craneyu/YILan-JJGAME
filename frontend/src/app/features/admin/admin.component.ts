@@ -122,6 +122,8 @@ interface RankingItem {
   rank?: number;
   /** 已有裁判送出過評分的動作數；0 代表完全未評分，不列入排名 */
   scoredActionCount?: number;
+  /** 棄權的輪次（1=A、2=B、3=C）；kata 的棄權以輪次為單位 */
+  abstainedRounds?: number[];
   actionDetails: Record<string, ActionDetail>;
   judgeDetails?: Record<string, JudgeDetail>;
   vrDetails?: Record<string, VrDetail>;
@@ -186,6 +188,14 @@ function seriesLayout(
     actionCount,
     seriesCfg: hideC ? allSeries.filter((x) => x.s !== "C") : allSeries,
   };
+}
+
+/** kata 棄權以輪次為單位，轉成系列字母（1→A、2→B、3→C）供匯出標註 */
+function abstainedSeriesLabel(rounds: number[] | undefined): string {
+  const letters = (rounds ?? [])
+    .map((r) => (r === 1 ? "A" : r === 2 ? "B" : r === 3 ? "C" : String(r)))
+    .filter(Boolean);
+  return letters.length > 0 ? letters.join("、") : "";
 }
 
 /**
@@ -1456,8 +1466,10 @@ ${sectionsHtml}
         progress.done < progress.expected
           ? `　⚠ 評分未完成：已計分 ${progress.done} / ${progress.expected} 個動作`
           : "";
+      const abstainSeries = abstainedSeriesLabel(item.abstainedRounds);
+      const abstainNote = abstainSeries ? `　⚠ ${abstainSeries} 系列棄權` : "";
       rows.push([
-        `${rankLabel}　${item.name}（${item.members.join(" / ")}）　總分：${item.total}${progressNote}`,
+        `${rankLabel}　${item.name}（${item.members.join(" / ")}）　總分：${item.total}${abstainNote}${progressNote}`,
       ]);
       merge(0, COL - 1);
 
@@ -1538,11 +1550,16 @@ ${sectionsHtml}
           rows.push(r);
         }
 
-        // 系列合計列
+        // 系列合計列（該系列棄權時於標籤標註）
+        const seriesLabel = (item.abstainedRounds ?? []).includes(
+          s === "A" ? 1 : s === "B" ? 2 : 3,
+        )
+          ? `${s} 系列合計（棄權）`
+          : `${s} 系列合計`;
         const motionTotal =
           s === "A" ? item.seriesA : s === "B" ? item.seriesB : item.seriesC;
         if (hideVR) {
-          rows.push([`${s} 系列合計`, "", "", "", "", "", motionTotal, motionTotal]);
+          rows.push([seriesLabel, "", "", "", "", "", motionTotal, motionTotal]);
           merge(0, 5);
         } else {
           const vr: VrDetail = (item.vrDetails ?? {})[s] ?? {
@@ -1556,7 +1573,7 @@ ${sectionsHtml}
                 ? (item.vrScoreB ?? 0)
                 : (item.vrScoreC ?? 0);
           rows.push([
-            `${s} 系列合計`,
+            seriesLabel,
             "",
             "",
             "",
@@ -1690,8 +1707,12 @@ ${sectionsHtml}
         progress.done < progress.expected
           ? `　⚠ 評分未完成：已計分 ${progress.done} / ${progress.expected} 個動作`
           : "";
+      const abstainSeries2 = abstainedSeriesLabel(item.abstainedRounds);
+      const abstainNote2 = abstainSeries2
+        ? `　⚠ ${abstainSeries2} 系列棄權`
+        : "";
       rows.push([
-        `${rankLabel}　${item.name}（${item.members.join(" / ")}）　總分：${item.total}${progressNote}`,
+        `${rankLabel}　${item.name}（${item.members.join(" / ")}）　總分：${item.total}${abstainNote2}${progressNote}`,
       ]);
       merge(0, COL - 1);
 
@@ -1846,7 +1867,7 @@ ${sectionsHtml}
       scoringProgress(item.actionDetails, actionCount, seriesCfg);
     const hasIncomplete = group.items.some((i) => {
       const p = progressOf(i);
-      return p.done < p.expected;
+      return p.done < p.expected || (i.abstainedRounds ?? []).length > 0;
     });
 
     const medalText = (rank: number) =>
@@ -1921,9 +1942,14 @@ ${sectionsHtml}
       );
       if (hasIncomplete) {
         const p = progressOf(item);
+        const notes: string[] = [];
+        const series = abstainedSeriesLabel(item.abstainedRounds);
+        if (series) notes.push(`${series} 系列棄權`);
+        if (p.done < p.expected)
+          notes.push(`評分未完成：已計分 ${p.done} / ${p.expected} 個動作`);
         cells.push(
-          p.done < p.expected
-            ? `<td style="color:#dc2626">評分未完成：已計分 ${p.done} / ${p.expected} 個動作</td>`
+          notes.length > 0
+            ? `<td style="color:#dc2626">${notes.join("；")}</td>`
             : "<td>—</td>",
         );
       }

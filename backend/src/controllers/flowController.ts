@@ -3,6 +3,7 @@ import GameState from '../models/GameState';
 import Team from '../models/Team';
 import Event from '../models/Event';
 import VRScore from '../models/VRScore';
+import Abstention from '../models/Abstention';
 import { broadcast } from '../sockets/index';
 import { sortTeams, resolveCategoryOrder, buildTournamentGroups } from '../utils/teamSort';
 import {
@@ -298,6 +299,20 @@ export async function setAbstain(req: Request, res: Response): Promise<void> {
     return;
   }
 
+  // 持久化棄權記錄：currentTeamAbstained 只是當前隊伍的即時狀態，換組時會重設，
+  // 賽後匯出需要查得到哪一隊在哪一輪棄權
+  if (gameState.currentTeamId) {
+    await Abstention.updateOne(
+      {
+        eventId,
+        teamId: gameState.currentTeamId,
+        round: gameState.currentRound,
+      },
+      { $setOnInsert: { markedAt: new Date() } },
+      { upsert: true },
+    );
+  }
+
   broadcast.teamAbstained(eventId, { eventId, teamId: String(gameState.currentTeamId) });
   res.json({ success: true, data: gameState });
 }
@@ -317,6 +332,14 @@ export async function cancelAbstain(req: Request, res: Response): Promise<void> 
   if (!gameState) {
     res.status(404).json({ success: false, error: '賽程狀態不存在' });
     return;
+  }
+
+  if (gameState.currentTeamId) {
+    await Abstention.deleteOne({
+      eventId,
+      teamId: gameState.currentTeamId,
+      round: gameState.currentRound,
+    });
   }
 
   broadcast.teamAbstainCancelled(eventId, { eventId, teamId: String(gameState.currentTeamId) });
