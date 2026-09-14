@@ -1052,13 +1052,15 @@ export class AdminComponent implements OnInit {
         ]);
       } else {
         const medalText =
-          item.rank === 1
-            ? "金牌"
-            : item.rank === 2
-              ? "銀牌"
-              : item.rank === 3
-                ? "銅牌"
-                : `第${item.rank}名`;
+          item.rank === 0
+            ? "未計分"
+            : item.rank === 1
+              ? "金牌"
+              : item.rank === 2
+                ? "銀牌"
+                : item.rank === 3
+                  ? "銅牌"
+                  : `第${item.rank}名`;
         const notes: string[] = [];
         if (item.penaltyDeduction > 0)
           notes.push((item.penaltyReasons ?? []).join("、"));
@@ -1140,13 +1142,15 @@ export class AdminComponent implements OnInit {
     for (const item of group.items) {
       const rankLabel = item.isAbstained
         ? "棄權"
-        : item.rank === 1
-          ? "金牌"
-          : item.rank === 2
-            ? "銀牌"
-            : item.rank === 3
-              ? "銅牌"
-              : `第 ${item.rank} 名`;
+        : item.rank === 0
+          ? "未計分"
+          : item.rank === 1
+            ? "金牌"
+            : item.rank === 2
+              ? "銀牌"
+              : item.rank === 3
+                ? "銅牌"
+                : `第 ${item.rank} 名`;
 
       rows.push([
         `${rankLabel}　${item.name}（${item.members.join(" / ")}）　最終得分：${
@@ -1226,7 +1230,15 @@ export class AdminComponent implements OnInit {
       (g) => g.category === category && g.tier === tier,
     );
     const medalText = (rank: number) =>
-      rank === 1 ? "金" : rank === 2 ? "銀" : rank === 3 ? "銅" : String(rank);
+      rank === 0
+        ? "未計分"
+        : rank === 1
+          ? "金"
+          : rank === 2
+            ? "銀"
+            : rank === 3
+              ? "銅"
+              : String(rank);
     const medalStyle = (rank: number) =>
       rank === 1
         ? "color:#b8860b;font-weight:bold"
@@ -1287,7 +1299,7 @@ export class AdminComponent implements OnInit {
                       ? `-${item.penaltyDeduction.toFixed(1)} (${(item.penaltyReasons ?? []).join(", ")})`
                       : "—"
                   }</td>
-                  <td style="font-weight:${item.rank <= 3 ? "bold" : "normal"}">${item.finalScore.toFixed(1)}</td>
+                  <td style="font-weight:${item.rank >= 1 && item.rank <= 3 ? "bold" : "normal"}">${item.finalScore.toFixed(1)}</td>
                   ${noteCell(item)}
                 </tr>`,
                 )

@@ -992,6 +992,8 @@
                               <span class="text-gray-300 font-bold">2</span>
                             } @else if (item.rank === 3) {
                               <span class="text-orange-400 font-bold">3</span>
+                            } @else if (item.rank === 0) {
+                              <span class="text-white/30">—</span>
                             } @else {
                               <span class="text-white/30">{{ item.rank }}</span>
                             }
@@ -1015,7 +1017,7 @@
                               [class]="
                                 item.rank === 1
                                   ? 'text-yellow-400 font-bold'
-                                  : item.rank <= 3
+                                  : item.rank >= 1 && item.rank <= 3
                                     ? 'text-white font-semibold'
                                     : 'text-white/70'
                               ">

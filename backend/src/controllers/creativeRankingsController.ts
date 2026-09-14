@@ -137,13 +137,16 @@ export async function getCreativeRankings(req: Request, res: Response): Promise<
         (t) => t.category === cat && (t.tier ?? null) === tier,
       );
       if (groupTeams.length === 0) continue;
+      // 棄權、以及未滿 5 位裁判送出（總分一律為 0）的隊伍都不列入排名，rank 記 0
+      const isRanked = (t: Omit<TeamRankEntry, 'rank'>) =>
+        !t.isAbstained && t.judgeCount >= 5;
       const activeTeams = groupTeams
-        .filter((t) => !t.isAbstained)
+        .filter(isRanked)
         .sort((a, b) => b.finalScore - a.finalScore);
-      const abstainedTeams = groupTeams.filter((t) => t.isAbstained);
+      const unrankedTeams = groupTeams.filter((t) => !isRanked(t));
 
       activeTeams.forEach((t, idx) => flatRankings.push({ ...t, rank: idx + 1 }));
-      abstainedTeams.forEach((t) => flatRankings.push({ ...t, rank: 0 }));
+      unrankedTeams.forEach((t) => flatRankings.push({ ...t, rank: 0 }));
     }
   }
 
