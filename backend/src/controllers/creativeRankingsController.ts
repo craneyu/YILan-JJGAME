@@ -26,8 +26,8 @@ interface TeamRankEntry {
   rank: number;
   penaltyReasons: string[];
   isAbstained: boolean;
-  /** 各裁判的原始評分（未去頭尾），供裁判評分明細匯出使用 */
-  judgeScores: CreativeJudgeEntry[];
+  /** 各裁判的原始評分（未去頭尾），供裁判評分明細匯出使用；僅 admin 可見 */
+  judgeScores?: CreativeJudgeEntry[];
 }
 
 const PENALTY_LABEL: Record<string, string> = {
@@ -49,6 +49,8 @@ export async function getCreativeRankings(req: Request, res: Response): Promise<
   ]);
 
   const isTournament = event?.meetingType === 'tournament';
+  // 裁判逐項原始評分屬賽後查核資料，僅 admin 可見（本端點對觀眾端公開）
+  const isAdmin = req.user?.role === 'admin';
 
   const abstainedTeamIds = new Set(
     (gameState?.abstainedTeamIds ?? []).map((id) => id.toString())
@@ -89,7 +91,7 @@ export async function getCreativeRankings(req: Request, res: Response): Promise<
         finalScore: 0,
         penaltyReasons,
         isAbstained,
-        judgeScores: judgeDetail,
+        ...(isAdmin ? { judgeScores: judgeDetail } : {}),
       };
     }
 
@@ -111,7 +113,7 @@ export async function getCreativeRankings(req: Request, res: Response): Promise<
       ...calc,
       penaltyReasons,
       isAbstained,
-      judgeScores: judgeDetail,
+      ...(isAdmin ? { judgeScores: judgeDetail } : {}),
     };
   });
 

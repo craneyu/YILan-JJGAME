@@ -570,6 +570,7 @@ export async function getEventRankings(
     };
   }
 
+  const isAdmin = req.user?.role === "admin";
   const result = teams.map((team) => {
     const teamId = String(team._id);
     const series = teamSeriesScore[teamId] ?? { A: 0, B: 0, C: 0 };
@@ -589,7 +590,8 @@ export async function getEventRankings(
       seriesC: series.C,
       total,
       actionDetails: teamActionDetails[teamId] ?? {},
-      judgeDetails: teamJudgeDetails[teamId] ?? {},
+      // 裁判逐項原始評分屬賽後查核資料，僅 admin 可見（本端點對觀眾端公開）
+      ...(isAdmin ? { judgeDetails: teamJudgeDetails[teamId] ?? {} } : {}),
     };
     if (tierIsElementary) {
       return base;

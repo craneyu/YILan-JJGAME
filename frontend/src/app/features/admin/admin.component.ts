@@ -1573,61 +1573,92 @@ ${sectionsHtml}
         "備註",
       ]);
 
-      for (const { s, parts } of seriesCfg) {
-        for (let i = 1; i <= actionCount; i++) {
-          const actionNo = `${s}${i}`;
-          const detail = (item.judgeDetails ?? {})[actionNo];
-          const calc = (item.actionDetails ?? {})[actionNo];
-          const blockStart = rows.length;
+      // 單一動作的評分區塊（5 位裁判原始評分 + 採計列），版面內／外動作共用
+      const pushActionBlock = (actionNo: string, parts: number) => {
+        const detail = (item.judgeDetails ?? {})[actionNo];
+        const calc = (item.actionDetails ?? {})[actionNo];
+        const submitted = detail?.judges.length ?? 0;
+        const blockStart = rows.length;
 
-          // 五位裁判的原始評分（未送出者留白並標註）
-          for (let n = 1; n <= 5; n++) {
-            const judge = detail?.judges.find((j) => j.judgeNo === n);
-            const raw = judge as Record<string, number | undefined> | undefined;
-            const r: (string | number)[] = [n === 1 ? actionNo : "", `裁判${n}`];
-            let judgeSum = 0;
-            for (let pIdx = 1; pIdx <= 5; pIdx++) {
-              if (pIdx > parts) {
-                r.push("");
-                continue;
-              }
-              if (!raw) {
-                r.push("");
-                continue;
-              }
-              const v = raw[`p${pIdx}`] ?? 0;
-              judgeSum += v;
-              r.push(v);
-            }
-            r.push(raw ? judgeSum : "");
-            r.push(raw ? "" : "未送出");
-            rows.push(r);
-          }
-
-          // 實際採計（去頭尾後中間三位加總），與成績明細表一致
-          const calcRow: (string | number)[] = ["", "採計（中間三位）"];
+        // 五位裁判的原始評分（未送出者留白並標註）
+        for (let n = 1; n <= 5; n++) {
+          const judge = detail?.judges.find((j) => j.judgeNo === n);
+          const raw = judge as Record<string, number | undefined> | undefined;
+          const r: (string | number)[] = [n === 1 ? actionNo : "", `裁判${n}`];
+          let judgeSum = 0;
           for (let pIdx = 1; pIdx <= 5; pIdx++) {
             if (pIdx > parts) {
-              calcRow.push("");
+              r.push("");
               continue;
             }
-            const v = calc
-              ? ((calc as Record<string, number | undefined>)[`p${pIdx}`] ?? 0)
-              : "";
-            calcRow.push(v);
+            if (!raw) {
+              r.push("");
+              continue;
+            }
+            const v = raw[`p${pIdx}`] ?? 0;
+            judgeSum += v;
+            r.push(v);
           }
-          calcRow.push(calc?.total ?? "");
-          calcRow.push(detail?.wrongAttack ? "無效動作：P1 以 0 分計" : "");
-          rows.push(calcRow);
-
-          // 動作編號欄跨「5 位裁判 + 採計」共 6 列
-          merges.push({
-            s: { r: blockStart, c: 0 },
-            e: { r: rows.length - 1, c: 0 },
-          });
+          r.push(raw ? judgeSum : "");
+          r.push(raw ? "" : "未送出");
+          rows.push(r);
         }
 
+        // 實際採計（去頭尾後中間三位加總），與成績明細表一致
+        const calcRow: (string | number)[] = ["", "採計（中間三位）"];
+        for (let pIdx = 1; pIdx <= 5; pIdx++) {
+          if (pIdx > parts) {
+            calcRow.push("");
+            continue;
+          }
+          const v = calc
+            ? ((calc as Record<string, number | undefined>)[`p${pIdx}`] ?? 0)
+            : "";
+          calcRow.push(v);
+        }
+        calcRow.push(calc?.total ?? "");
+        // 採計列留白必須說明原因，否則本表與隊伍總分無法對帳
+        const notes: string[] = [];
+        if (detail?.wrongAttack) notes.push("無效動作：P1 以 0 分計");
+        if (!calc)
+          notes.push(submitted === 0 ? "未評分" : "未滿 5 位裁判，不列入計分");
+        calcRow.push(notes.join("；"));
+        rows.push(calcRow);
+
+        // 動作編號欄跨「5 位裁判 + 採計」共 6 列
+        merges.push({
+          s: { r: blockStart, c: 0 },
+          e: { r: rows.length - 1, c: 0 },
+        });
+      };
+
+      for (const { s, parts } of seriesCfg) {
+        for (let i = 1; i <= actionCount; i++) pushActionBlock(`${s}${i}`, parts);
         rows.push([]); // 系列間空白
+      }
+
+      // 版面外動作：隊伍分級／組別若在評分後異動，仍有計入總分的動作落在版面之外，
+      // 略過不列會讓本表與隊伍總分對不上
+      const covered = new Set(
+        seriesCfg.flatMap(({ s }) =>
+          Array.from({ length: actionCount }, (_, i) => `${s}${i + 1}`),
+        ),
+      );
+      const extraActions = [
+        ...new Set([
+          ...Object.keys(item.judgeDetails ?? {}),
+          ...Object.keys(item.actionDetails ?? {}),
+        ]),
+      ]
+        .filter((a) => !covered.has(a))
+        .sort((a, b) => a.localeCompare(b));
+      if (extraActions.length > 0) {
+        rows.push(["版面外動作（隊伍分級／組別可能已異動），分數已計入總分"]);
+        merge(0, COL - 1);
+        for (const actionNo of extraActions) {
+          pushActionBlock(actionNo, actionNo[0] === "C" ? 5 : 4);
+        }
+        rows.push([]);
       }
 
       rows.push([]); // 隊伍間空行

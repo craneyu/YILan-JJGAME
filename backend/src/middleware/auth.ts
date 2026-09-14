@@ -48,3 +48,22 @@ export function requireRole(...roles: UserRole[]) {
     next();
   };
 }
+
+/**
+ * 選擇性驗證：有帶合法 token 就填入 req.user，沒帶或 token 無效一律視為匿名放行。
+ * 用於公開端點但需依角色決定回傳欄位的情境（例如排名 API 的裁判評分明細）。
+ */
+export function optionalAuth(req: Request, _res: Response, next: NextFunction): void {
+  const authHeader = req.headers['authorization'];
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    next();
+    return;
+  }
+  try {
+    const secret = process.env.JWT_SECRET || 'default_secret';
+    req.user = jwt.verify(authHeader.slice(7), secret) as JwtPayload;
+  } catch {
+    // token 無效視為匿名，不回 401
+  }
+  next();
+}
