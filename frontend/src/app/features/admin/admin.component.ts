@@ -188,6 +188,26 @@ function seriesLayout(
   };
 }
 
+/**
+ * 依版面算出該隊的評分進度：expected 為版面內應評動作數，
+ * done 為其中已滿 5 位裁判送出（即已計分）的動作數。
+ * 版面外動作不計入，另由匯出表的「版面外動作」段落呈現。
+ */
+function scoringProgress(
+  actionDetails: Record<string, ActionDetail> | undefined,
+  actionCount: number,
+  seriesCfg: { s: string; parts: number }[],
+): { done: number; expected: number } {
+  const details = actionDetails ?? {};
+  const layoutActions = seriesCfg.flatMap(({ s }) =>
+    Array.from({ length: actionCount }, (_, i) => `${s}${i + 1}`),
+  );
+  return {
+    done: layoutActions.filter((a) => details[a] !== undefined).length,
+    expected: layoutActions.length,
+  };
+}
+
 @Component({
   selector: "app-admin",
   standalone: true,
@@ -1420,8 +1440,18 @@ ${sectionsHtml}
                 : `第 ${item.rank} 名`;
 
       // ── 隊伍標題（橫跨所有欄）──
+      // 評分未完成時標註進度，避免總分被誤讀為最終成績
+      const progress = scoringProgress(
+        item.actionDetails,
+        actionCount,
+        seriesCfg,
+      );
+      const progressNote =
+        progress.done < progress.expected
+          ? `　⚠ 評分未完成：已計分 ${progress.done} / ${progress.expected} 個動作`
+          : "";
       rows.push([
-        `${rankLabel}　${item.name}（${item.members.join(" / ")}）　總分：${item.total}`,
+        `${rankLabel}　${item.name}（${item.members.join(" / ")}）　總分：${item.total}${progressNote}`,
       ]);
       merge(0, COL - 1);
 
@@ -1645,8 +1675,17 @@ ${sectionsHtml}
                 ? "銅牌"
                 : `第 ${item.rank} 名`;
 
+      const progress = scoringProgress(
+        item.actionDetails,
+        actionCount,
+        seriesCfg,
+      );
+      const progressNote =
+        progress.done < progress.expected
+          ? `　⚠ 評分未完成：已計分 ${progress.done} / ${progress.expected} 個動作`
+          : "";
       rows.push([
-        `${rankLabel}　${item.name}（${item.members.join(" / ")}）　總分：${item.total}`,
+        `${rankLabel}　${item.name}（${item.members.join(" / ")}）　總分：${item.total}${progressNote}`,
       ]);
       merge(0, COL - 1);
 
@@ -1794,6 +1833,16 @@ ${sectionsHtml}
       (tier === "EL" || tier === "EM") &&
       group.items.every((i) => i.seriesC === 0);
 
+    // 評分未完成的隊伍需標註，避免總分被誤讀為最終成績。
+    // 整組都評完時不加備註欄，輸出與原本相同。
+    const { actionCount, seriesCfg } = seriesLayout(group.category, tier);
+    const progressOf = (item: RankingItem) =>
+      scoringProgress(item.actionDetails, actionCount, seriesCfg);
+    const hasIncomplete = group.items.some((i) => {
+      const p = progressOf(i);
+      return p.done < p.expected;
+    });
+
     const medalText = (rank: number) =>
       rank === 0
         ? "未計分"
@@ -1835,6 +1884,7 @@ ${sectionsHtml}
       headerCells.push("C合計");
     }
     headerCells.push("總分");
+    if (hasIncomplete) headerCells.push("備註");
 
     const renderRow = (item: RankingItem & { rank: number }): string => {
       const cells: string[] = [];
@@ -1863,6 +1913,14 @@ ${sectionsHtml}
       cells.push(
         `<td style="font-weight:${item.rank >= 1 && item.rank <= 3 ? "bold" : "normal"}">${item.total}</td>`,
       );
+      if (hasIncomplete) {
+        const p = progressOf(item);
+        cells.push(
+          p.done < p.expected
+            ? `<td style="color:#dc2626">評分未完成：已計分 ${p.done} / ${p.expected} 個動作</td>`
+            : "<td>—</td>",
+        );
+      }
       return `<tr style="${rowStyle(item.rank)}">${cells.join("")}</tr>`;
     };
 
