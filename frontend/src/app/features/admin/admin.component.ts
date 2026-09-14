@@ -1096,7 +1096,7 @@ export class AdminComponent implements OnInit {
           notes.push((item.penaltyReasons ?? []).join("、"));
         if ((item.judgeCount ?? 5) < 5)
           notes.push(
-            `僅 ${item.judgeCount ?? 0} 位裁判送出，未滿 5 位不列入計分`,
+            `評分未完成：已送出 ${item.judgeCount ?? 0} / 5 位裁判`,
           );
         rows.push([
           medalText,
@@ -1182,10 +1182,16 @@ export class AdminComponent implements OnInit {
                 ? "銅牌"
                 : `第 ${item.rank} 名`;
 
+      // 評分未完成時標註進度，避免最終得分被誤讀為正式成績
+      const judgeCount = item.judgeCount ?? item.judgeScores?.length ?? 5;
+      const progressNote =
+        judgeCount < 5
+          ? `　⚠ 評分未完成：已送出 ${judgeCount} / 5 位裁判`
+          : "";
       rows.push([
         `${rankLabel}　${item.name}（${item.members.join(" / ")}）　最終得分：${
           item.isAbstained ? "—" : item.finalScore
-        }`,
+        }${progressNote}`,
       ]);
       merge(0, COL - 1);
 
@@ -1292,7 +1298,7 @@ export class AdminComponent implements OnInit {
         if (!hasUnscored) return "";
         const n = item.judgeCount ?? 5;
         return n < 5
-          ? `<td style="color:#dc2626">僅 ${n} 位裁判送出，未列入計分</td>`
+          ? `<td style="color:#dc2626">評分未完成：已送出 ${n} / 5 位裁判</td>`
           : "<td>—</td>";
       };
       sectionsHtml += `
