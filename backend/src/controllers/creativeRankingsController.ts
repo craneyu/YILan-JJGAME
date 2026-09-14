@@ -26,6 +26,8 @@ interface TeamRankEntry {
   rank: number;
   penaltyReasons: string[];
   isAbstained: boolean;
+  /** 已送出評分的裁判人數；未滿 5 位即未完成評分，總分一律為 0 */
+  judgeCount: number;
   /** 各裁判的原始評分（未去頭尾），供裁判評分明細匯出使用；僅 admin 可見 */
   judgeScores?: CreativeJudgeEntry[];
 }
@@ -91,6 +93,7 @@ export async function getCreativeRankings(req: Request, res: Response): Promise<
         finalScore: 0,
         penaltyReasons,
         isAbstained,
+        judgeCount: judgeScores.length,
         ...(isAdmin ? { judgeScores: judgeDetail } : {}),
       };
     }
@@ -113,6 +116,7 @@ export async function getCreativeRankings(req: Request, res: Response): Promise<
       ...calc,
       penaltyReasons,
       isAbstained,
+      judgeCount: judgeScores.length,
       ...(isAdmin ? { judgeScores: judgeDetail } : {}),
     };
   });

@@ -65,6 +65,8 @@ interface CreativeRankingItem {
   finalScore: number;
   penaltyReasons?: string[];
   isAbstained?: boolean;
+  /** 已送出評分的裁判人數；未滿 5 位即未完成評分，總分一律為 0 */
+  judgeCount?: number;
   judgeScores?: CreativeJudgeScore[];
 }
 
@@ -1016,7 +1018,8 @@ export class AdminComponent implements OnInit {
         e: { r: rows.length - 1, c: c2 },
       });
 
-    const COL = 8;
+    // 欄位：名次 | 隊伍 | 隊員 | 技術總分 | 表演總分 | 大總分 | 扣分 | 最終得分 | 備註 = 9 欄
+    const COL = 9;
     rows.push([`${event.name} — ${group.label} 創意演武成績`]);
     merge(0, COL - 1);
     rows.push([`列印日期：${new Date().toLocaleDateString("zh-TW")}`]);
@@ -1031,7 +1034,7 @@ export class AdminComponent implements OnInit {
       "大總分",
       "扣分",
       "最終得分",
-      "扣分原因",
+      "備註",
     ]);
 
     for (const item of group.items) {
@@ -1056,6 +1059,13 @@ export class AdminComponent implements OnInit {
               : item.rank === 3
                 ? "銅牌"
                 : `第${item.rank}名`;
+        const notes: string[] = [];
+        if (item.penaltyDeduction > 0)
+          notes.push((item.penaltyReasons ?? []).join("、"));
+        if ((item.judgeCount ?? 5) < 5)
+          notes.push(
+            `僅 ${item.judgeCount ?? 0} 位裁判送出，未滿 5 位不列入計分`,
+          );
         rows.push([
           medalText,
           item.name,
@@ -1065,9 +1075,7 @@ export class AdminComponent implements OnInit {
           item.grandTotal,
           item.penaltyDeduction > 0 ? `-${item.penaltyDeduction}` : 0,
           item.finalScore,
-          item.penaltyDeduction > 0
-            ? (item.penaltyReasons ?? []).join("、")
-            : "",
+          notes.join("；"),
         ]);
       }
     }
@@ -1233,6 +1241,18 @@ export class AdminComponent implements OnInit {
     for (const group of groups) {
       const breakCls = isFirst ? "" : ' class="pb"';
       isFirst = false;
+      // 未滿 5 位裁判送出的隊伍總分一律為 0，必須標註，否則看起來像實得 0 分。
+      // 整組都完成評分時不加備註欄，輸出與原本相同。
+      const hasUnscored = group.items.some(
+        (i) => !i.isAbstained && (i.judgeCount ?? 5) < 5,
+      );
+      const noteCell = (item: CreativeRankingItem) => {
+        if (!hasUnscored) return "";
+        const n = item.judgeCount ?? 5;
+        return n < 5
+          ? `<td style="color:#dc2626">僅 ${n} 位裁判送出，未列入計分</td>`
+          : "<td>—</td>";
+      };
       sectionsHtml += `
         <section${breakCls}>
           <h2>${group.label}</h2>
@@ -1241,6 +1261,7 @@ export class AdminComponent implements OnInit {
               <tr>
                 <th>名次</th><th>隊伍名稱</th><th>隊員</th>
                 <th>技術總分</th><th>表演總分</th><th>大總分</th><th>扣分</th><th>最終得分</th>
+                ${hasUnscored ? "<th>備註</th>" : ""}
               </tr>
             </thead>
             <tbody>
@@ -1252,6 +1273,7 @@ export class AdminComponent implements OnInit {
                   <td style="text-align:center;color:#f97316;font-weight:bold">棄權</td>
                   <td>${item.name}</td><td style="color:#555">${item.members.join(" / ")}</td>
                   <td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
+                  ${hasUnscored ? "<td>—</td>" : ""}
                 </tr>`
                     : `
                 <tr>
@@ -1266,6 +1288,7 @@ export class AdminComponent implements OnInit {
                       : "—"
                   }</td>
                   <td style="font-weight:${item.rank <= 3 ? "bold" : "normal"}">${item.finalScore.toFixed(1)}</td>
+                  ${noteCell(item)}
                 </tr>`,
                 )
                 .join("")}
