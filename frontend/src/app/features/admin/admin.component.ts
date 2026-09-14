@@ -1739,7 +1739,11 @@ ${sectionsHtml}
     const tier = group.tier;
     const isElementary = isElementaryTier(tier);
     const hideVR = isElementary;
-    const hideC = tier === "EL" || tier === "EM";
+    // EL/EM 版面上無 C 系列；但隊伍分級／組別若在評分後異動，C 系列仍可能有分數。
+    // 此時照樣隱藏會讓 A 合計 + B 合計 對不上總分，故改為有分數就顯示。
+    const hideC =
+      (tier === "EL" || tier === "EM") &&
+      group.items.every((i) => i.seriesC === 0);
 
     const medalText = (rank: number) =>
       rank === 1 ? "金" : rank === 2 ? "銀" : rank === 3 ? "銅" : String(rank);
